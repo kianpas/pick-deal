@@ -1,0 +1,59 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Node / Next.js frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/dist/
+frontend/build/
+frontend/.turbo/
+frontend/.vercel/
+frontend/.next-env.d.ts
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# Java / Gradle backend
+backend/.gradle/
+backend/build/
+backend/out/
+backend/bin/
+backend/.settings/
+backend/.classpath
+backend/.project
+backend/*.class
+
+# H2 / local database files
+backend/*.db
+backend/*.mv.db
+backend/*.trace.db
+
+# Test / coverage reports
+coverage/
+frontend/coverage/
+backend/coverage/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+
