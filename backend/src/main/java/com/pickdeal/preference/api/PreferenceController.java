@@ -1,7 +1,6 @@
 package com.pickdeal.preference.api;
 
 import com.pickdeal.common.response.ApiResponse;
-import com.pickdeal.common.response.DeleteResponse;
 import com.pickdeal.preference.application.PreferenceService;
 import com.pickdeal.preference.domain.KeywordType;
 import com.pickdeal.preference.dto.CreateKeywordRequest;
@@ -22,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/api/preferences/keywords")
+@RequestMapping("/api/v1/keywords")
 public class PreferenceController {
 
     private final PreferenceService preferenceService;
@@ -43,8 +42,8 @@ public class PreferenceController {
     }
 
     @DeleteMapping("/{keywordId}")
-    public ApiResponse<DeleteResponse> deleteKeyword(@PathVariable Long keywordId) {
-        return ApiResponse.success(preferenceService.deleteKeyword(keywordId));
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteKeyword(@PathVariable Long keywordId) {
+        preferenceService.deleteKeyword(keywordId);
     }
 }
-

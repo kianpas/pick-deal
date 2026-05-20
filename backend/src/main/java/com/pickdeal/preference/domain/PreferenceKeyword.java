@@ -14,12 +14,12 @@ import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(
-        name = "keywords",
+        name = "keyword",
         indexes = {
-                @Index(name = "idx_keywords_type", columnList = "keyword_type")
+                @Index(name = "idx_keyword_user_type", columnList = "user_id, type")
         },
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_keywords_type_value", columnNames = {"keyword_type", "keyword_value"})
+                @UniqueConstraint(name = "uk_keyword_user_keyword_type", columnNames = {"user_id", "keyword", "type"})
         }
 )
 public class PreferenceKeyword extends BaseTimeEntity {
@@ -28,30 +28,38 @@ public class PreferenceKeyword extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "keyword_type", nullable = false, length = 30, columnDefinition = "varchar(30)")
+    @Column(nullable = false, length = 10, columnDefinition = "varchar(10)")
     private KeywordType type;
 
-    @Column(name = "keyword_value", nullable = false, length = 100)
-    private String value;
+    @Column(nullable = false, length = 50)
+    private String keyword;
 
     protected PreferenceKeyword() {
     }
 
-    public PreferenceKeyword(KeywordType type, String value) {
+    public PreferenceKeyword(Long userId, KeywordType type, String keyword) {
+        this.userId = userId;
         this.type = type;
-        this.value = value;
+        this.keyword = keyword;
     }
 
     public Long getId() {
         return id;
     }
 
+    public Long getUserId() {
+        return userId;
+    }
+
     public KeywordType getType() {
         return type;
     }
 
-    public String getValue() {
-        return value;
+    public String getKeyword() {
+        return keyword;
     }
 }

@@ -5,10 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PreferenceKeywordRepository extends JpaRepository<PreferenceKeyword, Long> {
 
-    List<PreferenceKeyword> findAllByOrderByTypeAscCreatedAtAsc();
+    List<PreferenceKeyword> findByUserIdOrderByTypeAscCreatedAtAsc(Long userId);
 
-    List<PreferenceKeyword> findByTypeOrderByCreatedAtAsc(KeywordType type);
+    List<PreferenceKeyword> findByUserIdAndTypeOrderByCreatedAtAsc(Long userId, KeywordType type);
 
-    boolean existsByTypeAndValueIgnoreCase(KeywordType type, String value);
+    boolean existsByUserIdAndTypeAndKeywordIgnoreCase(Long userId, KeywordType type, String keyword);
 }
-

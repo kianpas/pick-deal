@@ -1,32 +1,37 @@
 package com.pickdeal.deal.dto;
 
 import com.pickdeal.deal.domain.Deal;
-import com.pickdeal.source.dto.SourceSummaryResponse;
 import java.time.OffsetDateTime;
-import java.util.List;
 
 public record DealSummaryResponse(
         Long id,
         String title,
-        Integer price,
-        Integer shippingFee,
-        SourceSummaryResponse source,
-        String originalUrl,
-        List<String> matchedInterestKeywords,
-        OffsetDateTime createdAt
+        Long price,
+        Long originalPrice,
+        Integer discountRate,
+        String currency,
+        String category,
+        String thumbnailUrl,
+        Long sourceId,
+        String sourceName,
+        OffsetDateTime postedAt,
+        String status
 ) {
 
-    public static DealSummaryResponse from(Deal deal, List<String> matchedInterestKeywords) {
+    public static DealSummaryResponse from(Deal deal) {
         return new DealSummaryResponse(
                 deal.getId(),
                 deal.getTitle(),
                 deal.getPrice(),
-                deal.getShippingFee(),
-                SourceSummaryResponse.from(deal.getSource()),
-                deal.getOriginalUrl(),
-                matchedInterestKeywords,
-                deal.getCreatedAt()
+                deal.getOriginalPrice(),
+                deal.getDiscountRate(),
+                deal.getCurrency(),
+                deal.getCategory(),
+                deal.getThumbnailUrl(),
+                deal.getSource().getId(),
+                deal.getSource().getName(),
+                deal.getPostedAt(),
+                deal.getStatus().name()
         );
     }
 }
-

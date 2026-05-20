@@ -6,18 +6,17 @@ import java.time.OffsetDateTime;
 
 public record KeywordResponse(
         Long id,
+        String keyword,
         KeywordType type,
-        String value,
         OffsetDateTime createdAt
 ) {
 
     public static KeywordResponse from(PreferenceKeyword keyword) {
         return new KeywordResponse(
                 keyword.getId(),
+                keyword.getKeyword(),
                 keyword.getType(),
-                keyword.getValue(),
                 keyword.getCreatedAt()
         );
     }
 }
-

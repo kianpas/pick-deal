@@ -15,18 +15,30 @@ public record CreateDealRequest(
 
         String description,
 
-        @PositiveOrZero Integer price,
+        @PositiveOrZero Long price,
 
-        @PositiveOrZero Integer shippingFee,
+        @PositiveOrZero Long originalPrice,
+
+        @PositiveOrZero Integer discountRate,
+
+        @Size(max = 8)
+        String currency,
+
+        @Size(max = 50)
+        String category,
+
+        @Size(max = 1000)
+        String thumbnailUrl,
 
         @NotBlank
         @Size(max = 1000)
         String originalUrl,
 
+        @NotBlank
         @Size(max = 200)
-        String originalId,
+        String externalId,
 
+        @NotNull
         OffsetDateTime postedAt
 ) {
 }
-

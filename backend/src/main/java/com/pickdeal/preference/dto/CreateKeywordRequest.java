@@ -9,8 +9,7 @@ public record CreateKeywordRequest(
         @NotNull KeywordType type,
 
         @NotBlank
-        @Size(max = 100)
-        String value
+        @Size(max = 50)
+        String keyword
 ) {
 }
-

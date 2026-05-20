@@ -2,6 +2,7 @@ package com.pickdeal.deal.application;
 
 import com.pickdeal.common.error.DuplicateResourceException;
 import com.pickdeal.common.error.ResourceNotFoundException;
+import com.pickdeal.common.response.PageMetaResponse;
 import com.pickdeal.deal.domain.Deal;
 import com.pickdeal.deal.domain.DealRepository;
 import com.pickdeal.deal.domain.DealStatus;
@@ -25,6 +26,9 @@ import org.springframework.util.StringUtils;
 @Service
 public class DealService {
 
+    private static final Long DEFAULT_USER_ID = 1L;
+    private static final String DEFAULT_CURRENCY = "KRW";
+
     private final DealRepository dealRepository;
     private final SourceRepository sourceRepository;
     private final PreferenceKeywordRepository keywordRepository;
@@ -40,36 +44,37 @@ public class DealService {
     }
 
     @Transactional(readOnly = true)
-    public DealListResponse findDeals(int page, int size, Long sourceId, String query) {
-        List<PreferenceKeyword> excludeKeywords = keywordRepository.findByTypeOrderByCreatedAtAsc(KeywordType.EXCLUDE);
-        List<PreferenceKeyword> interestKeywords = keywordRepository.findByTypeOrderByCreatedAtAsc(KeywordType.INTEREST);
+    public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String query) {
+        List<PreferenceKeyword> excludeKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.EXCLUDE);
+        List<PreferenceKeyword> interestKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.INTEREST);
 
-        List<Deal> filteredDeals = dealRepository.findVisibleDealsByStatus(DealStatus.ACTIVE).stream()
-                .filter(deal -> sourceId == null || deal.getSource().getId().equals(sourceId))
+        List<Deal> filteredDeals = dealRepository.findVisibleDealsByStatus(DealStatus.ACTIVE, DEFAULT_USER_ID).stream()
+                .filter(deal -> sourceIds == null || sourceIds.isEmpty() || sourceIds.contains(deal.getSource().getId()))
                 .filter(deal -> matchesQuery(deal, query))
                 .filter(deal -> !containsAnyKeyword(deal, excludeKeywords))
-                .sorted(Comparator.comparing(this::dealSortTime).reversed())
+                .filter(deal -> interestKeywords.isEmpty() || containsAnyKeyword(deal, interestKeywords))
+                .sorted(dealComparator(sort))
                 .toList();
 
         int fromIndex = Math.min(page * size, filteredDeals.size());
         int toIndex = Math.min(fromIndex + size, filteredDeals.size());
 
         List<DealSummaryResponse> items = filteredDeals.subList(fromIndex, toIndex).stream()
-                .map(deal -> DealSummaryResponse.from(deal, findMatchedKeywords(deal, interestKeywords)))
+                .map(DealSummaryResponse::from)
                 .toList();
 
         int totalPages = filteredDeals.isEmpty() ? 0 : (int) Math.ceil((double) filteredDeals.size() / size);
+        boolean hasNext = page + 1 < totalPages;
 
-        return new DealListResponse(items, page, size, filteredDeals.size(), totalPages);
+        return new DealListResponse(items, new PageMetaResponse(page, size, filteredDeals.size(), totalPages, hasNext));
     }
 
     @Transactional(readOnly = true)
     public DealDetailResponse findDeal(Long dealId) {
         Deal deal = dealRepository.findByIdWithSource(dealId)
                 .orElseThrow(() -> new ResourceNotFoundException("Deal not found: " + dealId));
-        List<PreferenceKeyword> interestKeywords = keywordRepository.findByTypeOrderByCreatedAtAsc(KeywordType.INTEREST);
 
-        return DealDetailResponse.from(deal, findMatchedKeywords(deal, interestKeywords));
+        return DealDetailResponse.from(deal);
     }
 
     @Transactional
@@ -77,26 +82,31 @@ public class DealService {
         Source source = sourceRepository.findById(request.sourceId())
                 .orElseThrow(() -> new ResourceNotFoundException("Source not found: " + request.sourceId()));
 
-        String originalUrl = request.originalUrl().trim();
-        if (dealRepository.existsBySourceIdAndOriginalUrl(source.getId(), originalUrl)) {
-            throw new DuplicateResourceException("Deal already exists for source and originalUrl");
+        String externalId = request.externalId().trim();
+        if (dealRepository.existsBySourceIdAndExternalId(source.getId(), externalId)) {
+            throw new DuplicateResourceException("Deal already exists for source and externalId");
         }
 
+        OffsetDateTime now = OffsetDateTime.now();
         Deal deal = dealRepository.save(new Deal(
                 source,
                 request.title().trim(),
                 normalizeNullable(request.description()),
                 request.price(),
-                request.shippingFee(),
-                originalUrl,
-                normalizeNullable(request.originalId()),
+                request.originalPrice(),
+                request.discountRate(),
+                normalizeCurrency(request.currency()),
+                normalizeNullable(request.category()),
+                normalizeNullable(request.thumbnailUrl()),
+                request.originalUrl().trim(),
+                externalId,
+                null,
                 DealStatus.ACTIVE,
                 request.postedAt(),
-                OffsetDateTime.now()
+                now
         ));
 
-        List<PreferenceKeyword> interestKeywords = keywordRepository.findByTypeOrderByCreatedAtAsc(KeywordType.INTEREST);
-        return DealDetailResponse.from(deal, findMatchedKeywords(deal, interestKeywords));
+        return DealDetailResponse.from(deal);
     }
 
     private boolean matchesQuery(Deal deal, String query) {
@@ -110,19 +120,22 @@ public class DealService {
 
     private boolean containsAnyKeyword(Deal deal, List<PreferenceKeyword> keywords) {
         return keywords.stream()
-                .map(PreferenceKeyword::getValue)
+                .map(PreferenceKeyword::getKeyword)
                 .anyMatch(keyword -> contains(deal.getTitle(), keyword) || contains(deal.getDescription(), keyword));
-    }
-
-    private List<String> findMatchedKeywords(Deal deal, List<PreferenceKeyword> keywords) {
-        return keywords.stream()
-                .map(PreferenceKeyword::getValue)
-                .filter(keyword -> contains(deal.getTitle(), keyword) || contains(deal.getDescription(), keyword))
-                .toList();
     }
 
     private boolean contains(String text, String keyword) {
         return text != null && text.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT));
+    }
+
+    private Comparator<Deal> dealComparator(String sort) {
+        if ("discount".equalsIgnoreCase(sort)) {
+            return Comparator
+                    .comparing((Deal deal) -> deal.getDiscountRate() == null ? Integer.MIN_VALUE : deal.getDiscountRate())
+                    .thenComparing(this::dealSortTime)
+                    .reversed();
+        }
+        return Comparator.comparing(this::dealSortTime).reversed();
     }
 
     private OffsetDateTime dealSortTime(Deal deal) {
@@ -141,5 +154,11 @@ public class DealService {
         }
         return value.trim();
     }
-}
 
+    private String normalizeCurrency(String currency) {
+        if (!StringUtils.hasText(currency)) {
+            return DEFAULT_CURRENCY;
+        }
+        return currency.trim().toUpperCase(Locale.ROOT);
+    }
+}

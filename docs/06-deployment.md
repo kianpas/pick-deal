@@ -1,221 +1,149 @@
-# Pick Deal 배포 설계 초안
+# 06. 배포 설계 (Deployment)
 
-## 1. 배포 목표
+> PickDeal — 배포 전략 / Docker 기반 확장 방향 / 로컬 개발 환경 / Codex 구현 작업 순서
+> **이번 단계에서는 Dockerfile, docker-compose.yml, nginx 설정, CI/CD 스크립트를 작성하지 않는다.** 구조와 방향만 문서화한다.
+> 작성 기준일: 2026-05-20
 
-초기 배포는 개인용 서비스 운영을 기준으로 단순하고 유지보수하기 쉬운 구조를 선택한다.
+---
 
-우선순위:
+## 1. 배포 전략 개요 (Vercel + OCI)
 
-1. 배포와 복구가 단순해야 한다.
-2. 프론트엔드, 백엔드, DB가 명확히 분리되어야 한다.
-3. 추후 수집기와 AI worker를 별도로 추가할 수 있어야 한다.
-4. 비용을 낮게 유지해야 한다.
-
-## 2. 로컬 개발 구조
-
-```text
-Developer Machine
-  frontend: Next.js dev server
-  backend: Spring Boot local server
-  database: local PostgreSQL or Docker PostgreSQL
+```
+   사용자
+     │ HTTPS
+     ▼
+┌─────────────┐        ┌──────────────────────────────┐
+│  Vercel      │  REST  │  OCI / VPS (Docker Compose)    │
+│  Frontend    │ ─────▶ │  ┌────────────┐  ┌──────────┐ │
+│  (Next.js)   │        │  │ backend     │  │ postgres  │ │
+└─────────────┘        │  │ (Spring Boot)│─▶│ (DB)      │ │
+                       │  └────────────┘  └──────────┘ │
+                       │   (+ 2차: nginx, redis, worker) │
+                       └──────────────────────────────┘
 ```
 
-기본 포트 후보:
+- **Frontend**: Vercel 배포를 기본으로 한다(Next.js App Router에 최적). 환경변수로 backend API base URL 주입.
+- **Backend + DB**: OCI 또는 VPS에서 **Docker Compose**로 운영한다.
+- **운영 기본 방향**: Vercel(frontend) + OCI Docker Compose(backend/DB).
+- 도메인/TLS: 운영 시 backend 앞단에 리버스 프록시(nginx) + TLS를 둘 수 있다(2차, 본 단계에선 미작성).
 
-| 구성요소 | 포트 |
-| --- | --- |
-| frontend | 3000 |
-| backend | 8080 |
-| database | 5432 |
+---
 
-프론트엔드는 환경 변수로 백엔드 API 주소를 참조한다.
+## 2. 로컬 개발 환경
 
-```text
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+- **DB는 Docker Compose로 실행**한다(개발자는 PostgreSQL을 로컬에 직접 설치하지 않아도 됨).
+- frontend: 로컬에서 `next dev`(Turbopack)로 실행, `NEXT_PUBLIC_API_BASE_URL`을 로컬 backend로 지정.
+- backend: 로컬 프로파일(`application-local.yml`)로 실행, Docker Compose DB에 접속.
+- 시드 데이터는 로컬/개발 프로파일에서만 적재한다(`docs/04` 6장).
+
+> 구체적인 `docker-compose.yml`은 이번 단계에서 작성하지 않는다. 아래는 향후 구성할 서비스 구성의 "방향"만 기술한다.
+
+향후 로컬 compose 구성 방향(미작성, 참고용):
+
+```
+services:
+  db        # PostgreSQL (로컬/운영 공통 베이스)
+  backend   # Spring Boot (로컬에선 외부 실행도 가능)
+  # 2차 확장 시 추가:
+  # redis
+  # worker  (collector)
+  # nginx   (운영 리버스 프록시/TLS)
 ```
 
-백엔드는 환경 변수로 DB 연결 정보를 참조한다.
+---
 
-```text
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/pickdeal
-SPRING_DATASOURCE_USERNAME=pickdeal
-SPRING_DATASOURCE_PASSWORD=pickdeal
-```
+## 3. Docker 기반 배포 확장 방향
 
-## 3. 초기 운영 배포 후보
+> 단계적으로 컨테이너를 추가/분리할 수 있도록 설계한다. 각 단계는 필요 시점에 진행한다.
 
-### 선택지 A: 단일 VPS + Docker Compose
+| 단계 | 컨테이너 구성 | 설명 |
+| --- | --- | --- |
+| **MVP 운영** | `backend`, `db` | 단일 백엔드(+scheduler 비활성) + PostgreSQL |
+| **2차-a** | `+ redis` | 캐시/큐/중복 방지/rate limit 필요 시 Redis 추가 (`docs/05` 4장) |
+| **2차-b** | `+ worker` | collector worker 분리. backend는 조회·설정 전담, worker는 수집·정규화·dedup (`docs/05` 6장) |
+| **2차-c** | `+ nginx` | 리버스 프록시 + TLS, 라우팅/정적 처리 |
 
-```text
-VPS
-  reverse proxy
-  frontend container
-  backend container
-  postgres container or managed DB
-```
+- 분리 시에도 **공유 PostgreSQL**을 기본으로 하고, 작업 분배가 필요하면 Redis 큐를 매개로 한다.
+- worker는 무상태로 두어 인스턴스 수평 확장이 가능하게 한다.
+- 각 단계의 Dockerfile/compose/nginx 파일은 해당 단계 착수 시 작성한다(현 단계 작성 금지).
 
-장점:
+---
 
-- 구조가 단순하다.
-- 비용이 낮다.
-- 개인용 서비스에 적합하다.
-- 프론트엔드/백엔드/DB를 한 서버에서 관리할 수 있다.
+## 4. 환경 변수 / 설정 (방향)
 
-단점:
+| 영역 | 키(예시) | 설명 |
+| --- | --- | --- |
+| Frontend | `NEXT_PUBLIC_API_BASE_URL` | backend API base URL |
+| Backend | `SPRING_PROFILES_ACTIVE` | `local` / `prod` |
+| Backend | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | DB 접속 정보 |
+| Backend(2차) | `REDIS_HOST`, `REDIS_PORT` | Redis 도입 시 |
+| Backend(3차) | `LLM_API_KEY`, `LLM_MODEL` | AI 요약/판단 도입 시 |
 
-- 서버 관리 책임이 있다.
-- 장애 대응과 백업을 직접 구성해야 한다.
+- 비밀값은 저장소에 커밋하지 않는다(Vercel/OCI의 시크릿/환경변수 사용). `.env.example`은 구현 단계에서 추가.
 
-### 선택지 B: Frontend managed hosting + Backend VPS + Managed DB
+---
 
-```text
-Vercel or similar
-  frontend
+## 5. CI/CD (방향만)
 
-VPS or container platform
-  backend
+> 본 단계에서는 스크립트를 작성하지 않는다.
 
-Managed PostgreSQL
-  database
-```
+- **Frontend**: Vercel의 Git 연동 자동 배포(프리뷰/프로덕션).
+- **Backend**: 이미지 빌드 → 레지스트리 푸시 → OCI에서 compose pull & up. CI 파이프라인은 구현 단계에서 정의.
+- monorepo이므로 변경 경로(`frontend/**`, `backend/**`)에 따라 파이프라인을 분기하도록 설계할 수 있다.
 
-장점:
+---
 
-- 프론트엔드 배포가 편하다.
-- DB 백업과 운영 부담이 줄어든다.
-- HTTPS와 CDN 구성이 쉽다.
+## 6. 이후 Codex가 구현할 작업 순서
 
-단점:
+> 본 설계 문서를 기준으로, 아래 순서대로 구현한다. 각 단계는 앞 단계 산출물에 의존한다.
+> **0~9단계가 MVP, 10단계 이후는 확장.**
 
-- 서비스가 여러 곳으로 나뉘어 설정이 늘어난다.
-- 무료/저가 플랜 제약을 확인해야 한다.
+### MVP 구현
 
-## 4. MVP 권장안
+0. **레포 스캐폴딩**
+   - `pick-deal/` monorepo에 `frontend/`, `backend/` 디렉터리 생성(이번 문서 단계에서는 만들지 않음).
+   - 루트 README, `.gitignore` 정리.
+1. **Backend 프로젝트 생성**
+   - Spring Boot 프로젝트 생성(버전: `docs/02` 1.2 기준 — 현재 구현은 Spring Boot 3.5.14 + JDK 17 유지).
+   - 패키지 구조(`docs/02` 5장), 공통 응답/에러 핸들러, CORS 설정.
+2. **DB 마이그레이션 & 엔티티**
+   - Flyway `V1__init.sql`로 `source`, `deal`, `source_visibility`, `keyword` 생성(`docs/04` 2장, 인덱스/유니크 포함).
+   - JPA 엔티티/리포지토리 작성.
+3. **시드 데이터**
+   - 로컬/개발 프로파일용 더미 출처·딜 시드 적재(`docs/04` 6장).
+4. **딜 API**
+   - `GET /api/v1/deals`(필터/정렬/페이지네이션 + 숨김 출처·키워드 규칙), `GET /api/v1/deals/{id}` 구현(`docs/03` 2장, 필터 규칙 `docs/01` 3.2 / `docs/04` 4장).
+   - (선택) `POST /api/v1/internal/deals`.
+5. **출처 API**
+   - `GET /api/v1/sources`, `PATCH /api/v1/sources/{id}/visibility`(`docs/03` 3장).
+6. **키워드 API**
+   - `GET/POST/DELETE /api/v1/keywords`(`docs/03` 4장, 중복/검증 처리).
+7. **로컬 Docker Compose(DB)**
+   - 로컬 DB 실행용 compose 작성(이 시점에 작성). backend가 접속하도록 프로파일 구성.
+8. **Frontend 프로젝트 생성 & 화면**
+   - Next.js(App Router, TS, Tailwind) 생성(버전 `docs/02` 1.1).
+   - 화면: 목록(`/`), 상세(`/deals/[id]`), 출처 설정(`/settings/sources`), 키워드 설정(`/settings/keywords`) (`docs/02` 4장).
+   - API 연동, 빈 상태/에러 처리.
+9. **MVP 통합 & 배포 준비**
+   - frontend↔backend 통합 동작 확인, 환경변수 정리.
+   - frontend Vercel 배포, backend/DB OCI Docker Compose 배포 구성 작성(이 시점에 Dockerfile/compose/nginx 작성).
 
-MVP에서는 선택지 A를 우선 권장한다.
+### 확장 구현 (10단계 이후)
 
-```text
-User Browser
-  -> HTTPS Reverse Proxy
-    -> Next.js Frontend
-    -> Spring Boot Backend
-      -> PostgreSQL
-```
+10. **수집기(2차)**: scheduler 기반 수집 → 정규화 파이프라인(`docs/05` 2장).
+11. **중복 제거(2차)**: `title_norm_hash`/그룹핑, dedup 로직(`docs/05` 3장).
+12. **Redis(2차)**: 캐시/큐/중복 방지/rate limit 도입(`docs/05` 4장).
+13. **worker 분리(2차)**: collector worker 컨테이너 분리(`docs/05` 6장, `docs/06` 3장).
+14. **알림(2차)**: 관심 키워드 알림(`docs/05` 7장).
+15. **AI 댓글 요약(3차)**: 댓글 수집·요약·노출(`docs/05` 5.1).
+16. **AI 구매 판단 보조(3차)**: 보조 점수/근거(`docs/05` 5.2).
+17. **멀티유저 전환(3차)**: `user` 테이블/인증 도입, 설정 API에 인증 적용(`docs/04` 7장, `docs/03` 5장).
 
-이유:
+---
 
-- 개인용 서비스에 충분하다.
-- 배포 단위가 명확하다.
-- 향후 Docker Compose에 collector worker를 추가하기 쉽다.
-- 비용 예측이 쉽다.
+## 7. 관련 문서
 
-## 5. 환경 구성
-
-### frontend 환경 변수
-
-| 이름 | 설명 |
-| --- | --- |
-| NEXT_PUBLIC_API_BASE_URL | 브라우저에서 호출할 백엔드 API 주소 |
-
-### backend 환경 변수
-
-| 이름 | 설명 |
-| --- | --- |
-| SPRING_DATASOURCE_URL | DB URL |
-| SPRING_DATASOURCE_USERNAME | DB 사용자명 |
-| SPRING_DATASOURCE_PASSWORD | DB 비밀번호 |
-| APP_CORS_ALLOWED_ORIGINS | 허용할 프론트엔드 origin |
-
-### future 환경 변수
-
-| 이름 | 설명 |
-| --- | --- |
-| COLLECTOR_ENABLED | 수집기 활성화 여부 |
-| COLLECTOR_INTERVAL_SECONDS | 수집 주기 |
-| AI_SUMMARY_ENABLED | AI 요약 활성화 여부 |
-| AI_PROVIDER | AI 제공자 |
-| AI_MODEL | AI 모델 |
-
-## 6. 데이터베이스 운영
-
-초기 DB는 PostgreSQL을 권장한다.
-
-운영 기준:
-
-- 정기 백업을 설정한다.
-- schema migration 도구를 사용한다.
-- 수동 데이터 수정이 필요할 수 있으므로 DB 접속 절차를 문서화한다.
-- 수집기 도입 후에는 수집 이력 테이블을 이용해 장애를 추적한다.
-
-마이그레이션 도구 후보:
-
-- Flyway
-- Liquibase
-
-MVP에서는 Spring Boot와 궁합이 단순한 Flyway를 우선 후보로 둔다.
-
-## 7. 배포 파이프라인 후보
-
-초기에는 수동 배포로 시작할 수 있다.
-
-```text
-git pull
-  -> frontend build
-  -> backend build
-  -> docker compose up -d --build
-```
-
-추후 CI/CD 후보:
-
-- GitHub Actions
-- Docker image build
-- VPS SSH deploy
-- DB migration 자동 실행
-
-## 8. 모니터링과 로그
-
-MVP 최소 기준:
-
-- 백엔드 애플리케이션 로그
-- HTTP 에러 로그
-- DB 백업 상태 확인
-- 디스크 사용량 확인
-
-수집기 추가 후 필요 항목:
-
-- 출처별 수집 성공/실패율
-- 수집 소요 시간
-- 신규 핫딜 수집 건수
-- AI 요약 성공/실패율
-- 외부 사이트 요청 실패율
-
-## 9. 향후 확장 배포 구조
-
-```text
-User Browser
-  -> CDN / Reverse Proxy
-    -> Frontend
-    -> Backend API
-
-Backend API
-  -> PostgreSQL
-  -> Redis
-
-Collector Worker
-  -> External Sites
-  -> PostgreSQL
-  -> Queue
-
-AI Summary Worker
-  -> Queue
-  -> AI Provider
-  -> PostgreSQL
-```
-
-확장 시점:
-
-- 수집 작업이 API 서버 성능에 영향을 줄 때
-- AI 요약 처리 시간이 길어질 때
-- 알림, 큐, 재시도 처리가 필요해질 때
-- 다중 사용자 기능이 추가될 때
-
+- 전체/확장 아키텍처: `docs/02-architecture.md`
+- API: `docs/03-api-design.md`
+- DB/시드: `docs/04-database-design.md`
+- 수집기/AI/Redis/worker: `docs/05-collector-design.md`

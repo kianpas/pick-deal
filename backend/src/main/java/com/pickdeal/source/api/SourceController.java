@@ -8,13 +8,13 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/sources")
+@RequestMapping("/api/v1/sources")
 public class SourceController {
 
     private final SourceService sourceService;
@@ -28,7 +28,7 @@ public class SourceController {
         return ApiResponse.success(sourceService.findSources());
     }
 
-    @PutMapping("/{sourceId}/visibility")
+    @PatchMapping("/{sourceId}/visibility")
     public ApiResponse<SourceResponse> updateVisibility(
             @PathVariable Long sourceId,
             @Valid @RequestBody UpdateSourceVisibilityRequest request
@@ -36,4 +36,3 @@ public class SourceController {
         return ApiResponse.success(sourceService.updateVisibility(sourceId, request.visible()));
     }
 }
-

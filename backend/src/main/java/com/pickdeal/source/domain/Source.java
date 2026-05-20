@@ -6,14 +6,15 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(
-        name = "sources",
-        indexes = {
-                @Index(name = "idx_sources_visible", columnList = "visible")
+        name = "source",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_source_name", columnNames = "name"),
+                @UniqueConstraint(name = "uk_source_code", columnNames = "code")
         }
 )
 public class Source extends BaseTimeEntity {
@@ -28,24 +29,20 @@ public class Source extends BaseTimeEntity {
     @Column(name = "base_url", nullable = false, length = 500)
     private String baseUrl;
 
-    @Column(length = 500)
-    private String description;
+    @Column(length = 50)
+    private String code;
 
     @Column(nullable = false)
-    private boolean visible;
+    private boolean active;
 
     protected Source() {
     }
 
-    public Source(String name, String baseUrl, String description, boolean visible) {
+    public Source(String name, String baseUrl, String code, boolean active) {
         this.name = name;
         this.baseUrl = baseUrl;
-        this.description = description;
-        this.visible = visible;
-    }
-
-    public void updateVisibility(boolean visible) {
-        this.visible = visible;
+        this.code = code;
+        this.active = active;
     }
 
     public Long getId() {
@@ -60,12 +57,11 @@ public class Source extends BaseTimeEntity {
         return baseUrl;
     }
 
-    public String getDescription() {
-        return description;
+    public String getCode() {
+        return code;
     }
 
-    public boolean isVisible() {
-        return visible;
+    public boolean isActive() {
+        return active;
     }
 }
-

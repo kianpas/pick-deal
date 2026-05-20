@@ -20,14 +20,16 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(
-        name = "deals",
+        name = "deal",
         indexes = {
-                @Index(name = "idx_deals_source_id", columnList = "source_id"),
-                @Index(name = "idx_deals_created_at", columnList = "created_at"),
-                @Index(name = "idx_deals_posted_at", columnList = "posted_at")
+                @Index(name = "idx_deal_source_id", columnList = "source_id"),
+                @Index(name = "idx_deal_posted_at", columnList = "posted_at"),
+                @Index(name = "idx_deal_discount_rate", columnList = "discount_rate"),
+                @Index(name = "idx_deal_status", columnList = "status"),
+                @Index(name = "idx_deal_title_norm_hash", columnList = "title_norm_hash")
         },
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_deals_source_original_url", columnNames = {"source_id", "original_url"})
+                @UniqueConstraint(name = "uk_deal_source_external_id", columnNames = {"source_id", "external_id"})
         }
 )
 public class Deal extends BaseTimeEntity {
@@ -46,25 +48,40 @@ public class Deal extends BaseTimeEntity {
     @Column(columnDefinition = "text")
     private String description;
 
-    private Integer price;
+    private Long price;
 
-    @Column(name = "shipping_fee")
-    private Integer shippingFee;
+    @Column(name = "original_price")
+    private Long originalPrice;
+
+    @Column(name = "discount_rate")
+    private Integer discountRate;
+
+    @Column(nullable = false, length = 8)
+    private String currency;
+
+    @Column(length = 50)
+    private String category;
+
+    @Column(name = "thumbnail_url", length = 1000)
+    private String thumbnailUrl;
 
     @Column(name = "original_url", nullable = false, length = 1000)
     private String originalUrl;
 
-    @Column(name = "original_id", length = 200)
-    private String originalId;
+    @Column(name = "external_id", nullable = false, length = 200)
+    private String externalId;
+
+    @Column(name = "title_norm_hash", length = 64)
+    private String titleNormHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private DealStatus status;
 
-    @Column(name = "posted_at")
+    @Column(name = "posted_at", nullable = false)
     private OffsetDateTime postedAt;
 
-    @Column(name = "collected_at")
+    @Column(name = "collected_at", nullable = false)
     private OffsetDateTime collectedAt;
 
     protected Deal() {
@@ -74,10 +91,15 @@ public class Deal extends BaseTimeEntity {
             Source source,
             String title,
             String description,
-            Integer price,
-            Integer shippingFee,
+            Long price,
+            Long originalPrice,
+            Integer discountRate,
+            String currency,
+            String category,
+            String thumbnailUrl,
             String originalUrl,
-            String originalId,
+            String externalId,
+            String titleNormHash,
             DealStatus status,
             OffsetDateTime postedAt,
             OffsetDateTime collectedAt
@@ -86,9 +108,14 @@ public class Deal extends BaseTimeEntity {
         this.title = title;
         this.description = description;
         this.price = price;
-        this.shippingFee = shippingFee;
+        this.originalPrice = originalPrice;
+        this.discountRate = discountRate;
+        this.currency = currency;
+        this.category = category;
+        this.thumbnailUrl = thumbnailUrl;
         this.originalUrl = originalUrl;
-        this.originalId = originalId;
+        this.externalId = externalId;
+        this.titleNormHash = titleNormHash;
         this.status = status;
         this.postedAt = postedAt;
         this.collectedAt = collectedAt;
@@ -110,20 +137,40 @@ public class Deal extends BaseTimeEntity {
         return description;
     }
 
-    public Integer getPrice() {
+    public Long getPrice() {
         return price;
     }
 
-    public Integer getShippingFee() {
-        return shippingFee;
+    public Long getOriginalPrice() {
+        return originalPrice;
+    }
+
+    public Integer getDiscountRate() {
+        return discountRate;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
     }
 
     public String getOriginalUrl() {
         return originalUrl;
     }
 
-    public String getOriginalId() {
-        return originalId;
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public String getTitleNormHash() {
+        return titleNormHash;
     }
 
     public DealStatus getStatus() {
@@ -138,4 +185,3 @@ public class Deal extends BaseTimeEntity {
         return collectedAt;
     }
 }
-
