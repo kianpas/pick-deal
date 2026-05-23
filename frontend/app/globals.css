@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/* Light tokens (default) */
+@theme {
+  --color-bg: #ffffff;
+  --color-surface: #f7f7f9;
+  --color-surface-2: #efeff2;
+  --color-surface-hover: #f0f0f4;
+  --color-border: #e6e6ec;
+  --color-border-strong: #d4d4dc;
+
+  --color-fg: #1a1a24;
+  --color-fg-muted: #5a5a6a;
+  --color-fg-subtle: #9a9aac;
+
+  --color-brand: #7c3aed;
+  --color-brand-strong: #6d28d9;
+  --color-brand-soft: rgba(124, 58, 237, 0.1);
+
+  --color-positive: #16a34a;
+  --color-positive-soft: rgba(22, 163, 74, 0.1);
+  --color-warning: #d97706;
+  --color-warning-soft: rgba(217, 119, 6, 0.1);
+  --color-danger: #dc2626;
+  --color-danger-soft: rgba(220, 38, 38, 0.1);
+  --color-info: #2563eb;
+  --color-info-soft: rgba(37, 99, 235, 0.1);
+
+  /* Price accent — 퀘이사존 시그니처 단일 액센트 */
+  --color-price: #f59e0b;
+}
+
+/* Dark mode overrides */
+.dark {
+  --color-bg: #0a0a0f;
+  --color-surface: #11111a;
+  --color-surface-2: #161621;
+  --color-surface-hover: #1c1c2a;
+  --color-border: #23232f;
+  --color-border-strong: #2e2e3d;
+
+  --color-fg: #e6e6ed;
+  --color-fg-muted: #9a9aac;
+  --color-fg-subtle: #6b6b7d;
+
+  --color-brand: #a78bfa;
+  --color-brand-strong: #8b5cf6;
+  --color-brand-soft: rgba(167, 139, 250, 0.12);
+
+  --color-positive: #34d399;
+  --color-positive-soft: rgba(52, 211, 153, 0.12);
+  --color-warning: #fbbf24;
+  --color-warning-soft: rgba(251, 191, 36, 0.12);
+  --color-danger: #f87171;
+  --color-danger-soft: rgba(248, 113, 113, 0.12);
+  --color-info: #60a5fa;
+  --color-info-soft: rgba(96, 165, 250, 0.12);
+
+  --color-price: #fbbf24;
+}
+
+html,
+body {
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  font-feature-settings: "cv02", "cv03", "cv04", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-strong);
+  border-radius: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -30,6 +30,9 @@ frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 frontend/pnpm-debug.log*
+frontend/.env*.local
+frontend/.DS_Store
+
 
 # Java / Gradle backend
 backend/.gradle/
@@ -56,4 +59,3 @@ backend/coverage/
 *.temp
 *.bak
 *.swp
-
