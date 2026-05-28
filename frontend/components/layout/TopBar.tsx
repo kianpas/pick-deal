@@ -1,4 +1,4 @@
-import { Bell, Flame, PenSquare, Search } from "lucide-react";
+import { Bell, Flame, Search } from "lucide-react";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 
 /**
@@ -42,14 +42,6 @@ export function TopBar() {
           <span className="absolute -right-0.5 -top-0.5 grid size-4 place-items-center rounded-full bg-brand-strong text-[10px] font-medium text-white">
             3
           </span>
-        </button>
-
-        <button
-          type="button"
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-strong px-3 text-sm font-medium text-white hover:brightness-110 transition"
-        >
-          <PenSquare className="size-4" />
-          <span className="hidden sm:inline">글쓰기</span>
         </button>
 
         <div

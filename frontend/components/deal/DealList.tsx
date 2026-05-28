@@ -3,14 +3,15 @@ import { DealCard } from "./DealCard";
 
 interface Props {
   deals: Deal[];
+  showThumbnail?: boolean;
 }
 
-export function DealList({ deals }: Props) {
+export function DealList({ deals, showThumbnail = true }: Props) {
   return (
-    <ul className="space-y-3">
+    <ul className={showThumbnail ? "space-y-3" : "space-y-1"}>
       {deals.map((deal) => (
         <li key={deal.id}>
-          <DealCard deal={deal} />
+          <DealCard deal={deal} showThumbnail={showThumbnail} />
         </li>
       ))}
     </ul>
