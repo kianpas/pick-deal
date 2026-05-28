@@ -32,7 +32,7 @@ frontend/yarn-error.log*
 frontend/pnpm-debug.log*
 frontend/.env*.local
 frontend/.DS_Store
-
+frontend/tsconfig.tsbuildinfo
 
 # Java / Gradle backend
 backend/.gradle/
