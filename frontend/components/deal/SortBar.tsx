@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Image, ImageOff } from "lucide-react";
+import { ChevronDown, Image as ImageIcon, ImageOff } from "lucide-react";
 import { useState } from "react";
 import type { SortOption } from "@/lib/types";
 
@@ -54,7 +54,7 @@ export function SortBar({ showThumbnail, onToggleThumbnail }: Props) {
             : "border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg"
         }`}
       >
-        {showThumbnail ? <Image className="size-4" /> : <ImageOff className="size-4" />}
+        {showThumbnail ? <ImageIcon className="size-4" /> : <ImageOff className="size-4" />}
       </button>
     </div>
   );

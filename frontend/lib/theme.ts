@@ -37,6 +37,9 @@ export function useTheme() {
   // mount: 현재 적용된 테마 동기화
   useEffect(() => {
     const isDark = document.documentElement.classList.contains("dark");
+    // layout.tsx 인라인 스크립트가 hydration 전에 DOM에 이미 테마를 적용하므로,
+    // mount 시점에 DOM을 읽어 React state를 동기화하는 것은 의도된 패턴.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setThemeState(isDark ? "dark" : "light");
 
     // 사용자 선택이 없을 때만 시스템 추종

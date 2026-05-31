@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Bell, Flame, Search } from "lucide-react";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 
@@ -9,10 +10,10 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-bg/85 px-4 backdrop-blur md:px-6">
       {/* Logo */}
-      <a href="/" className="flex shrink-0 items-center gap-1.5">
+      <Link href="/" className="flex shrink-0 items-center gap-1.5">
         <span className="text-lg font-semibold tracking-tight">PickDeal</span>
         <Flame className="size-4 text-brand" aria-hidden />
-      </a>
+      </Link>
 
       {/* Search */}
       <div className="mx-auto w-full max-w-2xl">
