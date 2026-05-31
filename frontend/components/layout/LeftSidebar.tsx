@@ -3,6 +3,8 @@
 import {
   Bell,
   ChevronDown,
+  Eye,
+  EyeOff,
   Flame,
   Home,
   MessageSquare,
@@ -13,7 +15,9 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { ShopIcon } from "@/components/common/ShopIcon";
-import { SHOP_COUNTS } from "@/lib/mock-data";
+import { useFilters } from "@/components/filter/FilterProvider";
+import { SHOP_COUNTS, SOURCES } from "@/lib/mock-data";
+import type { ShopId } from "@/lib/types";
 
 const NAV: { icon: LucideIcon; label: string; href: string; active?: boolean }[] = [
   { icon: Home, label: "홈", href: "/", active: true },
@@ -27,7 +31,8 @@ const NAV: { icon: LucideIcon; label: string; href: string; active?: boolean }[]
 const VISIBLE_SHOP_LIMIT = 8;
 
 export function LeftSidebar() {
-  const [activeShop, setActiveShop] = useState<string>("all");
+  const { hiddenSources, toggleSource, selectedShops, toggleShop, clearShops } =
+    useFilters();
   const [expanded, setExpanded] = useState(false);
   const [notifyEnabled, setNotifyEnabled] = useState(true);
 
@@ -55,38 +60,92 @@ export function LeftSidebar() {
           ))}
         </ul>
 
-        {/* Shops */}
+        {/* Sources (출처 표시/숨김) */}
+        <div>
+          <div className="flex items-center justify-between px-3 pb-2">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
+              출처
+            </span>
+            <span className="text-[11px] text-fg-subtle">표시/숨김</span>
+          </div>
+
+          <ul className="space-y-0.5">
+            {SOURCES.map((src) => {
+              const hidden = hiddenSources.has(src.id);
+              return (
+                <li key={src.id}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSource(src.id)}
+                    aria-pressed={!hidden}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition hover:bg-surface ${
+                      hidden ? "text-fg-subtle" : "text-fg"
+                    }`}
+                  >
+                    <span className="flex-1 truncate text-left">{src.name}</span>
+                    {hidden ? (
+                      <EyeOff className="size-3.5 text-fg-subtle" />
+                    ) : (
+                      <Eye className="size-3.5 text-brand" />
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* Shops (쇼핑몰 다중 선택 필터) */}
         <div>
           <div className="flex items-center justify-between px-3 pb-2">
             <span className="text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
               쇼핑몰
             </span>
-            <button
-              type="button"
-              className="text-fg-subtle hover:text-fg transition"
-              aria-label="쇼핑몰 추가"
-            >
-              <Plus className="size-3.5" />
-            </button>
+            {selectedShops.size > 0 ? (
+              <button
+                type="button"
+                onClick={clearShops}
+                className="text-[11px] text-brand hover:underline"
+              >
+                전체 해제
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="text-fg-subtle hover:text-fg transition"
+                aria-label="쇼핑몰 추가"
+              >
+                <Plus className="size-3.5" />
+              </button>
+            )}
           </div>
 
           <ul className="space-y-0.5">
             {visible.map((s) => {
-              const isActive = s.id === activeShop;
+              if (s.id === "all") return null;
+              const shopId = s.id as ShopId;
+              const isSelected = selectedShops.has(shopId);
               return (
                 <li key={s.id}>
                   <button
                     type="button"
-                    onClick={() => setActiveShop(s.id)}
+                    onClick={() => toggleShop(shopId)}
+                    aria-pressed={isSelected}
                     className={`flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition ${
-                      isActive
-                        ? "bg-surface text-fg"
+                      isSelected
+                        ? "bg-brand-soft text-brand"
                         : "text-fg-muted hover:bg-surface hover:text-fg"
                     }`}
                   >
                     <ShopIcon id={s.id} size={24} />
                     <span className="flex-1 truncate text-left">{s.name}</span>
-                    <span className="text-xs text-fg-subtle tabular-nums">{s.count}</span>
+                    <span
+                      className={`text-xs tabular-nums ${
+                        isSelected ? "text-brand" : "text-fg-subtle"
+                      }`}
+                    >
+                      {s.count}
+                    </span>
                   </button>
                 </li>
               );
