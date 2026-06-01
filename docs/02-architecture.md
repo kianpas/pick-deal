@@ -20,21 +20,16 @@
 
 ### 1.2 Backend
 
-- **Spring Boot (REST API)** — 현재 구현은 Spring Boot 3.5.x와 JDK 17을 기준으로 유지한다.
-
-| 후보 | 2026-05 기준 | 장점 | 단점 / 주의 |
-| --- | --- | --- | --- |
-| **Spring Boot 3.5.x** (현재: 3.5.14) | 현재 구현 기준 | JDK 17로 동작, 풍부한 레퍼런스/예제, 검증된 안정성 | **OSS 지원이 2026-06-30 종료 예정** → 장기 운영 전 업그레이드 검토 필요 |
-| **Spring Boot 4.0.x** (최신 stable, 예: 4.0.6) | 향후 업그레이드 후보 | 최신 기능, 신규 프로젝트 권장 라인 | 레퍼런스/예제가 상대적으로 적고 별도 업그레이드 검증 필요 |
-
-- **권장**: MVP 구현 중에는 현재 설치된 **JDK 17**과 Spring Boot 3.5.14를 유지한다. 장기 운영 전 Spring Boot 4.x 업그레이드는 별도 작업으로 검토한다.
-- **Java**: JDK 17 이상을 기준으로 한다. 현재 프로젝트 toolchain은 JDK 17을 사용한다.
-- **빌드**: Gradle(권장) 또는 Maven 중 택1. 본 문서는 Gradle을 가정해 패키지 구조를 기술한다.
+- **Spring Boot (REST API)** — 현재 구현은 **Spring Boot 4.0.x(4.0.6)** 와 **JDK 17**을 기준으로 한다.
+- **Java**: JDK 17 이상. 현재 프로젝트 toolchain은 JDK 17(Spring Boot 4.0의 baseline)을 사용한다.
+- **빌드**: Gradle. 본 문서는 Gradle을 가정해 패키지 구조를 기술한다.
+- 정확한 의존성/패치 버전의 단일 출처는 `backend/build.gradle`이다.
 
 ### 1.3 Database
 
-- **PostgreSQL** 우선 검토. MySQL 선택 시 장단점은 `docs/04-database-design.md` 참고.
-- 로컬 개발은 Docker Compose로 DB만 실행(`docs/06`).
+- **운영 타깃은 PostgreSQL**. MySQL 선택 시 장단점은 `docs/04-database-design.md` 참고.
+- **현재 구현은 개발/테스트용 H2 in-memory(PostgreSQL 호환 모드)를 기본으로 사용**한다(`ddl-auto: create-drop`). PostgreSQL 드라이버는 의존성에 포함돼 있어 프로파일만 바꾸면 전환 가능하다.
+- 운영 PostgreSQL은 Docker Compose로 실행(`docs/06`). 로컬에서 PostgreSQL을 직접 띄우는 대신 H2로 빠르게 기동할 수 있다.
 
 ### 1.4 도입하지 않는 것 (MVP)
 
@@ -120,7 +115,7 @@ pick-deal/
 
 - 하나의 저장소에서 frontend/backend를 폴더로 분리한다.
 - 빌드/배포 파이프라인은 각 폴더 단위로 독립적으로 동작하도록 설계한다(frontend→Vercel, backend→Docker).
-- 현재 레포에는 `backend/` Spring Boot 코드가 있으며, `frontend/`는 자리만 준비되어 있다.
+- 현재 레포에는 `backend/` Spring Boot 코드가 구현돼 있고, `frontend/`는 Next.js 프로젝트가 스캐폴딩된 상태다(레이아웃/홈 골격까지, 4장 화면은 점진 구현).
 
 ---
 
@@ -172,58 +167,59 @@ frontend/
 
 ## 5. 백엔드 패키지 구조 (Spring Boot)
 
-> 도메인 중심의 계층형 패키지 구조. 단일 애플리케이션 안에 API와 (예약된) scheduler를 함께 둔다.
+> 도메인 중심 + 계층별 하위 패키지(`{domain}/api·application·domain·dto`). 단일 애플리케이션으로 시작한다.
+> 아래는 **현재 구현된 실제 구조**다. 도메인 추가 시 동일한 4계층을 따른다(`AGENTS.md` 참고).
 
 ```
 backend/
 └─ src/main/java/com/pickdeal/
    ├─ PickDealApplication.java          # @SpringBootApplication
-   ├─ common/                           # 공통(에러, 응답 래퍼, 페이지네이션)
-   │  ├─ web/ApiResponse.java
-   │  ├─ web/PageResponse.java
-   │  ├─ error/ApiException.java
-   │  └─ error/GlobalExceptionHandler.java
-   ├─ config/                           # 설정 (CORS, Jackson, JPA 등)
+   ├─ common/
+   │  ├─ domain/BaseTimeEntity.java     # 공통 시간 컬럼(생성/수정)
+   │  ├─ response/                      # ApiResponse, PageMetaResponse, ErrorResponse
+   │  └─ error/                         # ErrorCode(enum) + BusinessException 계열
+   │     ├─ ErrorCode.java
+   │     ├─ BusinessException.java
+   │     ├─ ResourceNotFoundException.java
+   │     ├─ DuplicateResourceException.java
+   │     └─ GlobalExceptionHandler.java
+   ├─ config/                           # CorsConfig, SeedDataInitializer
    ├─ deal/                             # 딜 도메인
-   │  ├─ DealController.java
-   │  ├─ DealService.java
-   │  ├─ DealRepository.java
-   │  ├─ Deal.java                      # 엔티티
-   │  └─ dto/                           # 요청/응답 DTO
+   │  ├─ api/                           # DealController, InternalDealController
+   │  ├─ application/                   # DealService
+   │  ├─ domain/                        # Deal(엔티티), DealRepository, DealStatus
+   │  └─ dto/                           # CreateDealRequest, DealSummary/Detail/ListResponse
    ├─ source/                           # 출처 도메인 (+ 표시/숨김 설정)
-   │  ├─ SourceController.java
-   │  ├─ SourceService.java
-   │  ├─ SourceRepository.java
-   │  ├─ Source.java
-   │  ├─ SourceVisibility.java          # user_id 기반 표시/숨김
-   │  └─ dto/
-   ├─ keyword/                          # 관심/제외 키워드 도메인
-   │  ├─ KeywordController.java
-   │  ├─ KeywordService.java
-   │  ├─ KeywordRepository.java
-   │  ├─ Keyword.java
-   │  └─ dto/
-   └─ scheduler/                        # (예약) 수집 스케줄러 자리. MVP 비활성
-      └─ CollectScheduler.java          # @Scheduled, MVP에서는 미동작/주석 처리
+   │  ├─ api/                           # SourceController
+   │  ├─ application/                   # SourceService
+   │  ├─ domain/                        # Source, SourceVisibility, 각 Repository
+   │  └─ dto/                           # SourceResponse, UpdateSourceVisibilityRequest
+   └─ preference/                       # 사용자 환경설정 도메인 — 현재는 관심/제외 키워드
+      │                                 #   (API 리소스명은 /api/v1/keywords)
+      │                                 #   2차의 알림 구독 설정 등도 이 도메인에 흡수 예정
+      ├─ api/                           # PreferenceController
+      ├─ application/                   # PreferenceService
+      ├─ domain/                        # PreferenceKeyword, PreferenceKeywordRepository, KeywordType
+      └─ dto/                           # CreateKeywordRequest, KeywordResponse
 ```
+
+- **scheduler 패키지는 아직 만들지 않았다.** 2차 수집 단계에서 `@Scheduled` 잡 또는 별도 worker로 추가한다(`docs/05`).
 
 ```
 backend/
 └─ src/main/resources/
-   ├─ application.yml                   # 공통 설정
-   ├─ application-local.yml             # 로컬(Docker DB)
-   ├─ application-prod.yml              # 운영(OCI)
-   └─ db/                               # 마이그레이션/시드 (docs/04 참고)
-      ├─ migration/                     # (Flyway 권장) V1__init.sql 등
-      └─ seed/                          # 더미 데이터 seed
+   └─ application.yml                   # 현재: H2 in-memory + ddl-auto create-drop
 ```
+
+- **현재 시드는 코드 기반**(`config/SeedDataInitializer`)으로 적재하며, SQL 마이그레이션 파일은 두지 않는다.
+- 운영 PostgreSQL 전환 시 추가할 **계획**(미작성): 프로파일 분리(`application-local.yml`/`application-prod.yml`)와 Flyway 마이그레이션(`db/migration/V1__init.sql`). 상세는 `docs/04` 1장.
 
 ### 5.1 계층 책임
 
 - **Controller**: 요청/응답 DTO 매핑, 입력 검증, HTTP 상태 코드. 비즈니스 로직 없음.
 - **Service**: 도메인 규칙(키워드 필터링 우선순위 등). 트랜잭션 경계.
 - **Repository**: JPA. 동적 필터/정렬은 `Specification` 또는 QueryDSL 고려(택1, 구현 단계 결정).
-- **scheduler**: MVP에서는 클래스 자리만 두고 동작하지 않게 한다. 2차에서 수집 트리거로 활성화하거나 worker로 분리.
+- **scheduler**: 현재 미생성. 2차 수집 단계에서 `@Scheduled` 잡으로 추가하거나 worker로 분리한다(`docs/05`).
 
 ### 5.2 키워드 필터링 위치
 

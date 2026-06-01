@@ -13,7 +13,7 @@
 - Base URL: `/api/v1`
 - 포맷: `application/json; charset=utf-8`
 - 인증: **MVP 없음**(단일 사용자). 내부적으로 고정 `user_id`(예: `1`)를 사용한다. 향후 인증 도입 시 `Authorization` 헤더를 추가한다.
-- 시간 포맷: ISO-8601 UTC 문자열(예: `2026-05-20T11:36:00Z`).
+- 시간 포맷: ISO-8601 문자열. 직렬화 시간대는 **`Asia/Seoul`(KST)**을 사용한다(예: `2026-05-20T20:36:00+09:00`).
 - 통화/금액: 금액은 정수(최소 화폐 단위 또는 원 단위)로 표현하고, `currency` 필드(예: `KRW`)를 함께 둔다.
 
 ### 1.2 공통 응답 래퍼
@@ -40,8 +40,10 @@
 ```
 
 - `code`: 머신이 분기할 수 있는 상수 문자열(스크리밍 스네이크 케이스).
-- `message`: 사용자 노출용 메시지(한국어).
-- `details`: 필드 검증 오류 등 부가 정보 배열(선택).
+- `message`: 사용자 노출용 메시지.
+- `details`: 필드 검증 오류 등 부가 정보 배열(**선택/예약**). 현재 구현은 사용하지 않으며, 검증 실패 메시지는 `message`에 합쳐 반환한다.
+
+> 구현 메모: 성공/에러는 단일 응답 타입 `ApiResponse{data, meta, error}`에서 비어 있는 필드를 직렬화 시 생략(`@JsonInclude(NON_NULL)`)해 위 두 봉투 형태로 나간다.
 
 ### 1.3 HTTP 상태 코드
 
@@ -116,7 +118,7 @@ GET /api/v1/deals
       "thumbnailUrl": "https://.../thumb.jpg",
       "sourceId": 3,
       "sourceName": "샘플커뮤니티",
-      "postedAt": "2026-05-20T09:10:00Z",
+      "postedAt": "2026-05-20T18:10:00+09:00",
       "status": "ACTIVE"
     }
   ],
@@ -150,8 +152,8 @@ GET /api/v1/deals/{id}
     "sourceId": 3,
     "sourceName": "샘플커뮤니티",
     "externalId": "abc",
-    "postedAt": "2026-05-20T09:10:00Z",
-    "collectedAt": "2026-05-20T09:12:00Z",
+    "postedAt": "2026-05-20T18:10:00+09:00",
+    "collectedAt": "2026-05-20T18:12:00+09:00",
     "status": "ACTIVE"
   }
 }
@@ -221,8 +223,8 @@ GET /api/v1/keywords?type=INTEREST   # type 생략 시 전체
 ```json
 {
   "data": [
-    { "id": 11, "keyword": "SSD",   "type": "INTEREST", "createdAt": "2026-05-20T08:00:00Z" },
-    { "id": 12, "keyword": "리퍼", "type": "EXCLUDE",  "createdAt": "2026-05-20T08:01:00Z" }
+    { "id": 11, "keyword": "SSD",   "type": "INTEREST", "createdAt": "2026-05-20T17:00:00+09:00" },
+    { "id": 12, "keyword": "리퍼", "type": "EXCLUDE",  "createdAt": "2026-05-20T17:01:00+09:00" }
   ]
 }
 ```
