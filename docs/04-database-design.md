@@ -2,8 +2,8 @@
 
 > PickDeal — DB 테이블 초안 / 인덱스·제약 / PostgreSQL·MySQL 선택 기준 / 시드 전략
 > 작성 기준일: 2026-05-20
-> 운영 타깃 DBMS: **PostgreSQL** (MySQL 선택 시 5장 참고)
-> **현재 구현**: 개발/테스트는 H2 in-memory(PostgreSQL 호환 모드)로 기동하며, 스키마는 JPA `ddl-auto`로 생성한다. 아래 테이블/제약/인덱스는 PostgreSQL 운영 기준의 목표 스키마다.
+> 표준 DBMS: **PostgreSQL**(개발·운영 공통, MySQL 선택 시 5장 참고)
+> **현재 상태**: 초기 개발 단계의 노트북 부하를 줄이기 위해 잠정적으로 H2 in-memory(PostgreSQL 호환 모드)로 기동하며, 스키마는 JPA `ddl-auto`로 생성한다. **개발 진행 중 PostgreSQL로 전환할 계획**이다. 아래 테이블/제약/인덱스는 PostgreSQL 기준 스키마다.
 
 ---
 
@@ -12,7 +12,7 @@
 - MVP는 단일 사용자지만, 설정성 테이블에는 **`user_id`를 미리 둔다**(고정값 사용, 향후 멀티유저 대비).
 - 중복 딜 제거(2차)를 위해 **`source_id + external_id` 유니크 제약**을 초기부터 둔다. dedup 로직은 미구현이나 스키마는 대비한다.
 - 시간 컬럼은 타임존 포함 타입(PostgreSQL `timestamptz`)을 사용한다. 애플리케이션 기준 시간대는 **`Asia/Seoul`(KST)**이며 API 직렬화도 KST로 한다(`docs/03` 1.1). `timestamptz`는 내부적으로 UTC로 저장되더라도 입출력 기준은 KST다.
-- **마이그레이션(계획)**: 현재 구현은 JPA `ddl-auto`로 스키마를 생성하며 마이그레이션 도구를 쓰지 않는다. 운영 PostgreSQL 전환 시 **Flyway**(권장) 또는 Liquibase를 도입한다. 본 문서의 스키마는 그때 `V1__init.sql`로 옮기는 것을 가정한다.
+- **마이그레이션(계획)**: 현재 구현은 JPA `ddl-auto`로 스키마를 생성하며 마이그레이션 도구를 쓰지 않는다. PostgreSQL로 전환할 때 **Flyway**(권장) 또는 Liquibase를 도입한다. 본 문서의 스키마는 그때 `V1__init.sql`로 옮기는 것을 가정한다.
 
 ---
 

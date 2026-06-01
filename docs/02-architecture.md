@@ -27,9 +27,9 @@
 
 ### 1.3 Database
 
-- **운영 타깃은 PostgreSQL**. MySQL 선택 시 장단점은 `docs/04-database-design.md` 참고.
-- **현재 구현은 개발/테스트용 H2 in-memory(PostgreSQL 호환 모드)를 기본으로 사용**한다(`ddl-auto: create-drop`). PostgreSQL 드라이버는 의존성에 포함돼 있어 프로파일만 바꾸면 전환 가능하다.
-- 운영 PostgreSQL은 Docker Compose로 실행(`docs/06`). 로컬에서 PostgreSQL을 직접 띄우는 대신 H2로 빠르게 기동할 수 있다.
+- **표준 DBMS는 PostgreSQL**(개발·운영 공통). MySQL 선택 시 장단점은 `docs/04-database-design.md` 참고.
+- **현재는 잠정적으로 H2 in-memory(PostgreSQL 호환 모드)로 기동**한다(`ddl-auto: create-drop`). 초기 개발 중 노트북에서 DB와 애플리케이션을 함께 돌릴 때의 부하를 줄이기 위한 임시 조치다.
+- **개발 진행 중 PostgreSQL로 전환할 계획**이다. PostgreSQL 드라이버는 이미 의존성에 포함돼 있어 프로파일/접속 정보만 바꾸면 된다. 운영 PostgreSQL은 Docker Compose로 실행(`docs/06`).
 
 ### 1.4 도입하지 않는 것 (MVP)
 
@@ -212,7 +212,7 @@ backend/
 ```
 
 - **현재 시드는 코드 기반**(`config/SeedDataInitializer`)으로 적재하며, SQL 마이그레이션 파일은 두지 않는다.
-- 운영 PostgreSQL 전환 시 추가할 **계획**(미작성): 프로파일 분리(`application-local.yml`/`application-prod.yml`)와 Flyway 마이그레이션(`db/migration/V1__init.sql`). 상세는 `docs/04` 1장.
+- PostgreSQL 전환 시 추가할 **계획**(미작성): 프로파일 분리(`application-local.yml`/`application-prod.yml`)와 Flyway 마이그레이션(`db/migration/V1__init.sql`). 상세는 `docs/04` 1장.
 
 ### 5.1 계층 책임
 
