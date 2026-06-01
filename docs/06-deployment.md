@@ -108,7 +108,7 @@ services:
    - 패키지 구조(`docs/02` 5장), 공통 응답/에러 핸들러, CORS 설정.
 2. **DB 스키마 & 엔티티**
    - JPA 엔티티/리포지토리 작성. 현재 스키마는 `ddl-auto`로 생성한다(`source`, `deal`, `source_visibility`, `keyword` — 인덱스/유니크 포함, `docs/04` 2장).
-   - Flyway `V1__init.sql` 도입은 운영 PostgreSQL 전환 시 진행한다(현재 미작성, `docs/04` 1장).
+   - Flyway `V1__init.sql` 도입은 PostgreSQL 전환 시 진행한다(현재 미작성, `docs/04` 1장).
 3. **시드 데이터**
    - 로컬/개발 프로파일용 더미 출처·딜 시드 적재(`docs/04` 6장).
 4. **딜 API**
