@@ -104,11 +104,11 @@ services:
    - `pick-deal/` monorepo에 `frontend/`, `backend/` 디렉터리 생성(이번 문서 단계에서는 만들지 않음).
    - 루트 README, `.gitignore` 정리.
 1. **Backend 프로젝트 생성**
-   - Spring Boot 프로젝트 생성(버전: `docs/02` 1.2 기준 — 현재 구현은 Spring Boot 3.5.14 + JDK 17 유지).
+   - Spring Boot 프로젝트 생성(버전: `docs/02` 1.2 기준 — 현재 구현은 Spring Boot 4.0.6 + JDK 17).
    - 패키지 구조(`docs/02` 5장), 공통 응답/에러 핸들러, CORS 설정.
-2. **DB 마이그레이션 & 엔티티**
-   - Flyway `V1__init.sql`로 `source`, `deal`, `source_visibility`, `keyword` 생성(`docs/04` 2장, 인덱스/유니크 포함).
-   - JPA 엔티티/리포지토리 작성.
+2. **DB 스키마 & 엔티티**
+   - JPA 엔티티/리포지토리 작성. 현재 스키마는 `ddl-auto`로 생성한다(`source`, `deal`, `source_visibility`, `keyword` — 인덱스/유니크 포함, `docs/04` 2장).
+   - Flyway `V1__init.sql` 도입은 운영 PostgreSQL 전환 시 진행한다(현재 미작성, `docs/04` 1장).
 3. **시드 데이터**
    - 로컬/개발 프로파일용 더미 출처·딜 시드 적재(`docs/04` 6장).
 4. **딜 API**
