@@ -1,10 +1,10 @@
-package com.pickdeal.preference.api;
+package com.pickdeal.keyword.api;
 
 import com.pickdeal.common.response.ApiResponse;
-import com.pickdeal.preference.application.PreferenceService;
-import com.pickdeal.preference.domain.KeywordType;
-import com.pickdeal.preference.dto.CreateKeywordRequest;
-import com.pickdeal.preference.dto.KeywordResponse;
+import com.pickdeal.keyword.application.KeywordService;
+import com.pickdeal.keyword.domain.KeywordType;
+import com.pickdeal.keyword.dto.CreateKeywordRequest;
+import com.pickdeal.keyword.dto.KeywordResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -22,28 +22,28 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequestMapping("/api/v1/keywords")
-public class PreferenceController {
+public class KeywordController {
 
-    private final PreferenceService preferenceService;
+    private final KeywordService keywordService;
 
-    public PreferenceController(PreferenceService preferenceService) {
-        this.preferenceService = preferenceService;
+    public KeywordController(KeywordService keywordService) {
+        this.keywordService = keywordService;
     }
 
     @GetMapping
     public ApiResponse<List<KeywordResponse>> findKeywords(@RequestParam(required = false) KeywordType type) {
-        return ApiResponse.success(preferenceService.findKeywords(type));
+        return ApiResponse.success(keywordService.findKeywords(type));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<KeywordResponse> createKeyword(@Valid @RequestBody CreateKeywordRequest request) {
-        return ApiResponse.success(preferenceService.createKeyword(request));
+        return ApiResponse.success(keywordService.createKeyword(request));
     }
 
     @DeleteMapping("/{keywordId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteKeyword(@PathVariable Long keywordId) {
-        preferenceService.deleteKeyword(keywordId);
+        keywordService.deleteKeyword(keywordId);
     }
 }

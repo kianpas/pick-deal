@@ -1,4 +1,4 @@
-package com.pickdeal.preference.domain;
+package com.pickdeal.keyword.domain;
 
 import com.pickdeal.common.domain.BaseTimeEntity;
 import jakarta.persistence.Column;
@@ -22,7 +22,7 @@ import jakarta.persistence.UniqueConstraint;
                 @UniqueConstraint(name = "uk_keyword_user_keyword_type", columnNames = {"user_id", "keyword", "type"})
         }
 )
-public class PreferenceKeyword extends BaseTimeEntity {
+public class Keyword extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,10 +38,10 @@ public class PreferenceKeyword extends BaseTimeEntity {
     @Column(nullable = false, length = 50)
     private String keyword;
 
-    protected PreferenceKeyword() {
+    protected Keyword() {
     }
 
-    public PreferenceKeyword(Long userId, KeywordType type, String keyword) {
+    public Keyword(Long userId, KeywordType type, String keyword) {
         this.userId = userId;
         this.type = type;
         this.keyword = keyword;

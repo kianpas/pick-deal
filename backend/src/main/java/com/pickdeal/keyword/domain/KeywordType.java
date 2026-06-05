@@ -1,4 +1,4 @@
-package com.pickdeal.preference.domain;
+package com.pickdeal.keyword.domain;
 
 public enum KeywordType {
     INTEREST,
