@@ -243,5 +243,5 @@ backend/
 
 - API 규약/엔드포인트: `docs/03-api-design.md`
 - 테이블/인덱스/제약: `docs/04-database-design.md`
-- 수집기·AI·Redis·worker: `docs/05-collector-design.md`
+- 수집기 확장 방향(최소 문서): `docs/05-collector-design.md`
 - 배포·로컬환경·구현 순서: `docs/06-deployment.md`
