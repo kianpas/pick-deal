@@ -5,7 +5,7 @@ Spring Boot 기반 Pick Deal MVP 백엔드입니다.
 ## Stack
 
 - Java 17
-- Spring Boot 3.5.14
+- Spring Boot 4.0.6
 - Gradle
 - Spring Web
 - Spring Data JPA
@@ -40,14 +40,14 @@ gradle test
 
 ## APIs
 
-- `GET /api/deals`
-- `GET /api/deals/{dealId}`
-- `POST /api/deals`
-- `GET /api/sources`
-- `PUT /api/sources/{sourceId}/visibility`
-- `GET /api/preferences/keywords`
-- `POST /api/preferences/keywords`
-- `DELETE /api/preferences/keywords/{keywordId}`
+- `GET /api/v1/deals`
+- `GET /api/v1/deals/{dealId}`
+- `POST /api/v1/internal/deals` (내부용)
+- `GET /api/v1/sources`
+- `PATCH /api/v1/sources/{sourceId}/visibility`
+- `GET /api/v1/keywords`
+- `POST /api/v1/keywords`
+- `DELETE /api/v1/keywords/{keywordId}`
 
 모든 응답은 `ApiResponse` 형태를 사용합니다.
 

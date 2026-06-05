@@ -1,7 +1,7 @@
-package com.pickdeal.preference.dto;
+package com.pickdeal.keyword.dto;
 
-import com.pickdeal.preference.domain.KeywordType;
-import com.pickdeal.preference.domain.PreferenceKeyword;
+import com.pickdeal.keyword.domain.KeywordType;
+import com.pickdeal.keyword.domain.Keyword;
 import java.time.OffsetDateTime;
 
 public record KeywordResponse(
@@ -11,7 +11,7 @@ public record KeywordResponse(
         OffsetDateTime createdAt
 ) {
 
-    public static KeywordResponse from(PreferenceKeyword keyword) {
+    public static KeywordResponse from(Keyword keyword) {
         return new KeywordResponse(
                 keyword.getId(),
                 keyword.getKeyword(),

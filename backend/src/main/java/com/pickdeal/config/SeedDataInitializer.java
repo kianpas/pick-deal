@@ -3,9 +3,9 @@ package com.pickdeal.config;
 import com.pickdeal.deal.domain.Deal;
 import com.pickdeal.deal.domain.DealRepository;
 import com.pickdeal.deal.domain.DealStatus;
-import com.pickdeal.preference.domain.KeywordType;
-import com.pickdeal.preference.domain.PreferenceKeyword;
-import com.pickdeal.preference.domain.PreferenceKeywordRepository;
+import com.pickdeal.keyword.domain.KeywordType;
+import com.pickdeal.keyword.domain.Keyword;
+import com.pickdeal.keyword.domain.KeywordRepository;
 import com.pickdeal.source.domain.Source;
 import com.pickdeal.source.domain.SourceRepository;
 import com.pickdeal.source.domain.SourceVisibility;
@@ -25,7 +25,7 @@ public class SeedDataInitializer {
     CommandLineRunner seedData(
             SourceRepository sourceRepository,
             DealRepository dealRepository,
-            PreferenceKeywordRepository keywordRepository,
+            KeywordRepository keywordRepository,
             SourceVisibilityRepository sourceVisibilityRepository
     ) {
         return args -> {
@@ -55,10 +55,10 @@ public class SeedDataInitializer {
             sourceVisibilityRepository.save(new SourceVisibility(DEFAULT_USER_ID, hiddenSample, false));
 
             keywordRepository.saveAll(List.of(
-                    new PreferenceKeyword(DEFAULT_USER_ID, KeywordType.INTEREST, "마우스"),
-                    new PreferenceKeyword(DEFAULT_USER_ID, KeywordType.INTEREST, "키보드"),
-                    new PreferenceKeyword(DEFAULT_USER_ID, KeywordType.EXCLUDE, "리퍼"),
-                    new PreferenceKeyword(DEFAULT_USER_ID, KeywordType.EXCLUDE, "중고")
+                    new Keyword(DEFAULT_USER_ID, KeywordType.INTEREST, "마우스"),
+                    new Keyword(DEFAULT_USER_ID, KeywordType.INTEREST, "키보드"),
+                    new Keyword(DEFAULT_USER_ID, KeywordType.EXCLUDE, "리퍼"),
+                    new Keyword(DEFAULT_USER_ID, KeywordType.EXCLUDE, "중고")
             ));
 
             OffsetDateTime now = OffsetDateTime.now();

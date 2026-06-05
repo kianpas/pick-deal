@@ -10,9 +10,9 @@ import com.pickdeal.deal.dto.CreateDealRequest;
 import com.pickdeal.deal.dto.DealDetailResponse;
 import com.pickdeal.deal.dto.DealListResponse;
 import com.pickdeal.deal.dto.DealSummaryResponse;
-import com.pickdeal.preference.domain.KeywordType;
-import com.pickdeal.preference.domain.PreferenceKeyword;
-import com.pickdeal.preference.domain.PreferenceKeywordRepository;
+import com.pickdeal.keyword.domain.KeywordType;
+import com.pickdeal.keyword.domain.Keyword;
+import com.pickdeal.keyword.domain.KeywordRepository;
 import com.pickdeal.source.domain.Source;
 import com.pickdeal.source.domain.SourceRepository;
 import java.time.OffsetDateTime;
@@ -31,12 +31,12 @@ public class DealService {
 
     private final DealRepository dealRepository;
     private final SourceRepository sourceRepository;
-    private final PreferenceKeywordRepository keywordRepository;
+    private final KeywordRepository keywordRepository;
 
     public DealService(
             DealRepository dealRepository,
             SourceRepository sourceRepository,
-            PreferenceKeywordRepository keywordRepository
+            KeywordRepository keywordRepository
     ) {
         this.dealRepository = dealRepository;
         this.sourceRepository = sourceRepository;
@@ -45,8 +45,8 @@ public class DealService {
 
     @Transactional(readOnly = true)
     public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String query) {
-        List<PreferenceKeyword> excludeKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.EXCLUDE);
-        List<PreferenceKeyword> interestKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.INTEREST);
+        List<Keyword> excludeKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.EXCLUDE);
+        List<Keyword> interestKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.INTEREST);
 
         List<Deal> filteredDeals = dealRepository.findVisibleDealsByStatus(DealStatus.ACTIVE, DEFAULT_USER_ID).stream()
                 .filter(deal -> sourceIds == null || sourceIds.isEmpty() || sourceIds.contains(deal.getSource().getId()))
@@ -118,9 +118,9 @@ public class DealService {
         return contains(deal.getTitle(), normalizedQuery) || contains(deal.getDescription(), normalizedQuery);
     }
 
-    private boolean containsAnyKeyword(Deal deal, List<PreferenceKeyword> keywords) {
+    private boolean containsAnyKeyword(Deal deal, List<Keyword> keywords) {
         return keywords.stream()
-                .map(PreferenceKeyword::getKeyword)
+                .map(Keyword::getKeyword)
                 .anyMatch(keyword -> contains(deal.getTitle(), keyword) || contains(deal.getDescription(), keyword));
     }
 

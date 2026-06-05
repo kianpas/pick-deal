@@ -194,12 +194,10 @@ backend/
    │  ├─ application/                   # SourceService
    │  ├─ domain/                        # Source, SourceVisibility, 각 Repository
    │  └─ dto/                           # SourceResponse, UpdateSourceVisibilityRequest
-   └─ preference/                       # 사용자 환경설정 도메인 — 현재는 관심/제외 키워드
-      │                                 #   (API 리소스명은 /api/v1/keywords)
-      │                                 #   2차의 알림 구독 설정 등도 이 도메인에 흡수 예정
-      ├─ api/                           # PreferenceController
-      ├─ application/                   # PreferenceService
-      ├─ domain/                        # PreferenceKeyword, PreferenceKeywordRepository, KeywordType
+   └─ keyword/                          # 관심/제외 키워드 도메인 (API 리소스 /api/v1/keywords)
+      ├─ api/                           # KeywordController
+      ├─ application/                   # KeywordService
+      ├─ domain/                        # Keyword(엔티티), KeywordRepository, KeywordType
       └─ dto/                           # CreateKeywordRequest, KeywordResponse
 ```
 
