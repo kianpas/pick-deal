@@ -59,6 +59,40 @@
   --color-price: #fbbf24;
 }
 
+/*
+ * Cassette futurism 테마 (색만 교체).
+ * 따뜻한 베이지 플라스틱 베이스 + 은색(메탈) 보더 + CRT 앰버-오렌지 액센트.
+ * 컴포넌트 코드는 그대로 두고 토큰 값만 갈아끼운다.
+ */
+.cassette {
+  --color-bg: #e7e3d8;
+  --color-surface: #f0ece1;
+  --color-surface-2: #d8d3c4;
+  --color-surface-hover: #ebe6d9;
+  --color-border: #b3ac99;
+  --color-border-strong: #938b76;
+
+  --color-fg: #2b2720;
+  --color-fg-muted: #6a6354;
+  --color-fg-subtle: #968e7b;
+
+  /* 주황 포인트 — CRT 경고등 앰버오렌지 */
+  --color-brand: #d9480f;
+  --color-brand-strong: #ad3408;
+  --color-brand-soft: rgba(217, 72, 15, 0.12);
+
+  --color-positive: #5c7a29;
+  --color-positive-soft: rgba(92, 122, 41, 0.12);
+  --color-warning: #b86e00;
+  --color-warning-soft: rgba(184, 110, 0, 0.12);
+  --color-danger: #c0392b;
+  --color-danger-soft: rgba(192, 57, 43, 0.12);
+  --color-info: #3a6ea5;
+  --color-info-soft: rgba(58, 110, 165, 0.12);
+
+  --color-price: #d9480f;
+}
+
 html,
 body {
   background-color: var(--color-bg);

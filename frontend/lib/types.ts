@@ -1,7 +1,9 @@
 /**
- * Frontend 도메인 타입.
- * 백엔드 DTO와 이름·필드를 정렬해 추후 API 연동 시 매핑 부담을 최소화한다.
- * 참고: 일부 필드는 MVP 범위(docs/01 §3.1)를 넘어선 확장 데모용이다.
+ * [LEGACY/데모 전용] 목데이터(`mock-data.ts`)와 현재 화면이 쓰는 데모 타입.
+ *
+ * 백엔드 통신 계약은 이제 `api-types.ts`(DealSummary/DealDetail 등)가 단일 출처다.
+ * 이 파일의 `Deal`/`Source` 등은 백엔드와 어긋나는 데모 모델이며,
+ * 화면을 백엔드 API로 교체하는 단계(3번)에서 컴포넌트를 `api-types.ts`로 옮기고 점진 제거한다.
  */
 
 export type SourceId =

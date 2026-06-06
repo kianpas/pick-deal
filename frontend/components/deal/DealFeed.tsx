@@ -4,18 +4,19 @@ import { useState } from "react";
 import { CategoryGrid } from "./CategoryGrid";
 import { DealList } from "./DealList";
 import { SortBar } from "./SortBar";
-import { useFilters } from "@/components/filter/FilterProvider";
-import type { Deal } from "@/lib/types";
+import type { DealSummary } from "@/lib/api-types";
 
 interface Props {
-  deals: Deal[];
+  deals: DealSummary[];
 }
 
+/**
+ * 딜 목록 영역. 서버(page.tsx)에서 백엔드로 받아온 목록을 그대로 렌더한다.
+ * 출처/키워드 필터는 백엔드가 서버에서 적용하므로(docs/01 §3.2) 여기서 다시 거르지 않는다.
+ * SortBar/CategoryGrid는 아직 데모(로컬 상태)이며, 백엔드 정렬/카테고리 연동은 후속 단계.
+ */
 export function DealFeed({ deals }: Props) {
   const [showThumbnail, setShowThumbnail] = useState(true);
-  const { applyFilters } = useFilters();
-
-  const filtered = applyFilters(deals);
 
   return (
     <div className="space-y-4">
@@ -24,14 +25,13 @@ export function DealFeed({ deals }: Props) {
         onToggleThumbnail={() => setShowThumbnail((v) => !v)}
       />
       <CategoryGrid />
-      {filtered.length > 0 ? (
-        <DealList deals={filtered} showThumbnail={showThumbnail} />
+      {deals.length > 0 ? (
+        <DealList deals={deals} showThumbnail={showThumbnail} />
       ) : (
         <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-fg-muted">
-          조건에 맞는 딜이 없어요. 필터를 조정해 보세요.
+          표시할 핫딜이 없어요.
         </div>
       )}
-      <div className="py-6 text-center text-sm text-fg-muted">더 많은 핫딜 보기 ↓</div>
     </div>
   );
 }
