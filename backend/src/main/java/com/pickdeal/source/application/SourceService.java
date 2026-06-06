@@ -10,21 +10,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class SourceService {
 
     private static final Long DEFAULT_USER_ID = 1L;
 
     private final SourceRepository sourceRepository;
     private final SourceVisibilityRepository sourceVisibilityRepository;
-
-    public SourceService(SourceRepository sourceRepository, SourceVisibilityRepository sourceVisibilityRepository) {
-        this.sourceRepository = sourceRepository;
-        this.sourceVisibilityRepository = sourceVisibilityRepository;
-    }
 
     @Transactional(readOnly = true)
     public List<SourceResponse> findSources() {

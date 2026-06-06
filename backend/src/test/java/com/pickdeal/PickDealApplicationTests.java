@@ -33,6 +33,20 @@ class PickDealApplicationTests {
     }
 
     @Test
+    void dealsFilterByCategory() throws Exception {
+        // 관심/표시 필터를 통과하는 딜은 모두 "전자제품" 카테고리다.
+        mockMvc.perform(get("/api/v1/deals").param("category", "전자제품"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2));
+
+        // 일치하는 카테고리가 없으면 빈 목록.
+        mockMvc.perform(get("/api/v1/deals").param("category", "식품"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0))
+                .andExpect(jsonPath("$.meta.totalElements").value(0));
+    }
+
+    @Test
     void sourcesReturnUserVisibility() throws Exception {
         mockMvc.perform(get("/api/v1/sources"))
                 .andExpect(status().isOk())

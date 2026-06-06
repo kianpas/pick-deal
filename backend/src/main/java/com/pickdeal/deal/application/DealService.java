@@ -19,11 +19,13 @@ import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Service
+@RequiredArgsConstructor
 public class DealService {
 
     private static final Long DEFAULT_USER_ID = 1L;
@@ -33,23 +35,17 @@ public class DealService {
     private final SourceRepository sourceRepository;
     private final KeywordRepository keywordRepository;
 
-    public DealService(
-            DealRepository dealRepository,
-            SourceRepository sourceRepository,
-            KeywordRepository keywordRepository
-    ) {
-        this.dealRepository = dealRepository;
-        this.sourceRepository = sourceRepository;
-        this.keywordRepository = keywordRepository;
-    }
-
+    // MVP 한정: ACTIVE 딜 전체를 메모리로 올린 뒤 필터/정렬/페이지네이션한다.
+    // 키워드 필터가 제목·본문 부분일치라 DB로 내리기 애매한 점을 감안한 소규모 시드 전용 구현.
+    // 데이터가 커지면 DB 쿼리/키셋 페이지네이션으로 전환한다(docs/03 §5).
     @Transactional(readOnly = true)
-    public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String query) {
+    public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String category, String query) {
         List<Keyword> excludeKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.EXCLUDE);
         List<Keyword> interestKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.INTEREST);
 
         List<Deal> filteredDeals = dealRepository.findVisibleDealsByStatus(DealStatus.ACTIVE, DEFAULT_USER_ID).stream()
                 .filter(deal -> sourceIds == null || sourceIds.isEmpty() || sourceIds.contains(deal.getSource().getId()))
+                .filter(deal -> matchesCategory(deal, category))
                 .filter(deal -> matchesQuery(deal, query))
                 .filter(deal -> !containsAnyKeyword(deal, excludeKeywords))
                 .filter(deal -> interestKeywords.isEmpty() || containsAnyKeyword(deal, interestKeywords))
@@ -107,6 +103,13 @@ public class DealService {
         ));
 
         return DealDetailResponse.from(deal);
+    }
+
+    private boolean matchesCategory(Deal deal, String category) {
+        if (!StringUtils.hasText(category)) {
+            return true;
+        }
+        return deal.getCategory() != null && deal.getCategory().equalsIgnoreCase(category.trim());
     }
 
     private boolean matchesQuery(Deal deal, String query) {

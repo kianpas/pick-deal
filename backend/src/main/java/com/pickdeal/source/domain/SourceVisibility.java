@@ -13,7 +13,18 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+/**
+ * 사용자별 출처 표시/숨김 설정. ({@code user_id}, {@code source}) 조합이 유일하다.
+ *
+ * <p>행이 없으면 "표시"가 기본값이다 — 설정을 바꾼 출처만 행으로 남긴다.
+ * MVP는 단일 사용자라 {@code user_id}는 고정값(1)이지만, 멀티유저 전환을 대비해 키로 유지한다.
+ */
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(
         name = "source_visibility",
@@ -40,32 +51,14 @@ public class SourceVisibility extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean visible;
 
-    protected SourceVisibility() {
-    }
-
     public SourceVisibility(Long userId, Source source, boolean visible) {
         this.userId = userId;
         this.source = source;
         this.visible = visible;
     }
 
+    /** 표시 여부를 변경한다(도메인 행위). */
     public void updateVisible(boolean visible) {
         this.visible = visible;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public Source getSource() {
-        return source;
-    }
-
-    public boolean isVisible() {
-        return visible;
     }
 }
