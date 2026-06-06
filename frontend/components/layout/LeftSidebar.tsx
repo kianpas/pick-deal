@@ -7,34 +7,79 @@ import {
   EyeOff,
   Flame,
   Home,
-  MessageSquare,
   Plus,
-  User,
+  Tag,
   UserCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ShopIcon } from "@/components/common/ShopIcon";
 import { useFilters } from "@/components/filter/FilterProvider";
-import { SHOP_COUNTS, SOURCES } from "@/lib/mock-data";
+import { getSources, updateSourceVisibility } from "@/lib/api";
+import type { SourceItem } from "@/lib/api-types";
+import { SHOP_COUNTS } from "@/lib/mock-data";
 import type { ShopId } from "@/lib/types";
 
-const NAV: { icon: LucideIcon; label: string; href: string; active?: boolean }[] = [
-  { icon: Home, label: "홈", href: "/", active: true },
+const NAV: { icon: LucideIcon; label: string; href: string }[] = [
+  { icon: Home, label: "홈", href: "/" },
   { icon: Flame, label: "핫딜", href: "/deals" },
-  { icon: MessageSquare, label: "커뮤니티", href: "/community" },
+  { icon: Tag, label: "키워드 관리", href: "/settings/keywords" },
   { icon: Bell, label: "알림", href: "/notifications" },
-  { icon: User, label: "내 활동", href: "/activity" },
   { icon: UserCircle, label: "마이페이지", href: "/me" },
 ];
+
+/** 현재 경로 기준 활성 여부. 홈("/")만 정확히 일치로 판정한다. */
+function isNavActive(pathname: string, href: string): boolean {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
 
 const VISIBLE_SHOP_LIMIT = 8;
 
 export function LeftSidebar() {
-  const { hiddenSources, toggleSource, selectedShops, toggleShop, clearShops } =
-    useFilters();
+  const { selectedShops, toggleShop, clearShops } = useFilters();
+  const router = useRouter();
+  const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
   const [notifyEnabled, setNotifyEnabled] = useState(true);
+
+  // 출처 표시/숨김은 백엔드 DB가 SSOT(AGENTS.md). 마운트 시 실데이터를 불러온다.
+  const [sources, setSources] = useState<SourceItem[] | null>(null);
+  const [pendingSourceId, setPendingSourceId] = useState<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getSources()
+      .then((data) => {
+        if (active) setSources(data);
+      })
+      .catch(() => {
+        if (active) setSources([]); // 백엔드 미기동 등 → 빈 목록으로 표시
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleToggleSource(src: SourceItem) {
+    const nextVisible = !src.visible;
+    // 낙관적 업데이트(실패 시 롤백)
+    setSources((prev) =>
+      prev?.map((s) => (s.id === src.id ? { ...s, visible: nextVisible } : s)) ?? prev,
+    );
+    setPendingSourceId(src.id);
+    try {
+      await updateSourceVisibility(src.id, nextVisible);
+      // 목록은 서버(page.tsx)가 출처 숨김을 반영하므로 서버 컴포넌트를 재실행한다.
+      router.refresh();
+    } catch {
+      setSources((prev) =>
+        prev?.map((s) => (s.id === src.id ? { ...s, visible: src.visible } : s)) ?? prev,
+      );
+    } finally {
+      setPendingSourceId(null);
+    }
+  }
 
   const visible = expanded ? SHOP_COUNTS : SHOP_COUNTS.slice(0, VISIBLE_SHOP_LIMIT);
 
@@ -48,7 +93,7 @@ export function LeftSidebar() {
               <a
                 href={item.href}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
-                  item.active
+                  isNavActive(pathname, item.href)
                     ? "bg-surface text-fg"
                     : "text-fg-muted hover:bg-surface hover:text-fg"
                 }`}
@@ -60,7 +105,7 @@ export function LeftSidebar() {
           ))}
         </ul>
 
-        {/* Sources (출처 표시/숨김) */}
+        {/* Sources (출처 표시/숨김) — 백엔드 실데이터 */}
         <div>
           <div className="flex items-center justify-between px-3 pb-2">
             <span className="text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
@@ -69,33 +114,37 @@ export function LeftSidebar() {
             <span className="text-[11px] text-fg-subtle">표시/숨김</span>
           </div>
 
-          <ul className="space-y-0.5">
-            {SOURCES.map((src) => {
-              const hidden = hiddenSources.has(src.id);
-              return (
+          {sources === null ? (
+            <p className="px-3 py-1.5 text-xs text-fg-subtle">불러오는 중…</p>
+          ) : sources.length === 0 ? (
+            <p className="px-3 py-1.5 text-xs text-fg-subtle">출처가 없습니다.</p>
+          ) : (
+            <ul className="space-y-0.5">
+              {sources.map((src) => (
                 <li key={src.id}>
                   <button
                     type="button"
-                    onClick={() => toggleSource(src.id)}
-                    aria-pressed={!hidden}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition hover:bg-surface ${
-                      hidden ? "text-fg-subtle" : "text-fg"
+                    onClick={() => handleToggleSource(src)}
+                    disabled={pendingSourceId === src.id}
+                    aria-pressed={src.visible}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition hover:bg-surface disabled:opacity-50 ${
+                      src.visible ? "text-fg" : "text-fg-subtle"
                     }`}
                   >
                     <span className="flex-1 truncate text-left">{src.name}</span>
-                    {hidden ? (
-                      <EyeOff className="size-3.5 text-fg-subtle" />
-                    ) : (
+                    {src.visible ? (
                       <Eye className="size-3.5 text-brand" />
+                    ) : (
+                      <EyeOff className="size-3.5 text-fg-subtle" />
                     )}
                   </button>
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+            </ul>
+          )}
         </div>
 
-        {/* Shops (쇼핑몰 다중 선택 필터) */}
+        {/* Shops (쇼핑몰 다중 선택 필터) — 데모(판매처 개념은 수집기 단계로 보류) */}
         <div>
           <div className="flex items-center justify-between px-3 pb-2">
             <span className="text-[11px] font-medium uppercase tracking-wider text-fg-subtle">

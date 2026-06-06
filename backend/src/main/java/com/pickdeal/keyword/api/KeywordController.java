@@ -7,6 +7,7 @@ import com.pickdeal.keyword.dto.CreateKeywordRequest;
 import com.pickdeal.keyword.dto.KeywordResponse;
 import jakarta.validation.Valid;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,13 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequestMapping("/api/v1/keywords")
+@RequiredArgsConstructor
 public class KeywordController {
 
     private final KeywordService keywordService;
-
-    public KeywordController(KeywordService keywordService) {
-        this.keywordService = keywordService;
-    }
 
     @GetMapping
     public ApiResponse<List<KeywordResponse>> findKeywords(@RequestParam(required = false) KeywordType type) {

@@ -8,19 +8,17 @@ import com.pickdeal.keyword.domain.KeywordRepository;
 import com.pickdeal.keyword.dto.CreateKeywordRequest;
 import com.pickdeal.keyword.dto.KeywordResponse;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class KeywordService {
 
     private static final Long DEFAULT_USER_ID = 1L;
 
     private final KeywordRepository keywordRepository;
-
-    public KeywordService(KeywordRepository keywordRepository) {
-        this.keywordRepository = keywordRepository;
-    }
 
     @Transactional(readOnly = true)
     public List<KeywordResponse> findKeywords(KeywordType type) {

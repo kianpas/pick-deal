@@ -5,7 +5,13 @@ import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import java.time.OffsetDateTime;
+import lombok.Getter;
 
+/**
+ * 생성/수정 시각을 공통으로 관리하는 엔티티 상위 클래스.
+ * 모든 엔티티가 상속하며, JPA 콜백으로 시각을 자동 채운다.
+ */
+@Getter
 @MappedSuperclass
 public abstract class BaseTimeEntity {
 
@@ -26,13 +32,4 @@ public abstract class BaseTimeEntity {
     protected void onUpdate() {
         this.updatedAt = OffsetDateTime.now();
     }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public OffsetDateTime getUpdatedAt() {
-        return updatedAt;
-    }
 }
-

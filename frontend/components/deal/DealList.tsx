@@ -1,8 +1,8 @@
-import type { Deal } from "@/lib/types";
+import type { DealSummary } from "@/lib/api-types";
 import { DealCard } from "./DealCard";
 
 interface Props {
-  deals: Deal[];
+  deals: DealSummary[];
   showThumbnail?: boolean;
 }
 
