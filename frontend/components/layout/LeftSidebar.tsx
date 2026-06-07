@@ -5,7 +5,6 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
-  Flame,
   Home,
   Plus,
   Tag,
@@ -23,7 +22,6 @@ import type { ShopId } from "@/lib/types";
 
 const NAV: { icon: LucideIcon; label: string; href: string }[] = [
   { icon: Home, label: "홈", href: "/" },
-  { icon: Flame, label: "핫딜", href: "/deals" },
   { icon: Tag, label: "키워드 관리", href: "/settings/keywords" },
   { icon: Bell, label: "알림", href: "/notifications" },
   { icon: UserCircle, label: "마이페이지", href: "/me" },

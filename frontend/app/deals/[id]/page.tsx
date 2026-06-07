@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, Flame } from "lucide-react";
-import { TopBar } from "@/components/layout/TopBar";
+import { AppShell } from "@/components/layout/AppShell";
 import { ApiError, getDeal } from "@/lib/api";
 import type { DealDetail, DealStatus } from "@/lib/api-types";
 import { formatFullDateTime, formatPrice } from "@/lib/format";
@@ -53,10 +53,8 @@ export default async function DealDetailPage({
   const priceText = deal.price !== null ? formatPrice(deal.price, deal.currency) : null;
 
   return (
-    <div className="min-h-screen bg-bg text-fg">
-      <TopBar />
-
-      <main className="mx-auto w-full max-w-3xl px-4 py-5 sm:px-6 sm:py-6">
+    <AppShell>
+      <div className="mx-auto w-full max-w-3xl">
         {/* 뒤로 */}
         <Link
           href="/"
@@ -173,7 +171,7 @@ export default async function DealDetailPage({
             </a>
           </div>
         </article>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }
