@@ -80,13 +80,14 @@ public class SeedDataInitializer {
                             now.minusHours(1),
                             now.minusHours(1)
                     ),
+                    // 할인율(40%)을 마우스(33%)보다 높게 둬서 최신순과 할인율순의 결과가 구분되게 한다(정렬 테스트용).
                     new Deal(
                             communityHotdeal,
                             "기계식 키보드 주말 할인",
                             "청축 기계식 키보드 할인 샘플 데이터입니다.",
                             59000L,
-                            79000L,
-                            25,
+                            99000L,
+                            40,
                             "KRW",
                             "전자제품",
                             "https://community.example.com/thumbs/keyboard.jpg",

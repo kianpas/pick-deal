@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { Bell, Flame, Search } from "lucide-react";
+import { Suspense } from "react";
+import { Bell, Flame } from "lucide-react";
+import { SearchBox } from "@/components/layout/SearchBox";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 
 /**
@@ -15,19 +17,11 @@ export function TopBar() {
         <Flame className="size-4 text-brand" aria-hidden />
       </Link>
 
-      {/* Search */}
+      {/* Search — useSearchParams를 쓰는 클라이언트 컴포넌트라 Suspense로 감싼다 */}
       <div className="mx-auto w-full max-w-2xl">
-        <label className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm focus-within:border-border-strong">
-          <Search className="size-4 text-fg-subtle" />
-          <input
-            type="text"
-            placeholder="상품명, 브랜드, 키워드 검색"
-            className="flex-1 bg-transparent outline-none placeholder:text-fg-subtle"
-          />
-          <kbd className="hidden sm:inline-flex items-center rounded border border-border bg-surface-2 px-1.5 py-0.5 text-[11px] text-fg-subtle">
-            /
-          </kbd>
-        </label>
+        <Suspense fallback={<div className="h-[38px] rounded-lg border border-border bg-surface" />}>
+          <SearchBox />
+        </Suspense>
       </div>
 
       {/* Right actions */}
