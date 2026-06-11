@@ -47,6 +47,37 @@ class PickDealApplicationTests {
     }
 
     @Test
+    void dealsSortByDiscountRate() throws Exception {
+        // 기본(latest)은 게시시각 내림차순: 마우스(1시간 전) → 키보드(3시간 전).
+        // sort=discount는 할인율 내림차순이라 순서가 뒤집혀야 한다: 키보드(40%) → 마우스(33%).
+        mockMvc.perform(get("/api/v1/deals").param("sort", "discount"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].title").value("기계식 키보드 주말 할인"))
+                .andExpect(jsonPath("$.data[1].title").value("무선 마우스 특가"));
+    }
+
+    @Test
+    void dealsSearchByQuery() throws Exception {
+        // 제목 부분일치: "키보드" → 키보드 딜만.
+        mockMvc.perform(get("/api/v1/deals").param("q", "키보드"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].title").value("기계식 키보드 주말 할인"));
+
+        // 본문 부분일치 + 대소문자 무시: "mvp"는 마우스 딜 본문("MVP 샘플")에만 있다.
+        mockMvc.perform(get("/api/v1/deals").param("q", "mvp"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].title").value("무선 마우스 특가"));
+
+        // 일치 없음 → 빈 목록.
+        mockMvc.perform(get("/api/v1/deals").param("q", "냉장고"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0))
+                .andExpect(jsonPath("$.meta.totalElements").value(0));
+    }
+
+    @Test
     void sourcesReturnUserVisibility() throws Exception {
         mockMvc.perform(get("/api/v1/sources"))
                 .andExpect(status().isOk())
