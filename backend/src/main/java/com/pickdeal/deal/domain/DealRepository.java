@@ -33,4 +33,7 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
 
     /** 중복 수집 방지용 — ({@code sourceId}, {@code externalId}) 유니크 제약과 짝을 이룬다. */
     boolean existsBySourceIdAndExternalId(Long sourceId, String externalId);
+
+    /** 재수집 시 기존 딜 갱신용 조회. */
+    Optional<Deal> findBySourceIdAndExternalId(Long sourceId, String externalId);
 }

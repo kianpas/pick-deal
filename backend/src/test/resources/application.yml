@@ -13,3 +13,9 @@ spring:
     open-in-view: false
   jackson:
     time-zone: Asia/Seoul
+
+# 테스트 중 실제 HTTP 수집이 돌지 않도록 스케줄러를 끈다
+pickdeal:
+  collector:
+    scheduling:
+      enabled: false
