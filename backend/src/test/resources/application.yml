@@ -1,0 +1,15 @@
+# 테스트는 로컬 DB 없이 돌 수 있도록 H2 in-memory 유지 (AGENTS.md 빌드·테스트 규칙)
+spring:
+  application:
+    name: pick-deal-api
+  datasource:
+    url: jdbc:h2:mem:pickdeal;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+  jackson:
+    time-zone: Asia/Seoul
