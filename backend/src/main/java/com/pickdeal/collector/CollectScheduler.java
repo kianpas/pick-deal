@@ -19,7 +19,7 @@ public class CollectScheduler {
 
     private final QuasarzoneCollectService quasarzoneCollectService;
 
-    @Scheduled(initialDelayString = "PT15S", fixedDelayString = "PT10M")
+    @Scheduled(initialDelayString = "PT15S", fixedDelayString = "PT20M")
     public void collect() {
         try {
             int saved = quasarzoneCollectService.collect();

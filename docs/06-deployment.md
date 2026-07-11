@@ -101,8 +101,8 @@ services:
    - **미구현**. 로컬 DB 실행용 compose와 backend 프로파일 분리는 필요성이 생기거나 배포 준비 시 함께 작성한다.
 8. **Frontend 프로젝트 생성 & 화면**
    - Next.js(App Router, TS, Tailwind) 생성(버전 `docs/02` 1.1).
-   - 화면: 목록(`/`), 상세(`/deals/[id]`), 출처 설정(`/settings/sources`), 키워드 설정(`/settings/keywords`) (`docs/02` 4장).
-   - 목록·상세·키워드 설정 API 연동 완료. 출처 설정 화면과 일부 빈 상태/에러 UX는 미구현.
+   - 화면: 목록(`/`), 상세(`/deals/[id]`), 사이드바 출처 설정, 키워드 설정(`/settings/keywords`) (`docs/02` 4장).
+   - 목록·상세·키워드 설정과 사이드바 출처 표시/숨김 API 연동 완료. 일부 빈 상태/에러 UX는 보완 여지가 있다.
 9. **MVP 통합 & 배포 준비**
    - frontend↔backend 통합 동작 확인, 환경변수 정리.
    - frontend Vercel 배포, backend/DB OCI Docker Compose 배포 구성 작성(이 시점에 Dockerfile/compose/nginx 작성).
