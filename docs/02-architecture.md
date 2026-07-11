@@ -116,7 +116,7 @@ pick-deal/
 
 - 하나의 저장소에서 frontend/backend를 폴더로 분리한다.
 - 빌드/배포 파이프라인은 각 폴더 단위로 독립적으로 동작하도록 설계한다(frontend→Vercel, backend→Docker).
-- 현재 `backend/`에는 조회·설정 API와 Quasarzone 수집기가 구현돼 있다. `frontend/`는 목록·상세·키워드 설정 화면이 백엔드 API와 연동됐고, 출처 설정 화면은 아직 미구현이다.
+- 현재 `backend/`에는 조회·설정 API와 Quasarzone 수집기가 구현돼 있다. `frontend/`는 목록·상세·키워드 설정과 사이드바의 출처 표시/숨김이 백엔드 API와 연동돼 있다.
 
 ---
 
@@ -201,7 +201,7 @@ backend/
    │  ├─ domain/                        # Keyword(엔티티), KeywordRepository, KeywordType
    │  └─ dto/                           # CreateKeywordRequest, KeywordResponse
    └─ collector/
-      ├─ CollectScheduler.java          # 기본 활성, 10분 주기
+      ├─ CollectScheduler.java          # 기본 활성, 20분 주기
       └─ quasarzone/                    # Client, Parser, CollectService, 파싱 결과
 ```
 
