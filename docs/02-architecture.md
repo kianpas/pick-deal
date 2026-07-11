@@ -1,7 +1,7 @@
 # 02. 아키텍처 설계 (Architecture)
 
 > PickDeal — 전체 아키텍처 / 프론트엔드 화면 구조 / 백엔드 패키지 구조 / 확장 방향
-> 작성 기준일: 2026-05-20
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-07-11
 
 ---
 
@@ -28,8 +28,9 @@
 ### 1.3 Database
 
 - **표준 DBMS는 PostgreSQL**(개발·운영 공통). MySQL 선택 시 장단점은 `docs/04-database-design.md` 참고.
-- **현재는 잠정적으로 H2 in-memory(PostgreSQL 호환 모드)로 기동**한다(`ddl-auto: create-drop`). 초기 개발 중 노트북에서 DB와 애플리케이션을 함께 돌릴 때의 부하를 줄이기 위한 임시 조치다.
-- **개발 진행 중 PostgreSQL로 전환할 계획**이다. PostgreSQL 드라이버는 이미 의존성에 포함돼 있어 프로파일/접속 정보만 바꾸면 된다. 운영 PostgreSQL은 Docker Compose로 실행(`docs/06`).
+- **현재 애플리케이션은 로컬 PostgreSQL `pickdeal` DB로 기동**한다. 접속 정보는 `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`로 바꿀 수 있고 JPA는 현재 `ddl-auto: update`를 사용한다.
+- **H2 in-memory(PostgreSQL 호환 모드)는 테스트 전용**이다. 테스트 설정에서 `ddl-auto: create-drop`을 사용하므로 별도 DB 없이 테스트할 수 있다.
+- Docker Compose와 Flyway는 아직 도입하지 않았다. 도입 시점과 기준은 `docs/04`, `docs/06`에 구분해 둔다.
 
 ### 1.4 도입하지 않는 것 (MVP)
 
@@ -58,16 +59,16 @@
         │  │ REST API (controller)       │  │
         │  │ 도메인 서비스 (service)        │  │
         │  │ 영속성 (repository, JPA)      │  │
-        │  │ scheduler (동일 앱 내, 미사용→예약)│  │
+        │  │ scheduler (동일 앱 내, 수집 실행)  │  │
         │  └────────────────────────────┘  │
         └───────┬────────────────────────┘
                 │ JDBC
         ┌───────▼────────┐
-        │  PostgreSQL     │   Docker Compose (로컬/운영)
+        │  PostgreSQL     │   현재 로컬 설치, 향후 Compose
         └────────────────┘
 ```
 
-- MVP에서는 **backend와 scheduler를 하나의 Spring Boot 애플리케이션**으로 둔다. scheduler는 자리만 마련하고, 실제 수집 작업은 비활성/미구현 상태로 둔다.
+- 현재 **backend와 scheduler는 하나의 Spring Boot 애플리케이션**에서 실행된다. Quasarzone 수집 작업은 기본 활성화돼 있으며, 테스트에서는 `pickdeal.collector.scheduling.enabled=false`로 끈다.
 - frontend는 backend REST API(`/api/v1/*`)만 호출한다.
 
 ### 2.2 확장 아키텍처 (2차: collector worker 분리)
@@ -115,7 +116,7 @@ pick-deal/
 
 - 하나의 저장소에서 frontend/backend를 폴더로 분리한다.
 - 빌드/배포 파이프라인은 각 폴더 단위로 독립적으로 동작하도록 설계한다(frontend→Vercel, backend→Docker).
-- 현재 레포에는 `backend/` Spring Boot 코드가 구현돼 있고, `frontend/`는 Next.js 프로젝트가 스캐폴딩된 상태다(레이아웃/홈 골격까지, 4장 화면은 점진 구현).
+- 현재 `backend/`에는 조회·설정 API와 Quasarzone 수집기가 구현돼 있다. `frontend/`는 목록·상세·키워드 설정 화면이 백엔드 API와 연동됐고, 출처 설정 화면은 아직 미구현이다.
 
 ---
 
@@ -194,30 +195,33 @@ backend/
    │  ├─ application/                   # SourceService
    │  ├─ domain/                        # Source, SourceVisibility, 각 Repository
    │  └─ dto/                           # SourceResponse, UpdateSourceVisibilityRequest
-   └─ keyword/                          # 관심/제외 키워드 도메인 (API 리소스 /api/v1/keywords)
-      ├─ api/                           # KeywordController
-      ├─ application/                   # KeywordService
-      ├─ domain/                        # Keyword(엔티티), KeywordRepository, KeywordType
-      └─ dto/                           # CreateKeywordRequest, KeywordResponse
+   ├─ keyword/                          # 관심/제외 키워드 도메인 (API 리소스 /api/v1/keywords)
+   │  ├─ api/                           # KeywordController
+   │  ├─ application/                   # KeywordService
+   │  ├─ domain/                        # Keyword(엔티티), KeywordRepository, KeywordType
+   │  └─ dto/                           # CreateKeywordRequest, KeywordResponse
+   └─ collector/
+      ├─ CollectScheduler.java          # 기본 활성, 10분 주기
+      └─ quasarzone/                    # Client, Parser, CollectService, 파싱 결과
 ```
 
-- **scheduler 패키지는 아직 만들지 않았다.** 2차 수집 단계에서 `@Scheduled` 잡 또는 별도 worker로 추가한다(`docs/05`).
+- **collector 패키지**에는 현재 `CollectScheduler`와 `collector/quasarzone/`의 Client·Parser·CollectService가 있다. 별도 worker 분리는 부하가 실제로 필요하게 만들 때 검토한다(`docs/05`).
 
 ```
 backend/
 └─ src/main/resources/
-   └─ application.yml                   # 현재: H2 in-memory + ddl-auto create-drop
+   └─ application.yml                   # 현재: 로컬 PostgreSQL + ddl-auto update
 ```
 
 - **현재 시드는 코드 기반**(`config/SeedDataInitializer`)으로 적재하며, SQL 마이그레이션 파일은 두지 않는다.
-- PostgreSQL 전환 시 추가할 **계획**(미작성): 프로파일 분리(`application-local.yml`/`application-prod.yml`)와 Flyway 마이그레이션(`db/migration/V1__init.sql`). 상세는 `docs/04` 1장.
+- 운영 배포 준비 시 추가할 **계획**(미작성): 프로파일 분리(`application-local.yml`/`application-prod.yml`)와 Flyway 마이그레이션(`db/migration/V1__init.sql`). 상세는 `docs/04` 1장.
 
 ### 5.1 계층 책임
 
 - **Controller**: 요청/응답 DTO 매핑, 입력 검증, HTTP 상태 코드. 비즈니스 로직 없음.
 - **Service**: 도메인 규칙(키워드 필터링 우선순위 등). 트랜잭션 경계.
 - **Repository**: JPA. 동적 필터/정렬은 `Specification` 또는 QueryDSL 고려(택1, 구현 단계 결정).
-- **scheduler**: 현재 미생성. 2차 수집 단계에서 `@Scheduled` 잡으로 추가하거나 worker로 분리한다(`docs/05`).
+- **collector/scheduler**: 현재 Quasarzone 수집을 담당한다. 수집 부하가 조회 API에 영향을 줄 때 worker 분리를 검토한다(`docs/05`).
 
 ### 5.2 키워드 필터링 위치
 
@@ -230,7 +234,7 @@ backend/
 
 | 항목 | MVP | 확장 |
 | --- | --- | --- |
-| 수집 | 더미/수동 데이터 | collector 자동 수집 (`docs/05`) |
+| 수집 | Quasarzone 단일 출처 자동 수집 | 출처 추가·교차 출처 dedup (`docs/05`) |
 | scheduler | 단일 앱 내 비활성 | worker 분리 가능 (`docs/02` 2.2, `docs/06`) |
 | 캐시/큐 | 없음 | Redis 도입 (`docs/05`) |
 | 중복 제거 | 스키마만 대비 | dedup 로직 활성 (`docs/04`, `docs/05`) |

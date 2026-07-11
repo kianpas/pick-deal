@@ -1,8 +1,8 @@
 # 06. 배포 설계 (Deployment)
 
 > PickDeal — 배포 전략 / Docker 기반 확장 방향 / 로컬 개발 환경 / Codex 구현 작업 순서
-> **이번 단계에서는 Dockerfile, docker-compose.yml, nginx 설정, CI/CD 스크립트를 작성하지 않는다.** 구조와 방향만 문서화한다.
-> 작성 기준일: 2026-05-20
+> Dockerfile, docker-compose.yml, nginx 설정, CI/CD 스크립트는 아직 없다. 이 문서는 **현재 로컬 실행법**과 **향후 배포 방향**을 구분한다.
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-07-11
 
 ---
 
@@ -29,14 +29,15 @@
 
 ---
 
-## 2. 로컬 개발 환경
+## 2. 현재 로컬 개발 환경
 
-- **DB는 Docker Compose로 실행**한다(개발자는 PostgreSQL을 로컬에 직접 설치하지 않아도 됨).
+- **DB는 로컬 PostgreSQL의 `pickdeal` DB를 사용**한다. 현재 Docker Compose 구성은 없다.
 - frontend: 로컬에서 `next dev`(Turbopack)로 실행, `NEXT_PUBLIC_API_BASE_URL`을 로컬 backend로 지정.
-- backend: 로컬 프로파일(`application-local.yml`)로 실행, Docker Compose DB에 접속.
-- 시드 데이터는 로컬/개발 프로파일에서만 적재한다(`docs/04` 6장).
+- backend: 단일 `application.yml`로 실행하며 `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`로 접속 정보를 덮어쓴다.
+- 테스트: H2 in-memory를 사용하며 실제 수집 scheduler를 비활성화한다.
+- 시드 데이터는 현재 별도 프로파일 구분 없이, 필요한 기준 데이터가 없을 때 코드에서 적재한다(`docs/04` 6장).
 
-> 구체적인 `docker-compose.yml`은 이번 단계에서 작성하지 않는다. 아래는 향후 구성할 서비스 구성의 "방향"만 기술한다.
+> 아래는 향후 구성할 서비스의 방향이다. 현재 실행 명령으로 오해하지 않는다.
 
 향후 로컬 compose 구성 방향(미작성, 참고용):
 
@@ -57,8 +58,10 @@ services:
 | 영역 | 키 | 설명 |
 | --- | --- | --- |
 | Frontend | `NEXT_PUBLIC_API_BASE_URL` | backend API base URL |
-| Backend | `SPRING_PROFILES_ACTIVE` | `local` / `prod` |
-| Backend | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | DB 접속 정보 |
+| Backend | `DB_NAME` | DB 이름(기본값 `pickdeal`) |
+| Backend | `DB_USERNAME`, `DB_PASSWORD` | DB 접속 계정 |
+
+`SPRING_PROFILES_ACTIVE`과 `DB_URL`은 현재 설정에서 사용하지 않는다. 프로파일 분리나 전체 JDBC URL 주입이 필요해질 때 코드와 함께 추가한다.
 
 - 비밀값은 저장소에 커밋하지 않는다(Vercel/OCI 시크릿 사용). `.env.example`은 구현 단계에서 추가.
 - Redis/LLM 등 2차·3차 환경변수는 **그 기능을 실제로 붙일 때** 추가한다(지금 정의하지 않음).
@@ -73,9 +76,9 @@ services:
 
 ---
 
-## 5. 구현 작업 순서 (MVP)
+## 5. 현재 진행 상태와 다음 작업
 
-> 아래 순서대로 구현한다. 각 단계는 앞 단계 산출물에 의존한다.
+> 0~6과 프론트 목록·상세·키워드 화면, Quasarzone 수집기는 구현됐다. 아래 항목은 남은 작업을 판단하기 위한 상태 기록이다.
 
 0. **레포 스캐폴딩**
    - `pick-deal/` monorepo `frontend/`, `backend/` 구성, 루트 README/`.gitignore` 정리.
@@ -84,7 +87,7 @@ services:
    - 패키지 구조(`docs/02` 5장), 공통 응답/에러 핸들러, CORS 설정.
 2. **DB 스키마 & 엔티티**
    - JPA 엔티티/리포지토리 작성. 현재 스키마는 `ddl-auto`로 생성한다(`source`, `deal`, `source_visibility`, `keyword` — 인덱스/유니크 포함, `docs/04` 2장).
-   - Flyway `V1__init.sql` 도입은 PostgreSQL 전환 시 진행한다(현재 미작성, `docs/04` 1장).
+   - Flyway `V1__init.sql` 도입은 운영 배포 준비 시 진행한다(현재 미작성, `docs/04` 1장).
 3. **시드 데이터**
    - 로컬/개발 프로파일용 더미 출처·딜 시드 적재(`docs/04` 6장).
 4. **딜 API**
@@ -95,11 +98,11 @@ services:
 6. **키워드 API**
    - `GET/POST/DELETE /api/v1/keywords`(`docs/03` 4장, 중복/검증 처리).
 7. **로컬 Docker Compose(DB)**
-   - 로컬 DB 실행용 compose 작성(이 시점에 작성). backend가 접속하도록 프로파일 구성.
+   - **미구현**. 로컬 DB 실행용 compose와 backend 프로파일 분리는 필요성이 생기거나 배포 준비 시 함께 작성한다.
 8. **Frontend 프로젝트 생성 & 화면**
    - Next.js(App Router, TS, Tailwind) 생성(버전 `docs/02` 1.1).
    - 화면: 목록(`/`), 상세(`/deals/[id]`), 출처 설정(`/settings/sources`), 키워드 설정(`/settings/keywords`) (`docs/02` 4장).
-   - API 연동, 빈 상태/에러 처리.
+   - 목록·상세·키워드 설정 API 연동 완료. 출처 설정 화면과 일부 빈 상태/에러 UX는 미구현.
 9. **MVP 통합 & 배포 준비**
    - frontend↔backend 통합 동작 확인, 환경변수 정리.
    - frontend Vercel 배포, backend/DB OCI Docker Compose 배포 구성 작성(이 시점에 Dockerfile/compose/nginx 작성).
