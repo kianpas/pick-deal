@@ -23,6 +23,7 @@ export default async function Home({
   let deals: DealSummary[] = [];
   let meta: PageMeta | null = null;
   let categories: string[] = [];
+  let loadFailed = false;
   try {
     const [dealsResult, categoriesResult] = await Promise.all([
       getDeals(listParams),
@@ -32,7 +33,8 @@ export default async function Home({
     meta = dealsResult.meta;
     categories = categoriesResult;
   } catch (error) {
-    // 백엔드 미기동 등으로 실패하면 빈 목록으로 렌더(화면은 빈 상태 표시).
+    // 백엔드 미기동 등 — 빈 데이터와 구분해 에러 상태로 렌더한다.
+    loadFailed = true;
     console.error("딜 목록을 불러오지 못했습니다:", error);
   }
 
@@ -43,6 +45,7 @@ export default async function Home({
         key={`${sortOption ?? "latest"}|${q ?? ""}|${category ?? ""}`}
         deals={deals}
         meta={meta}
+        loadFailed={loadFailed}
         listParams={listParams}
         categories={categories}
         activeCategory={category}

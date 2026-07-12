@@ -2,6 +2,7 @@
 
 import { Image as ImageIcon, ImageOff } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTransition } from "react";
 
 /** 백엔드가 지원하는 정렬만 노출한다(docs/03 §2.1). latest는 기본값이라 URL에서 생략. */
 const SORTS: { id: "latest" | "discount"; name: string }[] = [
@@ -21,6 +22,7 @@ interface Props {
 export function SortBar({ showThumbnail, onToggleThumbnail }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
   const active = searchParams.get("sort") === "discount" ? "discount" : "latest";
 
   function setSort(id: "latest" | "discount") {
@@ -28,12 +30,19 @@ export function SortBar({ showThumbnail, onToggleThumbnail }: Props) {
     if (id === "latest") params.delete("sort");
     else params.set("sort", id);
     const query = params.toString();
-    router.replace(query ? `/?${query}` : "/", { scroll: false });
+    startTransition(() => {
+      router.replace(query ? `/?${query}` : "/", { scroll: false });
+    });
   }
 
   return (
     <div className="flex items-center gap-1">
-      <div className="flex flex-1 items-center gap-1 overflow-x-auto scrollbar-hide">
+      <div
+        className={`flex flex-1 items-center gap-1 overflow-x-auto scrollbar-hide transition-opacity ${
+          isPending ? "opacity-60" : ""
+        }`}
+        aria-busy={isPending}
+      >
         {SORTS.map((s) => {
           const isActive = s.id === active;
           return (
