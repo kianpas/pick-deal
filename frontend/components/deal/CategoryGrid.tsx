@@ -1,48 +1,68 @@
 "use client";
 
 import {
-  Book,
-  BookOpen,
-  ChevronDown,
-  Dumbbell,
+  Gamepad2,
   Grid3x3,
+  Laptop,
   Monitor,
   Shirt,
-  Smartphone,
   Soup,
+  Tag,
+  Ticket,
   Tv,
-  Utensils,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useState } from "react";
-import { CATEGORIES } from "@/lib/mock-data";
-import type { CategoryId } from "@/lib/types";
+import { useRouter, useSearchParams } from "next/navigation";
 
-const ICONS: Record<string, LucideIcon> = {
-  grid: Grid3x3,
-  tv: Tv,
-  smartphone: Smartphone,
-  monitor: Monitor,
-  utensils: Utensils,
-  soup: Soup,
-  shirt: Shirt,
-  dumbbell: Dumbbell,
-  book: Book,
+/** 실데이터 카테고리명 → 아이콘. 등록되지 않은 카테고리는 기본 아이콘으로 표시한다. */
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  "PC/하드웨어": Monitor,
+  "노트북/모바일": Laptop,
+  "가전/TV": Tv,
+  "게임/SW": Gamepad2,
+  "생활/식품": Soup,
+  "패션/의류": Shirt,
+  "상품권/쿠폰": Ticket,
 };
 
-export function CategoryGrid() {
-  const [active, setActive] = useState<CategoryId>("all");
+interface Props {
+  /** 백엔드가 내려준 실데이터 카테고리 목록. */
+  categories: string[];
+  /** 현재 선택된 카테고리(URL ?category=). 없으면 전체. */
+  active?: string;
+}
+
+/**
+ * 카테고리 필터 바. 선택 상태는 URL(?category=)이 SSOT —
+ * 클릭은 URL만 바꾸고, 목록 갱신은 서버(page.tsx)의 재실행으로 일어난다.
+ */
+export function CategoryGrid({ categories, active }: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  function setCategory(category?: string) {
+    const params = new URLSearchParams(searchParams);
+    if (category) params.set("category", category);
+    else params.delete("category");
+    const query = params.toString();
+    router.replace(query ? `/?${query}` : "/", { scroll: false });
+  }
+
+  const items: { name: string; value?: string; icon: LucideIcon }[] = [
+    { name: "전체", value: undefined, icon: Grid3x3 },
+    ...categories.map((c) => ({ name: c, value: c, icon: CATEGORY_ICONS[c] ?? Tag })),
+  ];
 
   return (
     <div className="flex items-end gap-2 overflow-x-auto scrollbar-hide border-b border-border">
-      {CATEGORIES.map((c) => {
-        const Icon = ICONS[c.icon] ?? BookOpen;
-        const isActive = c.id === active;
+      {items.map((c) => {
+        const isActive = (active ?? undefined) === c.value;
         return (
           <button
-            key={c.id}
+            key={c.name}
             type="button"
-            onClick={() => setActive(c.id)}
+            onClick={() => setCategory(c.value)}
+            aria-pressed={isActive}
             className={`group flex shrink-0 flex-col items-center gap-1.5 px-3 pb-2.5 pt-3 transition ${
               isActive ? "text-brand" : "text-fg-muted hover:text-fg"
             }`}
@@ -54,7 +74,7 @@ export function CategoryGrid() {
                   : "bg-surface group-hover:bg-surface-hover"
               }`}
             >
-              <Icon className="size-5" />
+              <c.icon className="size-5" />
             </span>
             <span className="text-xs font-medium">{c.name}</span>
             <span
@@ -65,17 +85,6 @@ export function CategoryGrid() {
           </button>
         );
       })}
-
-      <button
-        type="button"
-        className="group flex shrink-0 flex-col items-center gap-1.5 px-3 pb-2.5 pt-3 text-fg-muted hover:text-fg transition"
-      >
-        <span className="grid size-10 place-items-center rounded-full bg-surface group-hover:bg-surface-hover transition">
-          <ChevronDown className="size-5" />
-        </span>
-        <span className="text-xs font-medium">더보기</span>
-        <span className="h-0.5 w-full bg-transparent" />
-      </button>
     </div>
   );
 }

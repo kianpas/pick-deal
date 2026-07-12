@@ -88,6 +88,12 @@ export async function getDeals(params: DealListParams = {}): Promise<DealListRes
   return { items: envelope.data ?? [], meta: envelope.meta as PageMeta };
 }
 
+/** GET /api/v1/deals/categories — 노출 중인 딜의 카테고리 목록(중복 없음, 정렬). */
+export async function getDealCategories(): Promise<string[]> {
+  const envelope = await request<string[]>("/api/v1/deals/categories");
+  return envelope.data ?? [];
+}
+
 /** GET /api/v1/deals/{id} — 핫딜 상세. */
 export async function getDeal(id: number): Promise<DealDetail> {
   const envelope = await request<DealDetail>(`/api/v1/deals/${id}`);
