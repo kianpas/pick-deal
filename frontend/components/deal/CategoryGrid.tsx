@@ -1,29 +1,7 @@
 "use client";
 
-import {
-  Gamepad2,
-  Grid3x3,
-  Laptop,
-  Monitor,
-  Shirt,
-  Soup,
-  Tag,
-  Ticket,
-  Tv,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-
-/** 실데이터 카테고리명 → 아이콘. 등록되지 않은 카테고리는 기본 아이콘으로 표시한다. */
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  "PC/하드웨어": Monitor,
-  "노트북/모바일": Laptop,
-  "가전/TV": Tv,
-  "게임/SW": Gamepad2,
-  "생활/식품": Soup,
-  "패션/의류": Shirt,
-  "상품권/쿠폰": Ticket,
-};
+import { useTransition } from "react";
 
 interface Props {
   /** 백엔드가 내려준 실데이터 카테고리 목록. */
@@ -33,28 +11,37 @@ interface Props {
 }
 
 /**
- * 카테고리 필터 바. 선택 상태는 URL(?category=)이 SSOT —
- * 클릭은 URL만 바꾸고, 목록 갱신은 서버(page.tsx)의 재실행으로 일어난다.
+ * 카테고리 필터 바. SortBar와 같은 pill 시각 언어를 쓴다.
+ * 선택 상태는 URL(?category=)이 SSOT — 클릭은 URL만 바꾸고,
+ * 목록 갱신은 서버(page.tsx)의 재실행으로 일어난다(useTransition으로 진행 피드백).
  */
 export function CategoryGrid({ categories, active }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   function setCategory(category?: string) {
     const params = new URLSearchParams(searchParams);
     if (category) params.set("category", category);
     else params.delete("category");
     const query = params.toString();
-    router.replace(query ? `/?${query}` : "/", { scroll: false });
+    startTransition(() => {
+      router.replace(query ? `/?${query}` : "/", { scroll: false });
+    });
   }
 
-  const items: { name: string; value?: string; icon: LucideIcon }[] = [
-    { name: "전체", value: undefined, icon: Grid3x3 },
-    ...categories.map((c) => ({ name: c, value: c, icon: CATEGORY_ICONS[c] ?? Tag })),
+  const items: { name: string; value?: string }[] = [
+    { name: "전체", value: undefined },
+    ...categories.map((c) => ({ name: c, value: c })),
   ];
 
   return (
-    <div className="flex items-end gap-2 overflow-x-auto scrollbar-hide border-b border-border">
+    <div
+      className={`flex items-center gap-1 overflow-x-auto scrollbar-hide transition-opacity ${
+        isPending ? "opacity-60" : ""
+      }`}
+      aria-busy={isPending}
+    >
       {items.map((c) => {
         const isActive = (active ?? undefined) === c.value;
         return (
@@ -63,25 +50,13 @@ export function CategoryGrid({ categories, active }: Props) {
             type="button"
             onClick={() => setCategory(c.value)}
             aria-pressed={isActive}
-            className={`group flex shrink-0 flex-col items-center gap-1.5 px-3 pb-2.5 pt-3 transition ${
-              isActive ? "text-brand" : "text-fg-muted hover:text-fg"
+            className={`inline-flex shrink-0 items-center rounded-full px-3 py-1.5 text-sm font-medium transition ${
+              isActive
+                ? "bg-brand-soft text-brand"
+                : "text-fg-muted hover:bg-surface hover:text-fg"
             }`}
           >
-            <span
-              className={`grid size-10 place-items-center rounded-full transition ${
-                isActive
-                  ? "bg-brand-soft"
-                  : "bg-surface group-hover:bg-surface-hover"
-              }`}
-            >
-              <c.icon className="size-5" />
-            </span>
-            <span className="text-xs font-medium">{c.name}</span>
-            <span
-              className={`h-0.5 w-full rounded-full transition ${
-                isActive ? "bg-brand" : "bg-transparent"
-              }`}
-            />
+            {c.name}
           </button>
         );
       })}

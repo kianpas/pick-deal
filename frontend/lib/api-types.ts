@@ -55,6 +55,8 @@ export interface DealSummary {
   sourceId: number;
   sourceName: string;
   postedAt: string;
+  /** PickDeal이 수집/등록한 시각. "마지막 수집 N분 전" 표시에 쓴다. */
+  collectedAt: string;
   status: DealStatus;
 
   // ---- 수집기 단계 추출 검토 · 현재 백엔드 미제공(전부 optional) ----

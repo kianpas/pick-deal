@@ -43,21 +43,25 @@ export function LeftSidebar() {
 
   // 출처 표시/숨김은 백엔드 DB가 SSOT(AGENTS.md). 마운트 시 실데이터를 불러온다.
   const [sources, setSources] = useState<SourceItem[] | null>(null);
+  const [sourcesError, setSourcesError] = useState(false);
   const [pendingSourceId, setPendingSourceId] = useState<number | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setSourcesError(false);
     getSources()
       .then((data) => {
         if (active) setSources(data);
       })
       .catch(() => {
-        if (active) setSources([]); // 백엔드 미기동 등 → 빈 목록으로 표시
+        // 빈 목록으로 위장하지 않고 에러로 구분해 보여준다(재시도 가능)
+        if (active) setSourcesError(true);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   async function handleToggleSource(src: SourceItem) {
     const nextVisible = !src.visible;
@@ -112,7 +116,18 @@ export function LeftSidebar() {
             <span className="text-[11px] text-fg-subtle">표시/숨김</span>
           </div>
 
-          {sources === null ? (
+          {sourcesError ? (
+            <div className="space-y-1 px-3 py-1.5">
+              <p className="text-xs text-danger">출처를 불러오지 못했어요.</p>
+              <button
+                type="button"
+                onClick={() => setReloadKey((k) => k + 1)}
+                className="text-xs text-fg-muted underline transition hover:text-fg"
+              >
+                다시 시도
+              </button>
+            </div>
+          ) : sources === null ? (
             <p className="px-3 py-1.5 text-xs text-fg-subtle">불러오는 중…</p>
           ) : sources.length === 0 ? (
             <p className="px-3 py-1.5 text-xs text-fg-subtle">출처가 없습니다.</p>

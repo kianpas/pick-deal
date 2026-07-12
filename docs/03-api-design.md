@@ -122,6 +122,7 @@ GET /api/v1/deals
       "sourceId": 3,
       "sourceName": "샘플커뮤니티",
       "postedAt": "2026-05-20T18:10:00+09:00",
+      "collectedAt": "2026-05-20T18:12:00+09:00",
       "status": "ACTIVE"
     }
   ],

@@ -15,6 +15,7 @@ public record DealSummaryResponse(
         Long sourceId,
         String sourceName,
         OffsetDateTime postedAt,
+        OffsetDateTime collectedAt,
         String status
 ) {
 
@@ -31,6 +32,7 @@ public record DealSummaryResponse(
                 deal.getSource().getId(),
                 deal.getSource().getName(),
                 deal.getPostedAt(),
+                deal.getCollectedAt(),
                 deal.getStatus().name()
         );
     }
