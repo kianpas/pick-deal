@@ -37,6 +37,11 @@ public class DealController {
         return ApiResponse.success(response.items(), response.meta());
     }
 
+    @GetMapping("/categories")
+    public ApiResponse<List<String>> findCategories() {
+        return ApiResponse.success(dealService.findCategories());
+    }
+
     @GetMapping("/{dealId}")
     public ApiResponse<DealDetailResponse> findDeal(@PathVariable Long dealId) {
         return ApiResponse.success(dealService.findDeal(dealId));

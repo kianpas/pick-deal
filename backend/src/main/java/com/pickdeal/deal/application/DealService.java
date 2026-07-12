@@ -65,6 +65,20 @@ public class DealService {
         return new DealListResponse(items, new PageMetaResponse(page, size, filteredDeals.size(), totalPages, hasNext));
     }
 
+    /**
+     * 노출 중인(ACTIVE + 출처 표시) 딜의 카테고리 목록. 중복 제거 후 정렬.
+     * 카테고리는 출처가 준 자유 문자열이라(docs/03 §2.1) 실데이터에서 목록을 만든다.
+     */
+    @Transactional(readOnly = true)
+    public List<String> findCategories() {
+        return dealRepository.findVisibleDealsByStatus(DealStatus.ACTIVE, DEFAULT_USER_ID).stream()
+                .map(Deal::getCategory)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public DealDetailResponse findDeal(Long dealId) {
         Deal deal = dealRepository.findByIdWithSource(dealId)
