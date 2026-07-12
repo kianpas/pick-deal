@@ -9,6 +9,18 @@ interface Props {
   showThumbnail?: boolean;
 }
 
+/** 종료/품절 뱃지. ACTIVE는 평상시라 null. */
+function statusBadge(status: DealSummary["status"]): { label: string; className: string } | null {
+  switch (status) {
+    case "SOLD_OUT":
+      return { label: "품절", className: "bg-surface-2 text-fg-muted" };
+    case "EXPIRED":
+      return { label: "종료", className: "bg-danger-soft text-danger" };
+    default:
+      return null;
+  }
+}
+
 /** 가격 표기: 0원은 "무료" 뱃지, null은 자리 유지용 안내 문구. */
 function PriceText({ deal, compact = false }: { deal: DealSummary; compact?: boolean }) {
   if (deal.price === 0) {
@@ -36,11 +48,23 @@ function PriceText({ deal, compact = false }: { deal: DealSummary; compact?: boo
 export function DealCard({ deal, showThumbnail = true }: Props) {
   const detailHref = `/deals/${deal.id}`;
   const { store, title } = splitStoreFromTitle(deal.title);
+  const badge = statusBadge(deal.status);
+  // 종료/품절 딜은 남겨두되 취소선 + 흐림으로 한눈에 구분한다
+  const ended = badge !== null;
 
   if (!showThumbnail) {
     return (
-      <article className="flex items-center gap-2 rounded-lg border border-border bg-surface/40 px-3 py-2 transition hover:border-border-strong">
+      <article
+        className={`flex items-center gap-2 rounded-lg border border-border bg-surface/40 px-3 py-2 transition hover:border-border-strong ${
+          ended ? "opacity-60" : ""
+        }`}
+      >
         <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+          {badge && (
+            <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold ${badge.className}`}>
+              {badge.label}
+            </span>
+          )}
           {store && (
             <span className="shrink-0 rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-muted">
               {store}
@@ -48,7 +72,9 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
           )}
           <Link
             href={detailHref}
-            className="min-w-0 flex-1 truncate text-sm font-medium text-fg hover:text-brand transition"
+            className={`min-w-0 flex-1 truncate text-sm font-medium hover:text-brand transition ${
+              ended ? "text-fg-muted line-through" : "text-fg"
+            }`}
           >
             {title}
           </Link>
@@ -68,7 +94,11 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
   }
 
   return (
-    <article className="flex gap-3 rounded-xl border border-border bg-surface/40 p-3 transition hover:border-border-strong sm:p-4">
+    <article
+      className={`flex gap-3 rounded-xl border border-border bg-surface/40 p-3 transition hover:border-border-strong sm:p-4 ${
+        ended ? "opacity-60" : ""
+      }`}
+    >
       {/* Thumbnail */}
       <Link
         href={detailHref}
@@ -97,6 +127,11 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
               핫딜
             </span>
           )}
+          {badge && (
+            <span className={`rounded-md px-1.5 py-0.5 text-xs font-semibold ${badge.className}`}>
+              {badge.label}
+            </span>
+          )}
           {store && (
             <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-muted">
               {store}
@@ -116,7 +151,9 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
 
         <Link
           href={detailHref}
-          className="mt-1.5 line-clamp-2 text-[15px] font-medium text-fg hover:text-brand transition sm:text-base"
+          className={`mt-1.5 line-clamp-2 text-[15px] font-medium hover:text-brand transition sm:text-base ${
+            ended ? "text-fg-muted line-through" : "text-fg"
+          }`}
         >
           {title}
         </Link>

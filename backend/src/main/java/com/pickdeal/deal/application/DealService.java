@@ -43,7 +43,7 @@ public class DealService {
         List<Keyword> excludeKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.EXCLUDE);
         List<Keyword> interestKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.INTEREST);
 
-        List<Deal> filteredDeals = dealRepository.findVisibleDealsByStatus(DealStatus.ACTIVE, DEFAULT_USER_ID).stream()
+        List<Deal> filteredDeals = dealRepository.findVisibleDeals(DEFAULT_USER_ID).stream()
                 .filter(deal -> sourceIds == null || sourceIds.isEmpty() || sourceIds.contains(deal.getSource().getId()))
                 .filter(deal -> matchesCategory(deal, category))
                 .filter(deal -> matchesQuery(deal, query))
@@ -66,12 +66,12 @@ public class DealService {
     }
 
     /**
-     * 노출 중인(ACTIVE + 출처 표시) 딜의 카테고리 목록. 중복 제거 후 정렬.
+     * 노출 중인(출처 표시, 종료 포함) 딜의 카테고리 목록. 중복 제거 후 정렬.
      * 카테고리는 출처가 준 자유 문자열이라(docs/03 §2.1) 실데이터에서 목록을 만든다.
      */
     @Transactional(readOnly = true)
     public List<String> findCategories() {
-        return dealRepository.findVisibleDealsByStatus(DealStatus.ACTIVE, DEFAULT_USER_ID).stream()
+        return dealRepository.findVisibleDeals(DEFAULT_USER_ID).stream()
                 .map(Deal::getCategory)
                 .filter(StringUtils::hasText)
                 .distinct()
