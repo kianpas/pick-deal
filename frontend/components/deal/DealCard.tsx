@@ -34,7 +34,7 @@ function PriceText({ deal, compact = false }: { deal: DealSummary; compact?: boo
     return <span className="text-xs text-fg-subtle">가격 정보 없음</span>;
   }
   return (
-    <span className={`font-bold tabular-nums text-price ${compact ? "text-sm" : "text-lg"}`}>
+    <span className={`font-mono font-bold tabular-nums text-price ${compact ? "text-sm" : "text-lg"}`}>
       {formatPrice(deal.price, deal.currency)}
     </span>
   );
@@ -161,7 +161,7 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
         <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <PriceText deal={deal} />
           {deal.originalPrice !== null && (
-            <span className="text-xs text-fg-subtle line-through tabular-nums">
+            <span className="font-mono text-xs text-fg-subtle line-through tabular-nums">
               {formatPrice(deal.originalPrice, deal.currency)}
             </span>
           )}

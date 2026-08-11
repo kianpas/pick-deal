@@ -133,11 +133,11 @@ export default async function DealDetailPage({
                 </span>
               ) : deal.price !== null ? (
                 <span className="flex flex-wrap items-baseline gap-2">
-                  <span className="text-lg font-bold tabular-nums text-price">
+                  <span className="font-mono text-lg font-bold tabular-nums text-price">
                     {formatPrice(deal.price, deal.currency)}
                   </span>
                   {deal.originalPrice !== null && (
-                    <span className="text-xs text-fg-subtle line-through tabular-nums">
+                    <span className="font-mono text-xs text-fg-subtle line-through tabular-nums">
                       {formatPrice(deal.originalPrice, deal.currency)}
                     </span>
                   )}
