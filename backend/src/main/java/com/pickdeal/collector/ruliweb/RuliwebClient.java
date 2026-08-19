@@ -1,17 +1,17 @@
-package com.pickdeal.collector.quasarzone;
+package com.pickdeal.collector.ruliweb;
 
 import com.pickdeal.collector.support.HtmlFetcher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * 퀘이사존 핫딜 게시판 목록 HTML을 가져온다 (파이프라인의 fetch 단계).
+ * 루리웹 핫딜 게시판 목록 HTML을 가져온다 (파이프라인의 fetch 단계).
  */
 @Component
 @RequiredArgsConstructor
-public class QuasarzoneClient {
+public class RuliwebClient {
 
-    private static final String LIST_URL = "https://quasarzone.com/bbs/qb_saleinfo";
+    private static final String LIST_URL = "https://bbs.ruliweb.com/market/board/1020";
 
     private final HtmlFetcher htmlFetcher;
 

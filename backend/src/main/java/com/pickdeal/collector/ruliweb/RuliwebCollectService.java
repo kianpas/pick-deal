@@ -1,4 +1,4 @@
-package com.pickdeal.collector.quasarzone;
+package com.pickdeal.collector.ruliweb;
 
 import com.pickdeal.collector.support.CollectedDeal;
 import com.pickdeal.collector.support.DealUpsertSupport;
@@ -12,22 +12,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 퀘이사존 핫딜 수집: fetch(client) → parse(parser) → normalize(여기) → persist(support).
+ * 루리웹 핫딜 수집: fetch(client) → parse(parser) → normalize(여기) → persist(support).
  */
 @Service
 @RequiredArgsConstructor
-public class QuasarzoneCollectService implements SourceCollector {
+public class RuliwebCollectService implements SourceCollector {
 
-    private static final String SOURCE_CODE = "quasarzone";
-    private static final String SOURCE_NAME = "퀘이사존";
-    private static final String SOURCE_BASE_URL = "https://quasarzone.com";
+    private static final String SOURCE_CODE = "ruliweb";
+    private static final String SOURCE_NAME = "루리웹";
+    private static final String SOURCE_BASE_URL = "https://bbs.ruliweb.com";
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
-    private final QuasarzoneClient client;
+    private final RuliwebClient client;
     private final DealUpsertSupport upsertSupport;
 
-    private final QuasarzoneListParser parser = new QuasarzoneListParser();
-    private final QuasarzonePostedAtResolver postedAtResolver = new QuasarzonePostedAtResolver();
+    private final RuliwebListParser parser = new RuliwebListParser();
+    private final RuliwebPostedAtResolver postedAtResolver = new RuliwebPostedAtResolver();
 
     @Override
     public String sourceCode() {
@@ -47,7 +47,7 @@ public class QuasarzoneCollectService implements SourceCollector {
         return upsertSupport.upsertAll(source, deals, now);
     }
 
-    private CollectedDeal normalize(QuasarzoneDealItem item, OffsetDateTime now) {
+    private CollectedDeal normalize(RuliwebDealItem item, OffsetDateTime now) {
         return new CollectedDeal(
                 item.externalId(),
                 item.url(),
@@ -55,7 +55,7 @@ public class QuasarzoneCollectService implements SourceCollector {
                 item.title(),
                 item.price(),
                 item.category(),
-                item.thumbnailUrl(),
+                null, // 루리웹 목록에는 썸네일이 없다
                 item.ended(),
                 postedAtResolver.resolve(item.postedAtText(), now)
         );
