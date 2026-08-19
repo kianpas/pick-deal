@@ -22,9 +22,18 @@
 
 ## 2. 현재 구현과 다음 경계
 
-현재는 단일 Spring Boot 앱 안에서 `CollectScheduler`가 Quasarzone 수집을 주기 실행한다. `collector/quasarzone/` 안에서 **Client(fetch) → Parser(parse) → CollectService(normalize·dedup·persist)**로 역할을 나누며, 파서는 실제 HTML fixture로 검증한다. 같은 출처의 중복은 조회와 `source_id + external_id` 유니크 제약으로 막는다.
+현재는 단일 Spring Boot 앱 안에서 `CollectScheduler`가 **Quasarzone·루리웹** 수집을 20분 주기로 실행한다. 출처별 하위 패키지(`collector/quasarzone/`, `collector/ruliweb/`)가 **Client(fetch) → Parser(parse) → CollectService(normalize)**를 담당하고, 두 출처에서 실제로 반복이 확인된 부분을 `collector/support/`로 추출했다:
 
-두 번째 출처도 우선 같은 하위 패키지 구조로 추가한다. 두 구현에서 실제로 반복되는 흐름이 확인되면 그때 공통 인터페이스를 추출한다. 교차 출처 dedup은 `title_norm_hash`를 후보 키로 검토하되 아직 판정 규칙을 확정하지 않는다. 수집 부하가 조회 API에 영향을 줄 때만 worker 분리와 Redis를 검토한다. AI 요약·구매 판단·알림은 착수 시 별도 설계한다.
+- `SourceCollector` — 출처 하나의 수집 계약. 스케줄러가 구현체를 모두 순회하므로 **출처가 늘어도 스케줄러는 바뀌지 않는다**(A.3의 구상이 이 형태로 정착).
+- `DealUpsertSupport`(persist) · `CollectedDeal`(정규화 형태) · `HtmlFetcher`(요청).
+
+파서는 실제 HTML fixture로 검증한다. 같은 출처의 중복은 조회와 `source_id + external_id` 유니크 제약으로 막고, 재수집 시 기존 딜은 가격·상태만 갱신한다.
+
+**출처마다 제공 정보가 다르다.** 퀘이사존은 가격·썸네일이 구조화돼 있지만, 루리웹은 둘 다 없어 가격을 제목 끝 관례에서만 추출한다(커버리지 약 25%, 애매하면 null — 틀린 가격은 없는 가격보다 나쁘다). 이 차이는 `CollectedDeal`의 nullable 필드로 흡수한다.
+
+**남은 경계**: 출처 간 카테고리 어휘가 갈린다(`게임/SW` vs `게임S/W`, `상품권/쿠폰` vs `상품권`) — 통합 분류 매핑을 normalize에 넣을지 결정이 필요하다. 교차 출처 dedup은 `title_norm_hash`를 후보 키로 검토하되 아직 판정 규칙을 확정하지 않는다. 수집 부하가 조회 API에 영향을 줄 때만 worker 분리와 Redis를 검토한다. AI 요약·구매 판단·알림은 착수 시 별도 설계한다.
+
+새 출처를 붙이기 전 **robots.txt를 확인한다** — FMKorea는 `User-agent: *`에 `Disallow: /`라 수집 대상이 아니다.
 
 ---
 

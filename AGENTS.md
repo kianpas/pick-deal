@@ -76,13 +76,22 @@ PickDeal 프로젝트에서 작업할 때의 컨텍스트와 규칙. 상세 설�
 
 ## 현재 단계와 도입하지 않는 것
 
-핵심 조회·설정 API 이후 **2차 수집기의 첫 출처(Quasarzone)까지 구현된 상태**다. 다음은 의도적으로 보류 중이므로 추가 제안 전 확인:
+핵심 조회·설정 API 이후 **2차 수집기의 두 출처(Quasarzone, 루리웹)까지 구현된 상태**다. 다음은 의도적으로 보류 중이므로 추가 제안 전 확인:
 - Redis (캐시/큐)
 - 별도 collector worker 컨테이너
 - 인증/멀티유저 (현재 단일 고정 user_id)
 - 메시지 큐
 
-수집기는 `collector/` 패키지에 있다. 출처별 하위 패키지(`collector/quasarzone/`)에 fetch(Client)·parse(Parser)·normalize/persist(CollectService)를 두고, `CollectScheduler`(`@Scheduled`)가 기본 활성 상태로 주기 실행한다. 새 출처는 우선 새 하위 패키지로 추가하고, 공통 인터페이스는 두 번째 출처에서 실제 중복이 확인될 때 추출한다. 파서는 `String html → 결과` 순수 함수로 두고 실제 응답 HTML 픽스처(`src/test/resources/fixtures/`)로 테스트한다.
+수집기는 `collector/` 패키지에 있다. 출처별 하위 패키지(`collector/quasarzone/`, `collector/ruliweb/`)에 fetch(Client)·parse(Parser)·normalize(CollectService)를 두고, 출처 공통 부분은 `collector/support/`에 있다:
+
+- `SourceCollector` — 출처 하나의 수집 계약(`sourceCode()`, `collect()`). `CollectScheduler`가 구현체를 모두 주입받아 순회하므로 **출처가 늘어도 스케줄러는 바뀌지 않는다.**
+- `DealUpsertSupport` — 출처 등록 + `(source, external_id)` 기반 upsert(신규 저장/기존 갱신).
+- `CollectedDeal` — 출처별 파싱 결과를 표준화한 형태. 출처마다 없는 정보가 있어 대부분 nullable.
+- `HtmlFetcher` — 브라우저 UA 기반 HTML 요청.
+
+**새 출처 추가 = 새 하위 패키지 + `SourceCollector` 구현체.** 파서는 `String html → 결과` 순수 함수로 두고 실제 응답 HTML 픽스처(`src/test/resources/fixtures/`)로 테스트한다.
+
+출처를 붙이기 전에 **robots.txt를 확인한다.** (예: FMKorea는 `User-agent: *`에 `Disallow: /`라 수집 대상이 아니다.)
 
 ## 작업 시 유의
 
