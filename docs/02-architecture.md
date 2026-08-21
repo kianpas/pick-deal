@@ -1,7 +1,7 @@
 # 02. 아키텍처 설계 (Architecture)
 
 > PickDeal — 전체 아키텍처 / 프론트엔드 화면 구조 / 백엔드 패키지 구조 / 확장 방향
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-07-11
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-21
 
 ---
 
@@ -68,7 +68,7 @@
         └────────────────┘
 ```
 
-- 현재 **backend와 scheduler는 하나의 Spring Boot 애플리케이션**에서 실행된다. Quasarzone 수집 작업은 기본 활성화돼 있으며, 테스트에서는 `pickdeal.collector.scheduling.enabled=false`로 끈다.
+- 현재 **backend와 scheduler는 하나의 Spring Boot 애플리케이션**에서 실행된다. 등록된 출처의 수집 작업은 기본 활성화돼 있으며, 테스트에서는 `pickdeal.collector.scheduling.enabled=false`로 끈다.
 - frontend는 backend REST API(`/api/v1/*`)만 호출한다.
 
 ### 2.2 확장 아키텍처 (2차: collector worker 분리)
@@ -116,7 +116,7 @@ pick-deal/
 
 - 하나의 저장소에서 frontend/backend를 폴더로 분리한다.
 - 빌드/배포 파이프라인은 각 폴더 단위로 독립적으로 동작하도록 설계한다(frontend→Vercel, backend→Docker).
-- 현재 `backend/`에는 조회·설정 API와 Quasarzone 수집기가 구현돼 있다. `frontend/`는 목록·상세·키워드 설정과 사이드바의 출처 표시/숨김이 백엔드 API와 연동돼 있다.
+- 현재 `backend/`에는 조회·설정 API와 복수 출처 수집기가 구현돼 있다. `frontend/`는 목록·상세·키워드 설정과 사이드바의 출처 표시/숨김이 백엔드 API와 연동돼 있다.
 
 ---
 
@@ -202,10 +202,11 @@ backend/
    │  └─ dto/                           # CreateKeywordRequest, KeywordResponse
    └─ collector/
       ├─ CollectScheduler.java          # 기본 활성, 20분 주기
-      └─ quasarzone/                    # Client, Parser, CollectService, 파싱 결과
+      ├─ support/                       # 출처 공통 계약, upsert, HTTP 지원
+      └─ {source}/                      # 출처별 Client, Parser, CollectService, 파싱 결과
 ```
 
-- **collector 패키지**에는 현재 `CollectScheduler`와 `collector/quasarzone/`의 Client·Parser·CollectService가 있다. 별도 worker 분리는 부하가 실제로 필요하게 만들 때 검토한다(`docs/05`).
+- **collector 패키지**에는 `CollectScheduler`, 공통 `collector/support/`, 출처별 `collector/{source}/`의 Client·Parser·CollectService가 있다. 현재 출처 목록은 `docs/05`에서만 관리한다. 별도 worker 분리는 부하가 실제로 필요하게 만들 때 검토한다.
 
 ```
 backend/
@@ -221,7 +222,7 @@ backend/
 - **Controller**: 요청/응답 DTO 매핑, 입력 검증, HTTP 상태 코드. 비즈니스 로직 없음.
 - **Service**: 도메인 규칙(키워드 필터링 우선순위 등). 트랜잭션 경계.
 - **Repository**: JPA. 동적 필터/정렬은 `Specification` 또는 QueryDSL 고려(택1, 구현 단계 결정).
-- **collector/scheduler**: 현재 Quasarzone 수집을 담당한다. 수집 부하가 조회 API에 영향을 줄 때 worker 분리를 검토한다(`docs/05`).
+- **collector/scheduler**: 등록된 `SourceCollector` 구현체를 순회해 복수 출처를 수집한다. 수집 부하가 조회 API에 영향을 줄 때 worker 분리를 검토한다(`docs/05`).
 
 ### 5.2 키워드 필터링 위치
 
@@ -234,10 +235,10 @@ backend/
 
 | 항목 | MVP | 확장 |
 | --- | --- | --- |
-| 수집 | Quasarzone 단일 출처 자동 수집 | 출처 추가·교차 출처 dedup (`docs/05`) |
-| scheduler | 단일 앱 내 비활성 | worker 분리 가능 (`docs/02` 2.2, `docs/06`) |
+| 수집 | 복수 출처 자동 수집 | 출처 추가·교차 출처 dedup (`docs/05`) |
+| scheduler | 단일 앱 내 기본 활성 | worker 분리 가능 (`docs/02` 2.2, `docs/06`) |
 | 캐시/큐 | 없음 | Redis 도입 (`docs/05`) |
-| 중복 제거 | 스키마만 대비 | dedup 로직 활성 (`docs/04`, `docs/05`) |
+| 중복 제거 | 동일 출처 중복 방지 구현 | 교차 출처 dedup (`docs/04`, `docs/05`) |
 | AI | 없음 | 댓글 요약·구매 판단 보조 (`docs/05`) |
 | 사용자 | 단일(고정 user_id) | 멀티유저 + 인증 |
 

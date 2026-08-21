@@ -1,7 +1,7 @@
 # 04. 데이터베이스 설계 (Database Design)
 
 > PickDeal — DB 테이블 초안 / 인덱스·제약 / PostgreSQL·MySQL 선택 기준 / 시드 전략
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-07-11
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-21
 > 표준 DBMS: **PostgreSQL**(개발·운영 공통, MySQL 선택 시 5장 참고)
 > **현재 상태**: 애플리케이션은 로컬 PostgreSQL `pickdeal` DB와 JPA `ddl-auto: update`로 기동한다. H2 in-memory(PostgreSQL 호환 모드)는 테스트에서만 `create-drop`으로 사용한다. 아래 테이블/제약/인덱스는 PostgreSQL 기준이다.
 
@@ -194,7 +194,7 @@ DBMS를 바꿔도 본 스키마는 거의 그대로 사용 가능하다(타입�
 
 ## 6. 시드 / 더미 데이터 전략 (MVP)
 
-- **현재 구현**: 코드 기반 `config/SeedDataInitializer`가 데이터가 없을 때 기본 출처와 샘플 딜을 삽입한다. 이후 Quasarzone 수집기가 실제 딜을 추가한다.
+- **현재 구현**: 코드 기반 `config/SeedDataInitializer`가 데이터가 없을 때 기본 출처와 샘플 딜을 삽입한다. 이후 등록된 출처의 수집기가 실제 딜을 추가한다.
 - 테스트에서는 H2 `create-drop`을 사용하므로 테스트 컨텍스트마다 스키마를 새로 만든다.
 - 다른 선택지(향후 운영 DB 전환 시 고려):
   1. **Flyway 기준 데이터 마이그레이션**: 출처처럼 반드시 필요한 기준 데이터만 반복 가능하게 관리한다.

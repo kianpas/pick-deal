@@ -5,7 +5,7 @@ PickDeal 프로젝트에서 작업할 때의 컨텍스트와 규칙. 상세 설�
 ## 프로젝트 개요
 
 - **PickDeal**: 핫딜 수집/조회 서비스 (MVP 단계)
-- **Monorepo**: `frontend/` (Next.js, 목록·상세·키워드 설정 및 사이드바 출처 설정 백엔드 연동 완료) + `backend/` (Spring Boot REST API + Quasarzone 수집기) + `docs/` (설계 문서)
+- **Monorepo**: `frontend/` (Next.js, 목록·상세·키워드 설정 및 사이드바 출처 설정 백엔드 연동 완료) + `backend/` (Spring Boot REST API + 복수 출처 수집기) + `docs/` (설계 문서)
 - **설계 의도/정책**의 단일 진실 출처는 `docs/01~06`. 단, **실제 패키지 구조·라이브러리 버전**은 코드와 `build.gradle`/`package.json`이 진실이다(둘이 어긋나면 코드 기준으로 docs를 갱신).
 - **문서 맵** — 용어·재사용 자산은 `CONTEXT.md`, 되돌리기 비싼 결정의 이력은 `docs/adr/`, 상세 설계는 `docs/01~06`, 지금 일하는 규칙은 이 파일(AGENTS.md).
 
@@ -76,13 +76,13 @@ PickDeal 프로젝트에서 작업할 때의 컨텍스트와 규칙. 상세 설�
 
 ## 현재 단계와 도입하지 않는 것
 
-핵심 조회·설정 API 이후 **2차 수집기의 두 출처(Quasarzone, 루리웹)까지 구현된 상태**다. 다음은 의도적으로 보류 중이므로 추가 제안 전 확인:
+핵심 조회·설정 API 이후 **복수 출처 수집기까지 구현된 상태**다. 현재 수집 출처 목록은 `docs/05-collector-design.md`의 표를 단일 진실 출처로 삼는다. 다음은 의도적으로 보류 중이므로 추가 제안 전 확인:
 - Redis (캐시/큐)
 - 별도 collector worker 컨테이너
 - 인증/멀티유저 (현재 단일 고정 user_id)
 - 메시지 큐
 
-수집기는 `collector/` 패키지에 있다. 출처별 하위 패키지(`collector/quasarzone/`, `collector/ruliweb/`)에 fetch(Client)·parse(Parser)·normalize(CollectService)를 두고, 출처 공통 부분은 `collector/support/`에 있다:
+수집기는 `collector/` 패키지에 있다. 출처별 하위 패키지(`collector/{source}/`)에 fetch(Client)·parse(Parser)·normalize(CollectService)를 두고, 출처 공통 부분은 `collector/support/`에 있다:
 
 - `SourceCollector` — 출처 하나의 수집 계약(`sourceCode()`, `collect()`). `CollectScheduler`가 구현체를 모두 주입받아 순회하므로 **출처가 늘어도 스케줄러는 바뀌지 않는다.**
 - `DealUpsertSupport` — 출처 등록 + `(source, external_id)` 기반 upsert(신규 저장/기존 갱신).
@@ -90,6 +90,8 @@ PickDeal 프로젝트에서 작업할 때의 컨텍스트와 규칙. 상세 설�
 - `HtmlFetcher` — 브라우저 UA 기반 HTML 요청.
 
 **새 출처 추가 = 새 하위 패키지 + `SourceCollector` 구현체.** 파서는 `String html → 결과` 순수 함수로 두고 실제 응답 HTML 픽스처(`src/test/resources/fixtures/`)로 테스트한다.
+
+기존 공통 계약 안에서 출처만 추가할 때의 변경 범위는 **`docs/05`의 현재 출처 표 + 해당 `collector/{source}/` 코드 + 테스트 fixture**다. API·DB·공통 수집 구조·운영 정책이 함께 바뀔 때만 그 계약을 소유한 문서를 추가로 갱신한다.
 
 출처를 붙이기 전에 **robots.txt를 확인한다.** (예: FMKorea는 `User-agent: *`에 `Disallow: /`라 수집 대상이 아니다.)
 

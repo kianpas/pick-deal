@@ -1,8 +1,8 @@
 # 05. 수집기 / 확장 방향 (Collector)
 
-> Quasarzone 한 출처의 수집 파이프라인은 구현됐다. 교차 출처 dedup·Redis·worker 분리·AI·알림은 아직 방향만 유지한다.
+> 복수 출처의 수집 파이프라인은 구현됐다. 현재 수집 출처 목록은 이 문서의 표에서만 관리한다. 교차 출처 dedup·Redis·worker 분리·AI·알림은 아직 방향만 유지한다.
 > 문서 뒤의 **부록 A**는 초기 탐색 메모다. 현재 코드와 다른 예시는 구현 지침이 아니며, 실제 필요가 생길 때 다시 설계한다.
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-07-11
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-21
 
 ---
 
@@ -10,26 +10,37 @@
 
 | 항목 | 단계 | MVP |
 | --- | --- | --- |
-| Quasarzone 수집(crawl/fetch), 파싱·저장 | 2차 진입 | ✅ |
+| 복수 출처 수집(crawl/fetch), 파싱·저장 | 2차 진입 | ✅ |
 | 출처 내 중복 방지(`source_id + external_id`) | 2차 진입 | ✅ |
 | 교차 출처 중복 제거(dedup) | 이후 | ❌ (`title_norm_hash` 자리만 대비) |
 | Redis / worker 분리 / 알림 | 2차 | ❌ |
 | AI 댓글 요약 / 구매 판단 보조 | 3차 | ❌ |
 
-조회·설정 MVP는 시드/수동 데이터로 시작했고, 현재 Quasarzone 수집 결과도 함께 사용한다(`docs/01`, `docs/04`).
+조회·설정 MVP는 시드/수동 데이터로 시작했고, 현재는 등록된 출처의 수집 결과도 함께 사용한다(`docs/01`, `docs/04`).
 
 ---
 
 ## 2. 현재 구현과 다음 경계
 
-현재는 단일 Spring Boot 앱 안에서 `CollectScheduler`가 **Quasarzone·루리웹** 수집을 20분 주기로 실행한다. 출처별 하위 패키지(`collector/quasarzone/`, `collector/ruliweb/`)가 **Client(fetch) → Parser(parse) → CollectService(normalize)**를 담당하고, 두 출처에서 실제로 반복이 확인된 부분을 `collector/support/`로 추출했다:
+### 2.1 현재 수집 출처
+
+| 코드 | 표시명 | 구현 패키지 | 상태 |
+| --- | --- | --- | --- |
+| `quasarzone` | 퀘이사존 | `collector/quasarzone/` | 활성 |
+| `ruliweb` | 루리웹 | `collector/ruliweb/` | 활성 |
+
+기존 공통 계약 안에서 출처만 추가할 때는 **이 표, 해당 `collector/{source}/` 코드, 실제 응답 HTML 테스트 fixture**만 갱신한다. API·DB·공통 수집 구조·운영 정책이 함께 바뀌는 경우에만 관련 설계문서를 추가로 갱신한다.
+
+### 2.2 수집 구조
+
+현재는 단일 Spring Boot 앱 안에서 `CollectScheduler`가 등록된 `SourceCollector` 구현체를 20분 주기로 실행한다. 출처별 하위 패키지(`collector/{source}/`)가 **Client(fetch) → Parser(parse) → CollectService(normalize)**를 담당하고, 여러 출처에서 실제로 반복이 확인된 부분은 `collector/support/`에 둔다:
 
 - `SourceCollector` — 출처 하나의 수집 계약. 스케줄러가 구현체를 모두 순회하므로 **출처가 늘어도 스케줄러는 바뀌지 않는다**(A.3의 구상이 이 형태로 정착).
 - `DealUpsertSupport`(persist) · `CollectedDeal`(정규화 형태) · `HtmlFetcher`(요청).
 
 파서는 실제 HTML fixture로 검증한다. 같은 출처의 중복은 조회와 `source_id + external_id` 유니크 제약으로 막고, 재수집 시 기존 딜은 가격·상태만 갱신한다.
 
-**출처마다 제공 정보가 다르다.** 퀘이사존은 가격·썸네일이 구조화돼 있지만, 루리웹은 둘 다 없어 가격을 제목 끝 관례에서만 추출한다(커버리지 약 25%, 애매하면 null — 틀린 가격은 없는 가격보다 나쁘다). 이 차이는 `CollectedDeal`의 nullable 필드로 흡수한다.
+**출처마다 제공 정보가 다르다.** 예를 들어 어떤 출처는 가격·썸네일이 구조화돼 있지만, 다른 출처는 제목 관례에서만 가격을 추출할 수 있다. 애매한 값은 null로 두고, 이런 차이는 `CollectedDeal`의 nullable 필드로 흡수한다.
 
 **남은 경계**: 출처 간 카테고리 어휘가 갈린다(`게임/SW` vs `게임S/W`, `상품권/쿠폰` vs `상품권`) — 통합 분류 매핑을 normalize에 넣을지 결정이 필요하다. 교차 출처 dedup은 `title_norm_hash`를 후보 키로 검토하되 아직 판정 규칙을 확정하지 않는다. 수집 부하가 조회 API에 영향을 줄 때만 worker 분리와 Redis를 검토한다. AI 요약·구매 판단·알림은 착수 시 별도 설계한다.
 
