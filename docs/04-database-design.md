@@ -43,6 +43,7 @@
 | `discount_rate` | int | null | 할인율(%) — 저장 또는 계산값. 정렬용으로 컬럼 유지 권장 |
 | `currency` | varchar(8) | not null default 'KRW' | 통화 코드 |
 | `category` | varchar(50) | null | 카테고리 |
+| `comment_count` | int | null | 해당 출처 원문 게시글에서 마지막으로 확인한 댓글 수 |
 | `thumbnail_url` | varchar(1000) | null | 썸네일 URL |
 | `original_url` | varchar(1000) | not null | 원본 링크 |
 | `title_norm_hash` | varchar(64) | null | 정규화 제목 해시(2차 dedup용) |

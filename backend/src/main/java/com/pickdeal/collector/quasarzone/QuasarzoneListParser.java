@@ -41,6 +41,7 @@ public class QuasarzoneListParser {
                 parsePrice(item.select("span.text-orange").text()),
                 item.select("span.category").text(),
                 parseThumbnailUrl(item),
+                parseCommentCount(item.selectFirst("span.ctn-count")),
                 ENDED_LABEL.equals(labelOf(item)),
                 item.select("span.date").text().trim());
     }
@@ -58,6 +59,13 @@ public class QuasarzoneListParser {
         // src 끝에 캐시버스터용 '?'가 붙어 오는 경우가 있어 제거한다
         String src = img.absUrl("src");
         return src.endsWith("?") ? src.substring(0, src.length() - 1) : src;
+    }
+
+    private Integer parseCommentCount(Element count) {
+        if (count == null || count.text().isBlank()) {
+            return null;
+        }
+        return Integer.valueOf(count.text().replace(",", "").trim());
     }
 
     /** 예: "￦ 36,000 (KRW)", "￦ 10,850원 (KRW)", "￦ 0 (KRW)" → 금액 정수. 형식이 다르면 null. */

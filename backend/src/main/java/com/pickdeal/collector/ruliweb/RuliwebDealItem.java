@@ -13,6 +13,7 @@ public record RuliwebDealItem(
         String title,
         Long price,
         String category,
+        Integer commentCount,
         boolean ended,
         String postedAtText
 ) {

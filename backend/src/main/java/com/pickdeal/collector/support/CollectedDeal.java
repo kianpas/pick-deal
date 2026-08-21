@@ -15,6 +15,7 @@ public record CollectedDeal(
         String title,
         Long price,
         String category,
+        Integer commentCount,
         String thumbnailUrl,
         boolean ended,
         OffsetDateTime postedAt

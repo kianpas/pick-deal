@@ -107,6 +107,7 @@ public class DealService {
                 request.discountRate(),
                 normalizeCurrency(request.currency()),
                 normalizeNullable(request.category()),
+                null,
                 normalizeNullable(request.thumbnailUrl()),
                 request.originalUrl().trim(),
                 externalId,

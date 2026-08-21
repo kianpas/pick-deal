@@ -77,6 +77,10 @@ public class Deal extends BaseTimeEntity {
     @Column(length = 50)
     private String category;
 
+    /** 마지막 수집 시 원문 게시글 목록에서 확인한 댓글 수. 출처가 제공하지 않으면 nullable. */
+    @Column(name = "comment_count")
+    private Integer commentCount;
+
     @Column(name = "thumbnail_url", length = 1000)
     private String thumbnailUrl;
 
@@ -113,6 +117,7 @@ public class Deal extends BaseTimeEntity {
             Integer discountRate,
             String currency,
             String category,
+            Integer commentCount,
             String thumbnailUrl,
             String originalUrl,
             String externalId,
@@ -129,6 +134,7 @@ public class Deal extends BaseTimeEntity {
         this.discountRate = discountRate;
         this.currency = currency;
         this.category = category;
+        this.commentCount = commentCount;
         this.thumbnailUrl = thumbnailUrl;
         this.originalUrl = originalUrl;
         this.externalId = externalId;
@@ -138,9 +144,10 @@ public class Deal extends BaseTimeEntity {
         this.collectedAt = collectedAt;
     }
 
-    /** 재수집 시 변동 가능한 값(가격, 진행 상태)만 갱신한다. */
-    public void updateFromRecollection(Long price, DealStatus status) {
+    /** 재수집 시 변동 가능한 값(가격, 댓글 수, 진행 상태)만 갱신한다. */
+    public void updateFromRecollection(Long price, Integer commentCount, DealStatus status) {
         this.price = price;
+        this.commentCount = commentCount;
         this.status = status;
     }
 }

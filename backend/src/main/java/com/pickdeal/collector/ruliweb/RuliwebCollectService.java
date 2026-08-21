@@ -55,6 +55,7 @@ public class RuliwebCollectService implements SourceCollector {
                 item.title(),
                 item.price(),
                 item.category(),
+                item.commentCount(),
                 null, // 루리웹 목록에는 썸네일이 없다
                 item.ended(),
                 postedAtResolver.resolve(item.postedAtText(), now)

@@ -57,6 +57,7 @@ class QuasarzoneCollectServiceTest {
         assertThat(first.getTitle()).isEqualTo("[쿠팡] 오리코 PD 100W SD/TF 리더 M.2 SSD 외장하드 케이스");
         assertThat(first.getPrice()).isEqualTo(36000L);
         assertThat(first.getCurrency()).isEqualTo("KRW");
+        assertThat(first.getCommentCount()).isEqualTo(1);
         assertThat(first.getStatus()).isEqualTo(DealStatus.ACTIVE);
         assertThat(first.getOriginalUrl()).isEqualTo("https://quasarzone.com/bbs/qb_saleinfo/views/1968628");
         assertThat(first.getPostedAt()).isNotNull();
@@ -87,8 +88,8 @@ class QuasarzoneCollectServiceTest {
     @DisplayName("재수집에서 가격이 바뀌거나 종료된 딜은 기존 행이 갱신된다")
     void recollectUpdatesChangedDeal() {
         given(client.fetchListHtml())
-                .willReturn(singleItemHtml("9999901", "진행중", "￦ 10,000 (KRW)"))
-                .willReturn(singleItemHtml("9999901", "종료", "￦ 8,000 (KRW)"));
+                .willReturn(singleItemHtml("9999901", "진행중", "￦ 10,000 (KRW)", 2))
+                .willReturn(singleItemHtml("9999901", "종료", "￦ 8,000 (KRW)", 9));
 
         collectService.collect();
         int secondRun = collectService.collect();
@@ -98,11 +99,12 @@ class QuasarzoneCollectServiceTest {
         Source source = sourceRepository.findByCode("quasarzone").orElseThrow();
         Deal updated = dealRepository.findBySourceIdAndExternalId(source.getId(), "9999901").orElseThrow();
         assertThat(updated.getPrice()).isEqualTo(8000L);
+        assertThat(updated.getCommentCount()).isEqualTo(9);
         assertThat(updated.getStatus()).isEqualTo(DealStatus.EXPIRED);
     }
 
     /** 실제 목록 마크업을 축약한 딜 1건짜리 목록 HTML. */
-    private static String singleItemHtml(String externalId, String label, String priceText) {
+    private static String singleItemHtml(String externalId, String label, String priceText, int commentCount) {
         return """
                 <div class="market-info-list">
                   <div class="market-info-list-cont">
@@ -110,6 +112,7 @@ class QuasarzoneCollectServiceTest {
                       <span class="label">%s</span>
                       <a href="/bbs/qb_saleinfo/views/%s" class="subject-link">
                         <span class="ellipsis-with-reply-cnt">[테스트몰] 갱신 확인용 상품</span>
+                        <span class="board-list-comment"><span class="ctn-count">%d</span></span>
                       </a>
                     </p>
                     <div class="market-info-sub">
@@ -121,7 +124,7 @@ class QuasarzoneCollectServiceTest {
                     </div>
                   </div>
                 </div>
-                """.formatted(label, externalId, priceText);
+                """.formatted(label, externalId, commentCount, priceText);
     }
 
     private static String readResource(String path) {
