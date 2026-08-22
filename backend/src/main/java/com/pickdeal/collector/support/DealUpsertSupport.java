@@ -29,6 +29,11 @@ public class DealUpsertSupport {
                 .orElseGet(() -> sourceRepository.save(new Source(name, baseUrl, code, true)));
     }
 
+    /** 이 출처에서 이미 수집된 딜이 있는지 확인한다. 수집 실행 시작 시 한 번만 호출한다. */
+    public boolean hasCollectedDeals(Source source) {
+        return dealRepository.existsBySourceId(source.getId());
+    }
+
     /**
      * 수집 결과를 저장/갱신한다.
      *

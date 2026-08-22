@@ -14,6 +14,7 @@
 | 목록 HTML의 출처별 댓글 수 수집·표시 | 2차 진입 | ✅ |
 | 카테고리 정확 일치 별칭 최소 정규화 | 2차 진입 | ✅ |
 | 출처별 runtime limit(`enabled`, timeout, 페이지·항목 상한) | 2차 진입 | ✅ |
+| 출처별 최초(Bootstrap)·증분(Incremental) 수집 구분 | 2차 진입 | ✅ |
 | 출처 내 중복 방지(`source_id + external_id`) | 2차 진입 | ✅ |
 | 교차 출처 중복 제거(dedup) | 이후 | ❌ (`title_norm_hash` 자리만 대비) |
 | Redis / worker 분리 / 알림 | 2차 | ❌ |
@@ -64,6 +65,8 @@ pickdeal:
         timeout: 10s
         max-pages: 1
         max-items: 50
+        bootstrap-max-pages: 3
+        bootstrap-max-items: 150
 ```
 
 | 설정 | 의미 | 현재 기본값 |
@@ -73,12 +76,16 @@ pickdeal:
 | `timeout` | 목록 HTTP 요청 한 건의 응답 대기 상한 | `10s` |
 | `max-pages` | 실행 한 번에 조회할 목록 페이지 수 상한 | `1` |
 | `max-items` | 실행 한 번에 정규화·upsert할 고유 게시글 수 상한 | `50` |
+| `bootstrap-max-pages` | 해당 출처의 최초 수집에서 조회할 페이지 수 상한 | `3` |
+| `bootstrap-max-items` | 해당 출처의 최초 수집에서 처리할 고유 게시글 수 상한 | `150` |
 
-페이지는 1부터 순서대로 요청하며 `max-items`에 도달하면 남은 페이지를 요청하지 않는다. 한 실행 안에서 페이지 사이에 같은 `externalId`가 반복되면 한 번만 처리한다. `timeout`, `max-pages`, `max-items`는 양수여야 하며 잘못된 설정은 애플리케이션 기동 시 거부한다. 기본 `max-pages: 1`은 runtime limit 도입 전의 외부 요청량을 유지한다.
+출처 등록 직후 해당 `source_id`의 Deal 존재 여부를 수집 시작 시 한 번만 확인한다. 하나도 없으면 Bootstrap 한도, 하나라도 있으면 Incremental 한도(`max-pages`, `max-items`)를 선택한다. 페이지를 모두 가져온 뒤 한 번에 upsert하므로 Bootstrap 도중 첫 페이지 저장 때문에 모드가 바뀌지 않는다. 수집 결과가 없어 Deal이 저장되지 않았다면 다음 실행도 Bootstrap으로 재시도한다.
 
-스케줄은 전체 수집 완료 시점부터 20분 뒤 다시 실행하는 현재 정책을 유지한다. 출처별 interval은 실제로 서로 다른 주기가 필요해질 때 검토한다. 최초 수집 여부 판별과 `bootstrap-max-pages`·`bootstrap-max-items`는 아직 구현하지 않았으며 Bootstrap/Incremental 작업에서 함께 추가한다.
+페이지는 1부터 순서대로 요청하며 선택된 항목 상한에 도달하면 남은 페이지를 요청하지 않는다. 한 실행 안에서 페이지 사이에 같은 `externalId`가 반복되면 한 번만 처리한다. 네 가지 페이지·항목 상한과 `timeout`은 양수여야 하며 잘못된 설정은 애플리케이션 기동 시 거부한다. 일반 수집의 기본 `max-pages: 1`은 작업 도입 전의 주기별 외부 요청량을 유지하고, Bootstrap의 3페이지 요청은 출처별 DB가 비어 있을 때만 발생한다.
 
-**남은 경계**: Bootstrap/Incremental 구분과 초기 수집 한도는 다음 수집기 작업에서 구현한다. 카테고리의 전체 통합 분류 체계는 실제 필요가 확인될 때 다시 설계한다. 교차 출처 dedup은 `title_norm_hash`를 후보 키로 검토하되 아직 판정 규칙을 확정하지 않는다. 수집 부하가 조회 API에 영향을 줄 때만 worker 분리와 Redis를 검토한다. AI 요약·구매 판단·알림은 착수 시 별도 설계한다.
+스케줄은 전체 수집 완료 시점부터 20분 뒤 다시 실행하는 현재 정책을 유지한다. 출처별 interval은 실제로 서로 다른 주기가 필요해질 때 검토한다. `lastSeenExternalId`, 마지막 수집 시각, 별도 cursor는 아직 도입하지 않는다.
+
+**남은 경계**: 마지막으로 확인한 게시글 기반 조기 종료는 실제 페이지 요청 절감 필요가 확인될 때 검토한다. 카테고리의 전체 통합 분류 체계는 실제 필요가 확인될 때 다시 설계한다. 교차 출처 dedup은 `title_norm_hash`를 후보 키로 검토하되 아직 판정 규칙을 확정하지 않는다. 수집 부하가 조회 API에 영향을 줄 때만 worker 분리와 Redis를 검토한다. AI 요약·구매 판단·알림은 착수 시 별도 설계한다.
 
 새 출처를 붙이기 전 **robots.txt를 확인한다** — FMKorea는 `User-agent: *`에 `Disallow: /`라 수집 대상이 아니다.
 
