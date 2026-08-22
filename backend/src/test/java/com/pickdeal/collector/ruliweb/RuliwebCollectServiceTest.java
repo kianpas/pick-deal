@@ -54,6 +54,7 @@ class RuliwebCollectServiceTest {
         assertThat(deal.getPrice()).isEqualTo(730900L);
         assertThat(deal.getCurrency()).isEqualTo("KRW");
         assertThat(deal.getCategory()).isEqualTo("게임H/W");
+        assertThat(deal.getCommentCount()).isEqualTo(5);
         assertThat(deal.getOriginalUrl()).isEqualTo("https://bbs.ruliweb.com/market/board/1020/read/106481");
         assertThat(deal.getPostedAt()).isNotNull();
         assertThat(deal.getCollectedAt()).isNotNull();

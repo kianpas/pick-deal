@@ -1,4 +1,4 @@
-import { Flame } from "lucide-react";
+import { Flame, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatPrice, formatRelativeTime, splitStoreFromTitle } from "@/lib/format";
@@ -86,6 +86,15 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
 
         <div className="hidden shrink-0 items-center gap-2 text-xs text-fg-muted sm:flex">
           <span>{deal.sourceName}</span>
+          {deal.commentCount !== null && (
+            <>
+              <span className="text-fg-subtle">·</span>
+              <span className="inline-flex items-center gap-1" aria-label={`댓글 ${deal.commentCount}개`}>
+                <MessageCircle className="size-3" aria-hidden="true" />
+                {deal.commentCount}
+              </span>
+            </>
+          )}
           <span className="text-fg-subtle">·</span>
           <span suppressHydrationWarning>{formatRelativeTime(deal.postedAt)}</span>
         </div>
@@ -138,6 +147,15 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
             </span>
           )}
           <span>{deal.sourceName}</span>
+          {deal.commentCount !== null && (
+            <>
+              <span className="text-fg-subtle">·</span>
+              <span className="inline-flex items-center gap-1" aria-label={`댓글 ${deal.commentCount}개`}>
+                <MessageCircle className="size-3" aria-hidden="true" />
+                {deal.commentCount}
+              </span>
+            </>
+          )}
           {deal.category && (
             <>
               <span className="text-fg-subtle">·</span>

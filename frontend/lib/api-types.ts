@@ -51,6 +51,8 @@ export interface DealSummary {
   discountRate: number | null;
   currency: string;
   category: string | null;
+  /** 해당 출처 원문 게시글에서 마지막으로 확인한 댓글 수. 미제공/확인 불가는 null. */
+  commentCount: number | null;
   thumbnailUrl: string | null;
   sourceId: number;
   sourceName: string;
@@ -66,7 +68,6 @@ export interface DealSummary {
   freeShipping?: boolean;
   shippingNote?: string;
   voteCount?: number;
-  commentCount?: number;
 }
 
 /** 상세 응답 (DealDetailResponse) = 요약 + 본문/원문/외부ID/수집시각. */

@@ -55,6 +55,7 @@ public class QuasarzoneCollectService implements SourceCollector {
                 item.title(),
                 item.price(),
                 item.category(),
+                item.commentCount(),
                 item.thumbnailUrl(),
                 item.ended(),
                 postedAtResolver.resolve(item.postedAtText(), now)

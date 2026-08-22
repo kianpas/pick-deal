@@ -60,6 +60,15 @@ class RuliwebListParserTest {
     }
 
     @Test
+    @DisplayName("목록에 표시된 댓글 수를 원문 게시글의 반응량으로 추출한다")
+    void extractsCommentCount() {
+        List<RuliwebDealItem> items = parser.parse(fixtureHtml);
+
+        assertThat(items.get(0).commentCount()).isEqualTo(5);
+        assertThat(items.get(5).commentCount()).isEqualTo(13);
+    }
+
+    @Test
     @DisplayName("[종료] 뱃지가 붙은 딜을 ended로 표시한다")
     void marksEndedDeals() {
         List<RuliwebDealItem> items = parser.parse(fixtureHtml);

@@ -11,6 +11,7 @@ public record QuasarzoneDealItem(
         Long price,
         String category,
         String thumbnailUrl,
+        Integer commentCount,
         boolean ended,
         String postedAtText
 ) {

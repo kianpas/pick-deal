@@ -94,6 +94,16 @@ class QuasarzoneListParserTest {
     }
 
     @Test
+    @DisplayName("목록에 표시된 댓글 수를 원문 게시글의 반응량으로 추출한다")
+    void extractsCommentCount() {
+        List<QuasarzoneDealItem> items = parser.parse(fixtureHtml);
+
+        assertThat(items.get(0).commentCount()).isNull();
+        assertThat(items.get(1).commentCount()).isEqualTo(1);
+        assertThat(items.get(7).commentCount()).isEqualTo(18);
+    }
+
+    @Test
     @DisplayName("블라인드 처리된 글은 건너뛴다 (제목 span 없이 잠금 문구만 있음)")
     void skipsBlindedPosts() {
         // 라이브에서 관찰한 블라인드 글 마크업 축약본

@@ -48,7 +48,7 @@ public class DealUpsertSupport {
         DealStatus status = collected.ended() ? DealStatus.EXPIRED : DealStatus.ACTIVE;
         return dealRepository.findBySourceIdAndExternalId(source.getId(), collected.externalId())
                 .map(existing -> {
-                    existing.updateFromRecollection(collected.price(), status);
+                    existing.updateFromRecollection(collected.price(), collected.commentCount(), status);
                     return false;
                 })
                 .orElseGet(() -> {
@@ -67,6 +67,7 @@ public class DealUpsertSupport {
                 null,
                 DEFAULT_CURRENCY,
                 collected.category(),
+                collected.commentCount(),
                 collected.thumbnailUrl(),
                 collected.url(),
                 collected.externalId(),

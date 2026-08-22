@@ -17,6 +17,7 @@ public class RuliwebListParser {
     private static final String ENDED_BADGE = "[종료]";
     private static final Pattern READ_ID = Pattern.compile("/read/(\\d+)");
     private static final Pattern STORE_PREFIX = Pattern.compile("^\\[([^\\]]+)\\]\\s*(.*)$");
+    private static final Pattern COMMENT_COUNT = Pattern.compile("\\d+");
     /**
      * 제목 끝의 가격 관례. 작성자마다 표기가 달라 <b>끝에 오는 명확한 형태만</b> 인정한다.
      * 예: "... / 730900원", "... 727,725원", "... / 648000"
@@ -58,6 +59,7 @@ public class RuliwebListParser {
                 parseTitle(rawTitle),
                 parsePrice(rawTitle),
                 row.select("td.divsn").text().trim(),
+                parseCommentCount(row.selectFirst("td.subject .num_reply")),
                 row.select("td.subject").text().contains(ENDED_BADGE),
                 row.select("td.time").text().trim()
         );
@@ -89,5 +91,13 @@ public class RuliwebListParser {
     private Long toAmount(String digits) {
         String normalized = digits.replace(",", "");
         return normalized.isEmpty() ? null : Long.parseLong(normalized);
+    }
+
+    private Integer parseCommentCount(Element count) {
+        if (count == null) {
+            return null;
+        }
+        Matcher matcher = COMMENT_COUNT.matcher(count.text());
+        return matcher.find() ? Integer.valueOf(matcher.group()) : null;
     }
 }

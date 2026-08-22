@@ -2,7 +2,7 @@
 
 > PickDeal — REST API 초안 및 공통 규약
 > 본 문서는 MVP 범위(`docs/01` 3장)에 대응한다. 확장 API는 별도 표기한다.
-> 최초 작성: 2026-05-20 · 현재 상태 확인: 2026-07-11
+> 최초 작성: 2026-05-20 · 현재 상태 확인: 2026-08-21
 > MVP 표의 API는 현재 모두 구현돼 있다. 3차 API는 방향만 기록하며 아직 구현하지 않는다.
 
 ---
@@ -120,6 +120,7 @@ GET /api/v1/deals
       "discountRate": 31,
       "currency": "KRW",
       "category": "전자제품",
+      "commentCount": 18,
       "thumbnailUrl": "https://.../thumb.jpg",
       "sourceId": 3,
       "sourceName": "샘플커뮤니티",
@@ -133,6 +134,7 @@ GET /api/v1/deals
 ```
 
 > 목록 응답은 카드 렌더링에 필요한 요약 필드만 포함한다(본문/원문 링크 등은 상세에서 제공).
+> `commentCount`는 해당 출처의 원문 게시글에서 마지막으로 확인한 댓글 수다. 출처가 제공하지 않거나 확인할 수 없으면 `null`이며, 여러 출처의 값을 합산하거나 긍정 반응으로 해석하지 않는다.
 
 ### 2.2 카테고리 목록 조회
 
@@ -165,6 +167,7 @@ GET /api/v1/deals/{id}
     "discountRate": 31,
     "currency": "KRW",
     "category": "전자제품",
+    "commentCount": 18,
     "thumbnailUrl": "https://.../thumb.jpg",
     "originalUrl": "https://source.example.com/deal/abc",
     "sourceId": 3,

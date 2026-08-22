@@ -82,11 +82,30 @@ class DealServiceTest {
                 .containsExactlyInAnyOrder("ACTIVE", "EXPIRED", "SOLD_OUT");
     }
 
+    @Test
+    @DisplayName("목록과 상세 응답은 출처 게시글의 댓글 수를 그대로 제공한다")
+    void responsesExposeSourcePostCommentCount() {
+        keywordRepository.deleteAll();
+        Source source = sourceRepository.save(new Source("댓글테스트출처", "https://comments.example.com", "comments-test", true));
+        Deal saved = saveDeal(source, "comments-1", "기타", DealStatus.ACTIVE, 7);
+
+        DealSummaryResponse summary = dealService
+                .findDeals(0, 20, "latest", List.of(source.getId()), null, null)
+                .items().get(0);
+
+        assertThat(summary.commentCount()).isEqualTo(7);
+        assertThat(dealService.findDeal(saved.getId()).commentCount()).isEqualTo(7);
+    }
+
     private void saveDeal(Source source, String externalId, String category, DealStatus status) {
+        saveDeal(source, externalId, category, status, null);
+    }
+
+    private Deal saveDeal(Source source, String externalId, String category, DealStatus status, Integer commentCount) {
         OffsetDateTime now = OffsetDateTime.now();
-        dealRepository.save(new Deal(
+        return dealRepository.save(new Deal(
                 source, "테스트 딜 " + externalId, null, 1000L, null, null, "KRW",
-                category, null, "https://cat.example.com/" + externalId, externalId,
+                category, commentCount, null, "https://cat.example.com/" + externalId, externalId,
                 null, status, now, now
         ));
     }
