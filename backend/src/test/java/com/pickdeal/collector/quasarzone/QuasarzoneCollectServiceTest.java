@@ -39,7 +39,7 @@ class QuasarzoneCollectServiceTest {
     @Test
     @DisplayName("목록을 수집하면 출처를 등록하고 딜을 저장한다")
     void collectSavesDealsWithSource() {
-        given(client.fetchListHtml()).willReturn(readResource("/fixtures/quasarzone/saleinfo-list.html"));
+        given(client.fetchListHtml(1)).willReturn(readResource("/fixtures/quasarzone/saleinfo-list.html"));
 
         int saved = collectService.collect();
 
@@ -70,7 +70,7 @@ class QuasarzoneCollectServiceTest {
     @Test
     @DisplayName("같은 목록을 다시 수집해도 딜이 중복 저장되지 않는다")
     void recollectDoesNotDuplicate() {
-        given(client.fetchListHtml()).willReturn(readResource("/fixtures/quasarzone/saleinfo-list.html"));
+        given(client.fetchListHtml(1)).willReturn(readResource("/fixtures/quasarzone/saleinfo-list.html"));
 
         int firstRun = collectService.collect();
         int secondRun = collectService.collect();
@@ -87,7 +87,7 @@ class QuasarzoneCollectServiceTest {
     @Test
     @DisplayName("재수집에서 가격·카테고리·댓글 수·상태가 바뀌면 기존 행이 갱신된다")
     void recollectUpdatesChangedDeal() {
-        given(client.fetchListHtml())
+        given(client.fetchListHtml(1))
                 .willReturn(singleItemHtml("9999901", "진행중", "￦ 10,000 (KRW)", "임시분류", 2))
                 .willReturn(singleItemHtml("9999901", "종료", "￦ 8,000 (KRW)", "게임S/W", 9));
 

@@ -3,12 +3,14 @@ package com.pickdeal.collector.quasarzone;
 import com.pickdeal.collector.support.CategoryNormalizer;
 import com.pickdeal.collector.support.CollectedDeal;
 import com.pickdeal.collector.support.DealUpsertSupport;
+import com.pickdeal.collector.support.PagedCollectionSupport;
 import com.pickdeal.collector.support.SourceCollector;
 import com.pickdeal.source.domain.Source;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
  * 퀘이사존 핫딜 수집: fetch(client) → parse(parser) → normalize(여기) → persist(support).
  */
 @Service
+@ConditionalOnProperty(
+        prefix = "pickdeal.collector.sources.quasarzone",
+        name = "enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 @RequiredArgsConstructor
 public class QuasarzoneCollectService implements SourceCollector {
 
@@ -26,6 +34,7 @@ public class QuasarzoneCollectService implements SourceCollector {
 
     private final QuasarzoneClient client;
     private final DealUpsertSupport upsertSupport;
+    private final QuasarzoneCollectorProperties properties;
 
     private final QuasarzoneListParser parser = new QuasarzoneListParser();
     private final QuasarzonePostedAtResolver postedAtResolver = new QuasarzonePostedAtResolver();
@@ -40,10 +49,13 @@ public class QuasarzoneCollectService implements SourceCollector {
     public int collect() {
         OffsetDateTime now = OffsetDateTime.now(KST);
         Source source = upsertSupport.findOrRegisterSource(SOURCE_CODE, SOURCE_NAME, SOURCE_BASE_URL);
-
-        List<CollectedDeal> deals = parser.parse(client.fetchListHtml()).stream()
-                .map(item -> normalize(item, now))
-                .toList();
+        List<CollectedDeal> deals = PagedCollectionSupport.collect(
+                properties.maxPages(),
+                properties.maxItems(),
+                client::fetchListHtml,
+                parser::parse,
+                item -> normalize(item, now)
+        );
 
         return upsertSupport.upsertAll(source, deals, now);
     }
