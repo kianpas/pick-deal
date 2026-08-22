@@ -18,7 +18,7 @@ class QuasarzoneClientTest {
         HtmlFetcher fetcher = Mockito.mock(HtmlFetcher.class);
         Duration timeout = Duration.ofSeconds(7);
         QuasarzoneCollectorProperties properties =
-                new QuasarzoneCollectorProperties(true, timeout, 2, 40);
+                new QuasarzoneCollectorProperties(true, timeout, 2, 40, 3, 150);
         QuasarzoneClient client = new QuasarzoneClient(fetcher, properties);
         given(fetcher.fetch("https://quasarzone.com/bbs/qb_saleinfo?page=2", timeout))
                 .willReturn("<html>page 2</html>");

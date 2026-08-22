@@ -18,7 +18,7 @@ class RuliwebClientTest {
         HtmlFetcher fetcher = Mockito.mock(HtmlFetcher.class);
         Duration timeout = Duration.ofSeconds(12);
         RuliwebCollectorProperties properties =
-                new RuliwebCollectorProperties(true, timeout, 3, 30);
+                new RuliwebCollectorProperties(true, timeout, 3, 30, 3, 150);
         RuliwebClient client = new RuliwebClient(fetcher, properties);
         given(fetcher.fetch("https://bbs.ruliweb.com/market/board/1020", timeout))
                 .willReturn("<html>page 1</html>");

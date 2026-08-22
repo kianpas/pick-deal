@@ -15,6 +15,8 @@ public record QuasarzoneCollectorProperties(
         @DefaultValue("true") boolean enabled,
         @DefaultValue("10s") @DurationMin(millis = 1) @DurationMax(millis = Integer.MAX_VALUE) Duration timeout,
         @DefaultValue("1") @Min(1) int maxPages,
-        @DefaultValue("50") @Min(1) int maxItems
+        @DefaultValue("50") @Min(1) int maxItems,
+        @DefaultValue("3") @Min(1) int bootstrapMaxPages,
+        @DefaultValue("150") @Min(1) int bootstrapMaxItems
 ) {
 }
