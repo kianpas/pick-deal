@@ -95,6 +95,23 @@ class RuliwebCollectServiceTest {
                 assertThat(deal.getSource().getCode()).isEqualTo("ruliweb"));
     }
 
+    @Test
+    @DisplayName("확실한 카테고리 별칭만 PickDeal 대표 문자열로 저장한다")
+    void normalizesKnownCategoryAlias() {
+        given(client.fetchListHtml()).willReturn(readResource("/fixtures/ruliweb/hotdeal-list.html"));
+
+        collectService.collect();
+
+        Source source = sourceRepository.findByCode("ruliweb").orElseThrow();
+        List<String> categories = dealRepository.findAll().stream()
+                .filter(deal -> deal.getSource().getId().equals(source.getId()))
+                .map(Deal::getCategory)
+                .distinct()
+                .toList();
+        assertThat(categories).contains("게임/SW", "게임H/W", "상품권");
+        assertThat(categories).doesNotContain("게임S/W");
+    }
+
     private static String readResource(String path) {
         try (InputStream in = RuliwebCollectServiceTest.class.getResourceAsStream(path)) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);

@@ -1,5 +1,6 @@
 package com.pickdeal.collector.quasarzone;
 
+import com.pickdeal.collector.support.CategoryNormalizer;
 import com.pickdeal.collector.support.CollectedDeal;
 import com.pickdeal.collector.support.DealUpsertSupport;
 import com.pickdeal.collector.support.SourceCollector;
@@ -54,7 +55,7 @@ public class QuasarzoneCollectService implements SourceCollector {
                 item.storeName(),
                 item.title(),
                 item.price(),
-                item.category(),
+                CategoryNormalizer.normalize(item.category()),
                 item.commentCount(),
                 item.thumbnailUrl(),
                 item.ended(),

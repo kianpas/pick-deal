@@ -1,5 +1,6 @@
 package com.pickdeal.collector.ruliweb;
 
+import com.pickdeal.collector.support.CategoryNormalizer;
 import com.pickdeal.collector.support.CollectedDeal;
 import com.pickdeal.collector.support.DealUpsertSupport;
 import com.pickdeal.collector.support.SourceCollector;
@@ -54,7 +55,7 @@ public class RuliwebCollectService implements SourceCollector {
                 item.storeName(),
                 item.title(),
                 item.price(),
-                item.category(),
+                CategoryNormalizer.normalize(item.category()),
                 item.commentCount(),
                 null, // 루리웹 목록에는 썸네일이 없다
                 item.ended(),
