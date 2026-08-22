@@ -144,9 +144,10 @@ public class Deal extends BaseTimeEntity {
         this.collectedAt = collectedAt;
     }
 
-    /** 재수집 시 변동 가능한 값(가격, 댓글 수, 진행 상태)만 갱신한다. */
-    public void updateFromRecollection(Long price, Integer commentCount, DealStatus status) {
+    /** 재수집 시 변동 가능한 값(가격, 카테고리, 댓글 수, 진행 상태)만 갱신한다. */
+    public void updateFromRecollection(Long price, String category, Integer commentCount, DealStatus status) {
         this.price = price;
+        this.category = category;
         this.commentCount = commentCount;
         this.status = status;
     }

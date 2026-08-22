@@ -85,11 +85,11 @@ class QuasarzoneCollectServiceTest {
     }
 
     @Test
-    @DisplayName("재수집에서 가격이 바뀌거나 종료된 딜은 기존 행이 갱신된다")
+    @DisplayName("재수집에서 가격·카테고리·댓글 수·상태가 바뀌면 기존 행이 갱신된다")
     void recollectUpdatesChangedDeal() {
         given(client.fetchListHtml())
-                .willReturn(singleItemHtml("9999901", "진행중", "￦ 10,000 (KRW)", 2))
-                .willReturn(singleItemHtml("9999901", "종료", "￦ 8,000 (KRW)", 9));
+                .willReturn(singleItemHtml("9999901", "진행중", "￦ 10,000 (KRW)", "임시분류", 2))
+                .willReturn(singleItemHtml("9999901", "종료", "￦ 8,000 (KRW)", "게임S/W", 9));
 
         collectService.collect();
         int secondRun = collectService.collect();
@@ -99,12 +99,14 @@ class QuasarzoneCollectServiceTest {
         Source source = sourceRepository.findByCode("quasarzone").orElseThrow();
         Deal updated = dealRepository.findBySourceIdAndExternalId(source.getId(), "9999901").orElseThrow();
         assertThat(updated.getPrice()).isEqualTo(8000L);
+        assertThat(updated.getCategory()).isEqualTo("게임/SW");
         assertThat(updated.getCommentCount()).isEqualTo(9);
         assertThat(updated.getStatus()).isEqualTo(DealStatus.EXPIRED);
     }
 
     /** 실제 목록 마크업을 축약한 딜 1건짜리 목록 HTML. */
-    private static String singleItemHtml(String externalId, String label, String priceText, int commentCount) {
+    private static String singleItemHtml(
+            String externalId, String label, String priceText, String category, int commentCount) {
         return """
                 <div class="market-info-list">
                   <div class="market-info-list-cont">
@@ -117,14 +119,14 @@ class QuasarzoneCollectServiceTest {
                     </p>
                     <div class="market-info-sub">
                       <p>
-                        <span class="category">기타</span>
+                        <span class="category">%s</span>
                         <span>가격 <span class="text-orange">%s</span></span>
                       </p>
                       <p><span class="date">10분 전</span></p>
                     </div>
                   </div>
                 </div>
-                """.formatted(label, externalId, commentCount, priceText);
+                """.formatted(label, externalId, commentCount, category, priceText);
     }
 
     private static String readResource(String path) {

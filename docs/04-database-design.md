@@ -1,7 +1,7 @@
 # 04. 데이터베이스 설계 (Database Design)
 
 > PickDeal — DB 테이블 초안 / 인덱스·제약 / PostgreSQL·MySQL 선택 기준 / 시드 전략
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-21
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-22
 > 표준 DBMS: **PostgreSQL**(개발·운영 공통, MySQL 선택 시 5장 참고)
 > **현재 상태**: 애플리케이션은 로컬 PostgreSQL `pickdeal` DB와 JPA `ddl-auto: update`로 기동한다. H2 in-memory(PostgreSQL 호환 모드)는 테스트에서만 `create-drop`으로 사용한다. 아래 테이블/제약/인덱스는 PostgreSQL 기준이다.
 
@@ -42,7 +42,7 @@
 | `original_price` | bigint | null | 정가 |
 | `discount_rate` | int | null | 할인율(%) — 저장 또는 계산값. 정렬용으로 컬럼 유지 권장 |
 | `currency` | varchar(8) | not null default 'KRW' | 통화 코드 |
-| `category` | varchar(50) | null | 카테고리 |
+| `category` | varchar(50) | null | 정확한 별칭만 최소 정규화한 카테고리(미등록 값은 출처 원문 유지) |
 | `comment_count` | int | null | 해당 출처 원문 게시글에서 마지막으로 확인한 댓글 수 |
 | `thumbnail_url` | varchar(1000) | null | 썸네일 URL |
 | `original_url` | varchar(1000) | not null | 원본 링크 |
