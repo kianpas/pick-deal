@@ -39,7 +39,7 @@ class RuliwebCollectServiceTest {
     @Test
     @DisplayName("목록을 수집하면 출처를 등록하고 딜을 저장한다")
     void collectSavesDealsWithSource() {
-        given(client.fetchListHtml()).willReturn(readResource("/fixtures/ruliweb/hotdeal-list.html"));
+        given(client.fetchListHtml(1)).willReturn(readResource("/fixtures/ruliweb/hotdeal-list.html"));
 
         int saved = collectService.collect();
 
@@ -65,7 +65,7 @@ class RuliwebCollectServiceTest {
     @Test
     @DisplayName("같은 목록을 다시 수집해도 딜이 중복 저장되지 않는다")
     void recollectDoesNotDuplicate() {
-        given(client.fetchListHtml()).willReturn(readResource("/fixtures/ruliweb/hotdeal-list.html"));
+        given(client.fetchListHtml(1)).willReturn(readResource("/fixtures/ruliweb/hotdeal-list.html"));
 
         int firstRun = collectService.collect();
         int secondRun = collectService.collect();
@@ -82,7 +82,7 @@ class RuliwebCollectServiceTest {
     @Test
     @DisplayName("퀘이사존 딜과 같은 external_id여도 출처가 다르면 별개로 저장된다")
     void sameExternalIdAcrossSourcesIsSeparate() {
-        given(client.fetchListHtml()).willReturn(readResource("/fixtures/ruliweb/hotdeal-list.html"));
+        given(client.fetchListHtml(1)).willReturn(readResource("/fixtures/ruliweb/hotdeal-list.html"));
         collectService.collect();
 
         Source ruliweb = sourceRepository.findByCode("ruliweb").orElseThrow();
@@ -98,7 +98,7 @@ class RuliwebCollectServiceTest {
     @Test
     @DisplayName("확실한 카테고리 별칭만 PickDeal 대표 문자열로 저장한다")
     void normalizesKnownCategoryAlias() {
-        given(client.fetchListHtml()).willReturn(readResource("/fixtures/ruliweb/hotdeal-list.html"));
+        given(client.fetchListHtml(1)).willReturn(readResource("/fixtures/ruliweb/hotdeal-list.html"));
 
         collectService.collect();
 

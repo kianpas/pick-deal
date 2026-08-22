@@ -2,6 +2,7 @@ package com.pickdeal.collector.support;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.time.Duration;
 import org.jsoup.Jsoup;
 import org.springframework.stereotype.Component;
 
@@ -16,14 +17,12 @@ public class HtmlFetcher {
     private static final String BROWSER_USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                     + "Chrome/126.0.0.0 Safari/537.36";
-    private static final int TIMEOUT_MS = 10_000;
-
-    public String fetch(String url) {
+    public String fetch(String url, Duration timeout) {
         try {
             return Jsoup.connect(url)
                     .userAgent(BROWSER_USER_AGENT)
                     .header("Accept-Language", "ko-KR,ko;q=0.9")
-                    .timeout(TIMEOUT_MS)
+                    .timeout(Math.toIntExact(timeout.toMillis()))
                     .get()
                     .outerHtml();
         } catch (IOException e) {

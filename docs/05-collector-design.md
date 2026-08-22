@@ -13,6 +13,7 @@
 | 복수 출처 수집(crawl/fetch), 파싱·저장 | 2차 진입 | ✅ |
 | 목록 HTML의 출처별 댓글 수 수집·표시 | 2차 진입 | ✅ |
 | 카테고리 정확 일치 별칭 최소 정규화 | 2차 진입 | ✅ |
+| 출처별 runtime limit(`enabled`, timeout, 페이지·항목 상한) | 2차 진입 | ✅ |
 | 출처 내 중복 방지(`source_id + external_id`) | 2차 진입 | ✅ |
 | 교차 출처 중복 제거(dedup) | 이후 | ❌ (`title_norm_hash` 자리만 대비) |
 | Redis / worker 분리 / 알림 | 2차 | ❌ |
@@ -48,7 +49,36 @@
 
 카테고리는 Parser가 원문을 그대로 추출하고 `CategoryNormalizer`가 normalize 단계에서 정확히 등록된 별칭만 대표 문자열로 바꾼다. 실제 별칭 목록은 코드와 테스트가 기준이며, 미등록 값은 원문을 유지한다. 단어 포함·유사도 매칭이나 완성형 통합 분류 체계는 도입하지 않는다. 재수집된 기존 Deal도 정규화된 최신 카테고리로 갱신한다.
 
-**남은 경계**: 카테고리의 전체 통합 분류 체계는 실제 필요가 확인될 때 다시 설계한다. 교차 출처 dedup은 `title_norm_hash`를 후보 키로 검토하되 아직 판정 규칙을 확정하지 않는다. 수집 부하가 조회 API에 영향을 줄 때만 worker 분리와 Redis를 검토한다. AI 요약·구매 판단·알림은 착수 시 별도 설계한다.
+### 2.3 출처별 runtime limit
+
+`application.yml`의 `pickdeal.collector.sources.{source-code}` 아래에서 출처별 요청·처리 상한을 설정한다. 각 출처 패키지의 `*CollectorProperties`가 자기 설정을 소유하므로 새 출처 추가 시 기존 출처 설정 클래스를 수정하지 않는다.
+
+```yaml
+pickdeal:
+  collector:
+    scheduling:
+      enabled: true
+    sources:
+      quasarzone:
+        enabled: true
+        timeout: 10s
+        max-pages: 1
+        max-items: 50
+```
+
+| 설정 | 의미 | 현재 기본값 |
+| --- | --- | --- |
+| `scheduling.enabled` | 모든 자동 수집 스케줄 실행 여부. 테스트에서는 `false` | `true` |
+| `sources.{code}.enabled` | 해당 출처 수집기 등록 여부. `false`면 HTTP 요청하지 않음 | `true` |
+| `timeout` | 목록 HTTP 요청 한 건의 응답 대기 상한 | `10s` |
+| `max-pages` | 실행 한 번에 조회할 목록 페이지 수 상한 | `1` |
+| `max-items` | 실행 한 번에 정규화·upsert할 고유 게시글 수 상한 | `50` |
+
+페이지는 1부터 순서대로 요청하며 `max-items`에 도달하면 남은 페이지를 요청하지 않는다. 한 실행 안에서 페이지 사이에 같은 `externalId`가 반복되면 한 번만 처리한다. `timeout`, `max-pages`, `max-items`는 양수여야 하며 잘못된 설정은 애플리케이션 기동 시 거부한다. 기본 `max-pages: 1`은 runtime limit 도입 전의 외부 요청량을 유지한다.
+
+스케줄은 전체 수집 완료 시점부터 20분 뒤 다시 실행하는 현재 정책을 유지한다. 출처별 interval은 실제로 서로 다른 주기가 필요해질 때 검토한다. 최초 수집 여부 판별과 `bootstrap-max-pages`·`bootstrap-max-items`는 아직 구현하지 않았으며 Bootstrap/Incremental 작업에서 함께 추가한다.
+
+**남은 경계**: Bootstrap/Incremental 구분과 초기 수집 한도는 다음 수집기 작업에서 구현한다. 카테고리의 전체 통합 분류 체계는 실제 필요가 확인될 때 다시 설계한다. 교차 출처 dedup은 `title_norm_hash`를 후보 키로 검토하되 아직 판정 규칙을 확정하지 않는다. 수집 부하가 조회 API에 영향을 줄 때만 worker 분리와 Redis를 검토한다. AI 요약·구매 판단·알림은 착수 시 별도 설계한다.
 
 새 출처를 붙이기 전 **robots.txt를 확인한다** — FMKorea는 `User-agent: *`에 `Disallow: /`라 수집 대상이 아니다.
 

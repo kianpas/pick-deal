@@ -21,3 +21,19 @@ server:
 logging:
   level:
     org.hibernate.SQL: debug
+
+pickdeal:
+  collector:
+    scheduling:
+      enabled: true
+    sources:
+      quasarzone:
+        enabled: true
+        timeout: 10s
+        max-pages: 1
+        max-items: 50
+      ruliweb:
+        enabled: true
+        timeout: 10s
+        max-pages: 1
+        max-items: 50
