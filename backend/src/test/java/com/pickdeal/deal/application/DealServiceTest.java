@@ -97,6 +97,33 @@ class DealServiceTest {
         assertThat(dealService.findDeal(saved.getId()).commentCount()).isEqualTo(7);
     }
 
+    @Test
+    @DisplayName("목록은 판매몰 이름을, 상세는 원문과 상품 URL을 함께 제공한다")
+    void responsesExposeShopAndBothLinks() {
+        keywordRepository.deleteAll();
+        Source source = sourceRepository.save(
+                new Source("링크테스트출처", "https://source.example.com", "links-test", true));
+        OffsetDateTime now = OffsetDateTime.now();
+        Deal saved = dealRepository.save(new Deal(
+                source, "[테스트몰] 링크 테스트 딜", null, 1000L, null, null, "KRW",
+                "기타", "테스트몰", null, null,
+                "https://source.example.com/deals/1", "https://shop.example.com/products/1",
+                "links-1", null, DealStatus.ACTIVE, now, now
+        ));
+
+        DealSummaryResponse summary = dealService
+                .findDeals(0, 20, "latest", List.of(source.getId()), null, null)
+                .items().get(0);
+
+        assertThat(summary.shopName()).isEqualTo("테스트몰");
+        assertThat(dealService.findDeal(saved.getId()))
+                .satisfies(detail -> {
+                    assertThat(detail.shopName()).isEqualTo("테스트몰");
+                    assertThat(detail.originalUrl()).isEqualTo("https://source.example.com/deals/1");
+                    assertThat(detail.productUrl()).isEqualTo("https://shop.example.com/products/1");
+                });
+    }
+
     private void saveDeal(Source source, String externalId, String category, DealStatus status) {
         saveDeal(source, externalId, category, status, null);
     }
@@ -105,7 +132,7 @@ class DealServiceTest {
         OffsetDateTime now = OffsetDateTime.now();
         return dealRepository.save(new Deal(
                 source, "테스트 딜 " + externalId, null, 1000L, null, null, "KRW",
-                category, commentCount, null, "https://cat.example.com/" + externalId, externalId,
+                category, null, commentCount, null, "https://cat.example.com/" + externalId, null, externalId,
                 null, status, now, now
         ));
     }

@@ -3,6 +3,7 @@ package com.pickdeal.deal.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
 
@@ -27,12 +28,19 @@ public record CreateDealRequest(
         @Size(max = 50)
         String category,
 
+        @Size(max = 100)
+        String shopName,
+
         @Size(max = 1000)
         String thumbnailUrl,
 
         @NotBlank
         @Size(max = 1000)
         String originalUrl,
+
+        @Size(max = 2000)
+        @Pattern(regexp = "^https?://.*", message = "productUrl must use http or https")
+        String productUrl,
 
         @NotBlank
         @Size(max = 200)

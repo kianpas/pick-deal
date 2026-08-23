@@ -2,7 +2,9 @@ package com.pickdeal.collector.ruliweb;
 
 import com.pickdeal.collector.support.CategoryNormalizer;
 import com.pickdeal.collector.support.CollectedDeal;
+import com.pickdeal.collector.support.CollectedProductInfo;
 import com.pickdeal.collector.support.DealUpsertSupport;
+import com.pickdeal.collector.support.NewDealDetailSupport;
 import com.pickdeal.collector.support.PagedCollectionSupport;
 import com.pickdeal.collector.support.SourceCollector;
 import com.pickdeal.source.domain.Source;
@@ -34,9 +36,11 @@ public class RuliwebCollectService implements SourceCollector {
 
     private final RuliwebClient client;
     private final DealUpsertSupport upsertSupport;
+    private final NewDealDetailSupport detailSupport;
     private final RuliwebCollectorProperties properties;
 
     private final RuliwebListParser parser = new RuliwebListParser();
+    private final RuliwebDetailParser detailParser = new RuliwebDetailParser();
     private final RuliwebPostedAtResolver postedAtResolver = new RuliwebPostedAtResolver();
 
     @Override
@@ -59,8 +63,15 @@ public class RuliwebCollectService implements SourceCollector {
                 parser::parse,
                 item -> normalize(item, now)
         );
+        deals = detailSupport.enrich(
+                source, deals, properties.maxDetailRequests(), this::enrichProductInfo);
 
         return upsertSupport.upsertAll(source, deals, now);
+    }
+
+    private CollectedDeal enrichProductInfo(CollectedDeal deal) {
+        CollectedProductInfo productInfo = detailParser.parse(client.fetchDetailHtml(deal.url()));
+        return deal.withProductInfo(productInfo.shopName(), productInfo.productUrl());
     }
 
     private CollectedDeal normalize(RuliwebDealItem item, OffsetDateTime now) {

@@ -43,9 +43,11 @@
 | `discount_rate` | int | null | 할인율(%) — 저장 또는 계산값. 정렬용으로 컬럼 유지 권장 |
 | `currency` | varchar(8) | not null default 'KRW' | 통화 코드 |
 | `category` | varchar(50) | null | 정확한 별칭만 최소 정규화한 카테고리(미등록 값은 출처 원문 유지) |
+| `shop_name` | varchar(100) | null | 출처 게시글이 표시한 판매몰 이름 원문(아직 표준화하지 않음) |
 | `comment_count` | int | null | 해당 출처 원문 게시글에서 마지막으로 확인한 댓글 수 |
 | `thumbnail_url` | varchar(1000) | null | 썸네일 URL |
-| `original_url` | varchar(1000) | not null | 원본 링크 |
+| `original_url` | varchar(1000) | not null | 수집 출처의 커뮤니티 원문 게시글 링크 |
+| `product_url` | varchar(2000) | null | 원문이 전용 영역에서 제공한 HTTP(S) 상품·행사 링크 |
 | `title_norm_hash` | varchar(64) | null | 정규화 제목 해시(2차 dedup용) |
 | `status` | varchar(20) | not null default 'ACTIVE' | `ACTIVE` \| `EXPIRED` \| `SOLD_OUT` |
 | `posted_at` | timestamptz | not null | 출처 게시 시각 |
@@ -61,6 +63,8 @@
 - `INDEX (status)` — 활성 딜 필터.
 - (2차) `INDEX (title_norm_hash)` — 교차 출처 중복 후보 탐색.
 - 제목 포함 검색 최적화는 데이터량 증가 시 PostgreSQL `pg_trgm` GIN 인덱스 도입 고려(MVP는 불필요).
+
+`shop_name`과 `product_url`은 수집 시 관측한 값을 그대로 보존한다. 현재는 별도 Shop 엔티티, 판매몰 표준 코드, canonical 상품 URL, 판매몰 상품 ID를 두지 않는다. 실제 데이터 분포가 쌓인 뒤 교차 출처 dedup에 필요할 때 추가한다.
 
 ### 2.3 `source_visibility` — 출처 표시/숨김 설정 (사용자별)
 

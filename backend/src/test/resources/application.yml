@@ -24,6 +24,8 @@ pickdeal:
       quasarzone:
         bootstrap-max-pages: 1
         bootstrap-max-items: 50
+        max-detail-requests: 0
       ruliweb:
         bootstrap-max-pages: 1
         bootstrap-max-items: 50
+        max-detail-requests: 0
