@@ -2,6 +2,7 @@ package com.pickdeal.collector.quasarzone;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -16,8 +17,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest(properties = {
-        "pickdeal.collector.sources.quasarzone.max-pages=3",
-        "pickdeal.collector.sources.quasarzone.max-items=2"
+        "pickdeal.collector.sources.quasarzone.max-pages=1",
+        "pickdeal.collector.sources.quasarzone.max-items=1",
+        "pickdeal.collector.sources.quasarzone.bootstrap-max-pages=3",
+        "pickdeal.collector.sources.quasarzone.bootstrap-max-items=2"
 })
 @Transactional
 class QuasarzoneCollectLimitTest {
@@ -35,8 +38,8 @@ class QuasarzoneCollectLimitTest {
     private QuasarzoneClient client;
 
     @Test
-    @DisplayName("maxItems에 도달하면 남은 페이지를 요청하지 않는다")
-    void stopsRequestingPagesAtMaxItems() {
+    @DisplayName("최초 수집은 Bootstrap 한도를 적용하고 남은 페이지를 요청하지 않는다")
+    void bootstrapUsesBootstrapLimits() {
         given(client.fetchListHtml(1)).willReturn(singleItemHtml("9900001"));
         given(client.fetchListHtml(2)).willReturn(
                 singleItemHtml("9900001") + singleItemHtml("9900002") + singleItemHtml("9900003"));
@@ -50,6 +53,42 @@ class QuasarzoneCollectLimitTest {
         verify(client).fetchListHtml(1);
         verify(client).fetchListHtml(2);
         verify(client, never()).fetchListHtml(3);
+    }
+
+    @Test
+    @DisplayName("기존 딜이 있으면 다음 실행부터 Incremental 한도를 적용한다")
+    void nextRunUsesIncrementalLimits() {
+        given(client.fetchListHtml(1)).willReturn(
+                singleItemHtml("9900011") + singleItemHtml("9900012"));
+        collectService.collect();
+        clearInvocations(client);
+        given(client.fetchListHtml(1)).willReturn(
+                singleItemHtml("9900021") + singleItemHtml("9900022"));
+
+        int saved = collectService.collect();
+
+        assertThat(saved).isEqualTo(1);
+        Source source = sourceRepository.findByCode("quasarzone").orElseThrow();
+        assertThat(dealRepository.findAll()).filteredOn(
+                deal -> deal.getSource().getId().equals(source.getId())).hasSize(3);
+        verify(client).fetchListHtml(1);
+        verify(client, never()).fetchListHtml(2);
+    }
+
+    @Test
+    @DisplayName("수집 결과가 없으면 다음 실행에서도 Bootstrap으로 재시도한다")
+    void emptyCollectionRetriesBootstrap() {
+        given(client.fetchListHtml(1)).willReturn("");
+        given(client.fetchListHtml(2)).willReturn("");
+        given(client.fetchListHtml(3)).willReturn("");
+        assertThat(collectService.collect()).isZero();
+        clearInvocations(client);
+
+        assertThat(collectService.collect()).isZero();
+
+        verify(client).fetchListHtml(1);
+        verify(client).fetchListHtml(2);
+        verify(client).fetchListHtml(3);
     }
 
     private static String singleItemHtml(String externalId) {

@@ -32,8 +32,12 @@ pickdeal:
         timeout: 10s
         max-pages: 1
         max-items: 50
+        bootstrap-max-pages: 3
+        bootstrap-max-items: 150
       ruliweb:
         enabled: true
         timeout: 10s
         max-pages: 1
         max-items: 50
+        bootstrap-max-pages: 3
+        bootstrap-max-items: 150

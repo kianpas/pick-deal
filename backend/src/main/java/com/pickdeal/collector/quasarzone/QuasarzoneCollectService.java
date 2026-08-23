@@ -49,9 +49,12 @@ public class QuasarzoneCollectService implements SourceCollector {
     public int collect() {
         OffsetDateTime now = OffsetDateTime.now(KST);
         Source source = upsertSupport.findOrRegisterSource(SOURCE_CODE, SOURCE_NAME, SOURCE_BASE_URL);
+        boolean bootstrap = !upsertSupport.hasCollectedDeals(source);
+        int maxPages = bootstrap ? properties.bootstrapMaxPages() : properties.maxPages();
+        int maxItems = bootstrap ? properties.bootstrapMaxItems() : properties.maxItems();
         List<CollectedDeal> deals = PagedCollectionSupport.collect(
-                properties.maxPages(),
-                properties.maxItems(),
+                maxPages,
+                maxItems,
                 client::fetchListHtml,
                 parser::parse,
                 item -> normalize(item, now)

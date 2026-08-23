@@ -19,3 +19,11 @@ pickdeal:
   collector:
     scheduling:
       enabled: false
+    # 일반 수집기 통합 테스트는 한 페이지 fixture만 사용한다. Bootstrap 범위는 전용 테스트에서 검증한다.
+    sources:
+      quasarzone:
+        bootstrap-max-pages: 1
+        bootstrap-max-items: 50
+      ruliweb:
+        bootstrap-max-pages: 1
+        bootstrap-max-items: 50
