@@ -5,6 +5,7 @@ import com.pickdeal.common.error.ResourceNotFoundException;
 import com.pickdeal.common.response.PageMetaResponse;
 import com.pickdeal.deal.domain.Deal;
 import com.pickdeal.deal.domain.DealRepository;
+import com.pickdeal.deal.domain.DealMatchNormalizer;
 import com.pickdeal.deal.domain.DealStatus;
 import com.pickdeal.deal.dto.CreateDealRequest;
 import com.pickdeal.deal.dto.DealDetailResponse;
@@ -34,6 +35,7 @@ public class DealService {
     private final DealRepository dealRepository;
     private final SourceRepository sourceRepository;
     private final KeywordRepository keywordRepository;
+    private final DealGroupingService dealGroupingService;
 
     // MVP 한정: ACTIVE 딜 전체를 메모리로 올린 뒤 필터/정렬/페이지네이션한다.
     // 키워드 필터가 제목·본문 부분일치라 DB로 내리기 애매한 점을 감안한 소규모 시드 전용 구현.
@@ -98,26 +100,29 @@ public class DealService {
         }
 
         OffsetDateTime now = OffsetDateTime.now();
+        String title = request.title().trim();
+        String shopName = normalizeNullable(request.shopName());
         Deal deal = dealRepository.save(new Deal(
                 source,
-                request.title().trim(),
+                title,
                 normalizeNullable(request.description()),
                 request.price(),
                 request.originalPrice(),
                 request.discountRate(),
                 normalizeCurrency(request.currency()),
                 normalizeNullable(request.category()),
-                normalizeNullable(request.shopName()),
+                shopName,
                 null,
                 normalizeNullable(request.thumbnailUrl()),
                 request.originalUrl().trim(),
                 normalizeNullable(request.productUrl()),
                 externalId,
-                null,
+                DealMatchNormalizer.titleHash(title, shopName),
                 DealStatus.ACTIVE,
                 request.postedAt(),
                 now
         ));
+        dealGroupingService.groupIfMatched(deal);
 
         return DealDetailResponse.from(deal);
     }

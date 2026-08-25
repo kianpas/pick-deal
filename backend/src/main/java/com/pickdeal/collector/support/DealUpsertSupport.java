@@ -1,6 +1,8 @@
 package com.pickdeal.collector.support;
 
+import com.pickdeal.deal.application.DealGroupingService;
 import com.pickdeal.deal.domain.Deal;
+import com.pickdeal.deal.domain.DealMatchNormalizer;
 import com.pickdeal.deal.domain.DealRepository;
 import com.pickdeal.deal.domain.DealStatus;
 import com.pickdeal.source.domain.Source;
@@ -22,6 +24,7 @@ public class DealUpsertSupport {
 
     private final SourceRepository sourceRepository;
     private final DealRepository dealRepository;
+    private final DealGroupingService dealGroupingService;
 
     /** 출처가 없으면 등록하고 반환한다(첫 수집 시 자동 등록). */
     public Source findOrRegisterSource(String code, String name, String baseUrl) {
@@ -56,10 +59,14 @@ public class DealUpsertSupport {
                     existing.updateFromRecollection(
                             collected.price(), collected.category(), collected.storeName(),
                             collected.productUrl(), collected.commentCount(), status);
+                    existing.updateTitleNormHash(
+                            DealMatchNormalizer.titleHash(existing.getTitle(), existing.getShopName()));
+                    dealGroupingService.groupIfMatched(existing);
                     return false;
                 })
                 .orElseGet(() -> {
-                    dealRepository.save(toDeal(source, collected, status, now));
+                    Deal saved = dealRepository.save(toDeal(source, collected, status, now));
+                    dealGroupingService.groupIfMatched(saved);
                     return true;
                 });
     }
@@ -80,7 +87,7 @@ public class DealUpsertSupport {
                 collected.url(),
                 collected.productUrl(),
                 collected.externalId(),
-                null,
+                DealMatchNormalizer.titleHash(collected.rawTitle(), collected.storeName()),
                 status,
                 // 게시 시각을 해석하지 못했으면 수집 시각으로 둔다
                 collected.postedAt() != null ? collected.postedAt() : now,

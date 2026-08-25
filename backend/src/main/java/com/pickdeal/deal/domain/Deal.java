@@ -37,11 +37,14 @@ import lombok.NoArgsConstructor;
                 @Index(name = "idx_deal_posted_at", columnList = "posted_at"),
                 @Index(name = "idx_deal_discount_rate", columnList = "discount_rate"),
                 @Index(name = "idx_deal_status", columnList = "status"),
-                @Index(name = "idx_deal_title_norm_hash", columnList = "title_norm_hash")
+                @Index(name = "idx_deal_title_norm_hash", columnList = "title_norm_hash"),
+                @Index(name = "idx_deal_group_id", columnList = "group_id")
         },
         uniqueConstraints = {
                 // 같은 출처에서 같은 외부 ID의 딜은 한 번만 — 중복 수집 방지(docs/03 §2.3).
-                @UniqueConstraint(name = "uk_deal_source_external_id", columnNames = {"source_id", "external_id"})
+                @UniqueConstraint(name = "uk_deal_source_external_id", columnNames = {"source_id", "external_id"}),
+                // 한 그룹에는 출처별 대표 게시글 하나만 연결한다. group_id null 행은 서로 충돌하지 않는다.
+                @UniqueConstraint(name = "uk_deal_group_source", columnNames = {"group_id", "source_id"})
         }
 )
 public class Deal extends BaseTimeEntity {
@@ -100,9 +103,14 @@ public class Deal extends BaseTimeEntity {
     @Column(name = "external_id", nullable = false, length = 200)
     private String externalId;
 
-    /** 제목 정규화 해시 — 향후 출처 간 중복 딜 탐지용(현재 미사용). */
+    /** 제목 정규화 SHA-256 — 출처 간 동일 딜 후보 탐색용. */
     @Column(name = "title_norm_hash", length = 64)
     private String titleNormHash;
+
+    /** 같은 상품·딜로 판정된 서로 다른 출처의 원본 Deal 그룹. 판정 전에는 nullable. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id", foreignKey = @ForeignKey(name = "fk_deal_group"))
+    private DealGroup dealGroup;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
@@ -175,5 +183,16 @@ public class Deal extends BaseTimeEntity {
         }
         this.commentCount = commentCount;
         this.status = status;
+    }
+
+    public void updateTitleNormHash(String titleNormHash) {
+        this.titleNormHash = titleNormHash;
+    }
+
+    public void joinGroup(DealGroup dealGroup) {
+        if (this.dealGroup != null && this.dealGroup != dealGroup) {
+            throw new IllegalStateException("Deal is already assigned to another group");
+        }
+        this.dealGroup = dealGroup;
     }
 }
