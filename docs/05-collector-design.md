@@ -1,8 +1,8 @@
 # 05. 수집기 / 확장 방향 (Collector)
 
-> 복수 출처의 수집 파이프라인은 구현됐다. 현재 수집 출처 목록은 이 문서의 표에서만 관리한다. 교차 출처 dedup·Redis·worker 분리·AI·알림은 아직 방향만 유지한다.
+> 복수 출처 수집과 보수적인 교차 출처 DealGroup 연결이 구현됐다. 현재 수집 출처 목록과 자동 그룹 규칙은 이 문서에서 관리한다. Redis·worker 분리·AI·알림은 아직 방향만 유지한다.
 > 문서 뒤의 **부록 A**는 초기 탐색 메모다. 현재 코드와 다른 예시는 구현 지침이 아니며, 실제 필요가 생길 때 다시 설계한다.
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-23
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-25
 
 ---
 
@@ -17,7 +17,8 @@
 | 출처별 runtime limit(`enabled`, timeout, 페이지·항목 상한) | 2차 진입 | ✅ |
 | 출처별 최초(Bootstrap)·증분(Incremental) 수집 구분 | 2차 진입 | ✅ |
 | 출처 내 중복 방지(`source_id + external_id`) | 2차 진입 | ✅ |
-| 교차 출처 중복 제거(dedup) | 이후 | ❌ (`title_norm_hash` 자리만 대비) |
+| 교차 출처 DealGroup 1차 연결 | 2차 진입 | ✅ (강한 정확 일치만) |
+| DealGroup 목록·상세 UI | 이후 | ❌ |
 | Redis / worker 분리 / 알림 | 2차 | ❌ |
 | AI 댓글 요약 / 구매 판단 보조 | 3차 | ❌ |
 
@@ -41,7 +42,7 @@
 현재는 단일 Spring Boot 앱 안에서 `CollectScheduler`가 등록된 `SourceCollector` 구현체를 20분 주기로 실행한다. 출처별 하위 패키지(`collector/{source}/`)가 **Client(fetch) → Parser(parse) → CollectService(normalize)**를 담당하고, 여러 출처에서 실제로 반복이 확인된 부분은 `collector/support/`에 둔다:
 
 - `SourceCollector` — 출처 하나의 수집 계약. 스케줄러가 구현체를 모두 순회하므로 **출처가 늘어도 스케줄러는 바뀌지 않는다**(A.3의 구상이 이 형태로 정착).
-- `DealUpsertSupport`(persist) · `CollectedDeal`(정규화 형태) · `HtmlFetcher`(요청) · `NewDealDetailSupport`(신규 Deal 상세 요청 제한·실패 격리).
+- `DealUpsertSupport`(persist) · `CollectedDeal`(정규화 형태) · `HtmlFetcher`(요청) · `NewDealDetailSupport`(신규 Deal 상세 요청 제한·실패 격리) · `DealGroupingService`(교차 출처 강한 일치 연결).
 
 파서는 실제 HTML fixture로 검증한다. 같은 출처의 중복은 조회와 `source_id + external_id` 유니크 제약으로 막고, 재수집 시 기존 딜은 가격·카테고리·댓글 수·상태를 최신 관측값으로 갱신한다.
 
@@ -55,7 +56,20 @@
 
 상세 보강은 DB에 없는 신규 `externalId`에만 적용하고 실행당 요청 상한을 둔다. 상세 요청이나 파싱이 실패해도 해당 Deal은 목록 정보와 `productUrl = null`로 저장하며 전체 수집을 실패시키지 않는다. 상품 URL 자체를 확인하거나 redirect를 따라가는 추가 요청은 하지 않는다. 상한을 넘겼거나 상세 보강에 실패한 Deal은 이후 실행에서 기존 Deal로 간주하므로 현재는 자동 backfill하지 않는다.
 
-### 2.3 출처별 runtime limit
+### 2.3 교차 출처 dedup 1차
+
+원본 Deal 행은 삭제하거나 합치지 않고 `deal_group`과 nullable `deal.group_id`로만 연결한다. 신규 저장과 재수집 upsert 뒤 `DealGroupingService`가 다른 출처의 후보를 확인한다. 기존 `title_norm_hash = null` 행은 해당 게시글이 재수집될 때 해시를 채우므로 별도 일괄 migration은 하지 않는다.
+
+제목 정규화는 Unicode 폭·대소문자·공백·기호와 **출처가 확인한 판매몰 말머리만** 제거한다. 모델명·용량·세대·수량과 판매몰이 아닌 대괄호 정보는 보존한다. 자동 그룹은 정규화 제목이 정확히 같고 아래 추가 조건 중 하나가 참일 때만 수행한다.
+
+1. 두 `productUrl`이 정확히 같다.
+2. 정규화한 `shopName`과 `price`가 모두 정확히 같다.
+
+한 그룹에는 출처별 Deal 하나만 연결하며 같은 출처 후보가 여러 건이면 자동 그룹화를 건너뛴다. 서로 다른 기존 그룹이 동시에 후보가 되어도 자동 병합하지 않는다. 유사도·점수 임계치·tracking parameter 제거·canonical URL·상품 ID 추출·AI/embedding은 운영 데이터로 필요성이 확인될 때 추가한다. 이 정책은 false negative보다 false positive가 더 위험하다는 원칙을 따른다.
+
+대표 Deal은 상품 URL, 가격, 썸네일 보유 순으로 정보가 풍부한 항목을 우선하고 동률이면 최신 게시글을 선택한다. 목록 대표화와 그룹별 출처 노출 API·UI는 다음 작업에서 구현한다.
+
+### 2.4 출처별 runtime limit
 
 `application.yml`의 `pickdeal.collector.sources.{source-code}` 아래에서 출처별 요청·처리 상한을 설정한다. 각 출처 패키지의 `*CollectorProperties`가 자기 설정을 소유하므로 새 출처 추가 시 기존 출처 설정 클래스를 수정하지 않는다.
 
@@ -92,7 +106,7 @@ pickdeal:
 
 스케줄은 전체 수집 완료 시점부터 20분 뒤 다시 실행하는 현재 정책을 유지한다. 출처별 interval은 실제로 서로 다른 주기가 필요해질 때 검토한다. `lastSeenExternalId`, 마지막 수집 시각, 별도 cursor는 아직 도입하지 않는다.
 
-**남은 경계**: 마지막으로 확인한 게시글 기반 조기 종료는 실제 페이지 요청 절감 필요가 확인될 때 검토한다. 카테고리의 전체 통합 분류 체계는 실제 필요가 확인될 때 다시 설계한다. 교차 출처 dedup은 `title_norm_hash`를 후보 키로 검토하되 아직 판정 규칙을 확정하지 않는다. 수집 부하가 조회 API에 영향을 줄 때만 worker 분리와 Redis를 검토한다. AI 요약·구매 판단·알림은 착수 시 별도 설계한다.
+**남은 경계**: 마지막으로 확인한 게시글 기반 조기 종료는 실제 페이지 요청 절감 필요가 확인될 때 검토한다. 카테고리의 전체 통합 분류 체계와 dedup의 URL·상품 ID 규칙은 실제 데이터가 쌓인 뒤 보정한다. 수집 부하가 조회 API에 영향을 줄 때만 worker 분리와 Redis를 검토한다. AI 요약·구매 판단·알림은 착수 시 별도 설계한다.
 
 새 출처를 붙이기 전 **robots.txt를 확인한다** — FMKorea는 `User-agent: *`에 `Disallow: /`라 수집 대상이 아니다.
 
@@ -101,7 +115,7 @@ pickdeal:
 ## 3. 관련 문서
 
 - 확장 아키텍처(개념): `docs/02-architecture.md` 2.2
-- dedup용 스키마(이미 반영): `docs/04-database-design.md`
+- dedup 스키마와 제약: `docs/04-database-design.md`
 
 ---
 ---

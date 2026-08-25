@@ -1,7 +1,7 @@
 # 04. 데이터베이스 설계 (Database Design)
 
 > PickDeal — DB 테이블 초안 / 인덱스·제약 / PostgreSQL·MySQL 선택 기준 / 시드 전략
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-22
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-25
 > 표준 DBMS: **PostgreSQL**(개발·운영 공통, MySQL 선택 시 5장 참고)
 > **현재 상태**: 애플리케이션은 로컬 PostgreSQL `pickdeal` DB와 JPA `ddl-auto: update`로 기동한다. H2 in-memory(PostgreSQL 호환 모드)는 테스트에서만 `create-drop`으로 사용한다. 아래 테이블/제약/인덱스는 PostgreSQL 기준이다.
 
@@ -10,7 +10,7 @@
 ## 1. 설계 원칙
 
 - MVP는 단일 사용자지만, 설정성 테이블에는 **`user_id`를 미리 둔다**(고정값 사용, 향후 멀티유저 대비).
-- **`source_id + external_id` 유니크 제약**으로 같은 출처의 같은 글 중복 저장을 막는다. 교차 출처 dedup은 아직 구현하지 않았다.
+- **`source_id + external_id` 유니크 제약**으로 같은 출처의 같은 글 중복 저장을 막는다. 교차 출처는 원본 Deal을 보존하고 nullable `group_id`로 연결한다.
 - 시간 컬럼은 타임존 포함 타입(PostgreSQL `timestamptz`)을 사용한다. 애플리케이션 기준 시간대는 **`Asia/Seoul`(KST)**이며 API 직렬화도 KST로 한다(`docs/03` 1.1). `timestamptz`는 내부적으로 UTC로 저장되더라도 입출력 기준은 KST다.
 - **마이그레이션(계획)**: 현재는 PostgreSQL에서 JPA `ddl-auto: update`를 사용하며 마이그레이션 도구는 없다. 운영 배포 전에 **Flyway**를 도입하고 기준 스키마를 `V1__init.sql`로 고정한다. 그전까지 엔티티가 실제 스키마의 진실 출처다.
 
@@ -48,7 +48,8 @@
 | `thumbnail_url` | varchar(1000) | null | 썸네일 URL |
 | `original_url` | varchar(1000) | not null | 수집 출처의 커뮤니티 원문 게시글 링크 |
 | `product_url` | varchar(2000) | null | 원문이 전용 영역에서 제공한 HTTP(S) 상품·행사 링크 |
-| `title_norm_hash` | varchar(64) | null | 정규화 제목 해시(2차 dedup용) |
+| `title_norm_hash` | varchar(64) | null | 판매몰 말머리·기호를 보수적으로 정리한 제목의 SHA-256 후보 키 |
+| `group_id` | bigint | FK→deal_group.id, null | 강한 일치로 연결된 교차 출처 그룹 |
 | `status` | varchar(20) | not null default 'ACTIVE' | `ACTIVE` \| `EXPIRED` \| `SOLD_OUT` |
 | `posted_at` | timestamptz | not null | 출처 게시 시각 |
 | `collected_at` | timestamptz | not null default now() | 수집/등록 시각 |
@@ -57,16 +58,30 @@
 제약/인덱스:
 
 - `UNIQUE (source_id, external_id)` — 동일 출처의 동일 딜 중복 방지(**dedup 1차 키**).
+- `UNIQUE (group_id, source_id)` — 한 그룹에는 출처별 원본 Deal 하나만 연결(`group_id = null`은 허용).
 - `INDEX (posted_at DESC)` — 최신순 정렬.
 - `INDEX (discount_rate DESC)` — 할인율 정렬.
 - `INDEX (source_id)` — 출처 필터.
 - `INDEX (status)` — 활성 딜 필터.
-- (2차) `INDEX (title_norm_hash)` — 교차 출처 중복 후보 탐색.
+- `INDEX (title_norm_hash)` — 교차 출처 중복 후보 탐색.
+- `INDEX (group_id)` — 그룹 소속 Deal 조회.
 - 제목 포함 검색 최적화는 데이터량 증가 시 PostgreSQL `pg_trgm` GIN 인덱스 도입 고려(MVP는 불필요).
 
 `shop_name`과 `product_url`은 수집 시 관측한 값을 그대로 보존한다. 현재는 별도 Shop 엔티티, 판매몰 표준 코드, canonical 상품 URL, 판매몰 상품 ID를 두지 않는다. 실제 데이터 분포가 쌓인 뒤 교차 출처 dedup에 필요할 때 추가한다.
 
-### 2.3 `source_visibility` — 출처 표시/숨김 설정 (사용자별)
+### 2.3 `deal_group` — 교차 출처 동일 딜 그룹
+
+| 컬럼 | 타입 | 제약 | 설명 |
+| --- | --- | --- | --- |
+| `id` | bigint | PK, auto | 그룹 ID |
+| `representative_deal_id` | bigint | FK→deal.id, not null, unique | 정보가 가장 풍부한 대표 원본 Deal |
+| `canonical_title` | varchar(300) | not null | 현재 대표 Deal의 표시 제목 |
+| `created_at` | timestamptz | not null | 생성 시각 |
+| `updated_at` | timestamptz | not null | 대표 변경 등 수정 시각 |
+
+그룹은 원본 Deal을 합치거나 삭제하지 않는다. 서로 다른 출처의 정규화 제목이 정확히 같고, 추가로 상품 URL이 정확히 같거나 판매몰·가격이 모두 같은 경우에만 자동 연결한다. 여러 기존 그룹과 동시에 충돌하면 자동 병합하지 않는다.
+
+### 2.4 `source_visibility` — 출처 표시/숨김 설정 (사용자별)
 
 | 컬럼 | 타입 | 제약 | 설명 |
 | --- | --- | --- | --- |
@@ -81,7 +96,7 @@
 - `UNIQUE (user_id, source_id)` — 사용자×출처당 1행.
 - 행이 없으면 기본 `visible = true`로 간주(레코드 없는 출처는 표시).
 
-### 2.4 `keyword` — 관심/제외 키워드 (사용자별)
+### 2.5 `keyword` — 관심/제외 키워드 (사용자별)
 
 | 컬럼 | 타입 | 제약 | 설명 |
 | --- | --- | --- | --- |
@@ -116,10 +131,20 @@
 │  id (PK)        │      │  id (PK)            │
 │  source_id (FK) │      │  user_id            │
 │  external_id    │      │  source_id (FK)     │
-│  ...            │      │  visible            │
-│  UQ(source_id,  │      │  UQ(user_id,        │
-│     external_id)│      │     source_id)      │
+│  group_id (FK)  │      │  visible            │
+│  ...            │      │  UQ(user_id,        │
+│  UQ(source_id,  │      │     source_id)      │
+│     external_id)│      │                     │
 └────────────────┘      └────────────────────┘
+
+          N │
+            │ 1
+┌───────────▼──────────────┐
+│       deal_group          │
+│  id (PK)                  │
+│  representative_deal_id   │
+│  canonical_title          │
+└───────────────────────────┘
 
 ┌──────────────────┐
 │     keyword       │   (source와 직접 FK 없음, user 설정)
@@ -212,12 +237,11 @@ DBMS를 바꿔도 본 스키마는 거의 그대로 사용 가능하다(타입�
 
 ## 7. 향후 확장 시 스키마 변화 (참고)
 
-확장 단계에 가면 `user`(멀티유저), `deal_comment`/`deal_comment_summary`(AI 요약), `keyword_alert`/`notification`(알림), `deal_group` 또는 `deal.group_id`(중복 그룹) 등이 추가될 수 있다. **구체 스키마는 각 기능에 착수할 때 설계한다**(아래는 참고 스키마).
+확장 단계에 가면 `user`(멀티유저), `deal_comment`/`deal_comment_summary`(AI 요약), `keyword_alert`/`notification`(알림) 등이 추가될 수 있다. **구체 스키마는 각 기능에 착수할 때 설계한다**(아래는 참고 스키마).
 - **사용자 추가**: `user` 테이블 신설, 기존 `user_id`에 FK 연결.
 - **댓글/요약(3차)**: `deal_comment`(원문), `deal_comment_summary`(AI 요약 결과, 모델/생성시각 메타 포함) 테이블 추가. 상세 `docs/05`.
 - **알림(2차)**: `keyword_alert`(구독 설정), `notification`(발송 이력).
 - **수집 메타(2차)**: `collect_job`/`collect_log` 또는 jsonb 원문 컬럼/테이블 추가.
-- **중복 그룹(2차)**: `deal_group`(대표 딜 + 묶인 딜) 또는 `deal.group_id` 컬럼 추가.
 
 ---
 
