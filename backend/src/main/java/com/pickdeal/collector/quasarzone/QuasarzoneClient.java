@@ -20,6 +20,10 @@ public class QuasarzoneClient {
         return htmlFetcher.fetch(pageUrl(page), properties.timeout());
     }
 
+    public String fetchDetailHtml(String url) {
+        return htmlFetcher.fetch(url, properties.timeout());
+    }
+
     private String pageUrl(int page) {
         return page == 1 ? LIST_URL : LIST_URL + "?page=" + page;
     }

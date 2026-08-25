@@ -77,6 +77,10 @@ public class Deal extends BaseTimeEntity {
     @Column(length = 50)
     private String category;
 
+    /** 출처가 표시한 판매몰 이름 원문. 별도 Shop 모델·표준화는 아직 적용하지 않는다. */
+    @Column(name = "shop_name", length = 100)
+    private String shopName;
+
     /** 마지막 수집 시 원문 게시글 목록에서 확인한 댓글 수. 출처가 제공하지 않으면 nullable. */
     @Column(name = "comment_count")
     private Integer commentCount;
@@ -87,6 +91,10 @@ public class Deal extends BaseTimeEntity {
     /** 원문(출처 게시글) 링크. */
     @Column(name = "original_url", nullable = false, length = 1000)
     private String originalUrl;
+
+    /** 판매몰 상품·기획전 링크. 상세에서 확인하지 못하면 nullable. */
+    @Column(name = "product_url", length = 2000)
+    private String productUrl;
 
     /** 출처 내 고유 식별자. {@code source}와 조합해 유일하다. */
     @Column(name = "external_id", nullable = false, length = 200)
@@ -117,9 +125,11 @@ public class Deal extends BaseTimeEntity {
             Integer discountRate,
             String currency,
             String category,
+            String shopName,
             Integer commentCount,
             String thumbnailUrl,
             String originalUrl,
+            String productUrl,
             String externalId,
             String titleNormHash,
             DealStatus status,
@@ -134,9 +144,11 @@ public class Deal extends BaseTimeEntity {
         this.discountRate = discountRate;
         this.currency = currency;
         this.category = category;
+        this.shopName = shopName;
         this.commentCount = commentCount;
         this.thumbnailUrl = thumbnailUrl;
         this.originalUrl = originalUrl;
+        this.productUrl = productUrl;
         this.externalId = externalId;
         this.titleNormHash = titleNormHash;
         this.status = status;
@@ -144,10 +156,23 @@ public class Deal extends BaseTimeEntity {
         this.collectedAt = collectedAt;
     }
 
-    /** 재수집 시 변동 가능한 값(가격, 카테고리, 댓글 수, 진행 상태)만 갱신한다. */
-    public void updateFromRecollection(Long price, String category, Integer commentCount, DealStatus status) {
+    /** 재수집 시 변동 가능한 값과 새로 확인된 판매몰 정보를 갱신한다. */
+    public void updateFromRecollection(
+            Long price,
+            String category,
+            String shopName,
+            String productUrl,
+            Integer commentCount,
+            DealStatus status
+    ) {
         this.price = price;
         this.category = category;
+        if (shopName != null && !shopName.isBlank()) {
+            this.shopName = shopName;
+        }
+        if (productUrl != null && !productUrl.isBlank()) {
+            this.productUrl = productUrl;
+        }
         this.commentCount = commentCount;
         this.status = status;
     }

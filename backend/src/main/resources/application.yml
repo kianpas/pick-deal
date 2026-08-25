@@ -34,6 +34,7 @@ pickdeal:
         max-items: 50
         bootstrap-max-pages: 3
         bootstrap-max-items: 150
+        max-detail-requests: 3
       ruliweb:
         enabled: true
         timeout: 10s
@@ -41,3 +42,4 @@ pickdeal:
         max-items: 50
         bootstrap-max-pages: 3
         bootstrap-max-items: 150
+        max-detail-requests: 3

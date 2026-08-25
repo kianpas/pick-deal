@@ -2,7 +2,9 @@ package com.pickdeal.collector.quasarzone;
 
 import com.pickdeal.collector.support.CategoryNormalizer;
 import com.pickdeal.collector.support.CollectedDeal;
+import com.pickdeal.collector.support.CollectedProductInfo;
 import com.pickdeal.collector.support.DealUpsertSupport;
+import com.pickdeal.collector.support.NewDealDetailSupport;
 import com.pickdeal.collector.support.PagedCollectionSupport;
 import com.pickdeal.collector.support.SourceCollector;
 import com.pickdeal.source.domain.Source;
@@ -34,9 +36,11 @@ public class QuasarzoneCollectService implements SourceCollector {
 
     private final QuasarzoneClient client;
     private final DealUpsertSupport upsertSupport;
+    private final NewDealDetailSupport detailSupport;
     private final QuasarzoneCollectorProperties properties;
 
     private final QuasarzoneListParser parser = new QuasarzoneListParser();
+    private final QuasarzoneDetailParser detailParser = new QuasarzoneDetailParser();
     private final QuasarzonePostedAtResolver postedAtResolver = new QuasarzonePostedAtResolver();
 
     @Override
@@ -59,8 +63,15 @@ public class QuasarzoneCollectService implements SourceCollector {
                 parser::parse,
                 item -> normalize(item, now)
         );
+        deals = detailSupport.enrich(
+                source, deals, properties.maxDetailRequests(), this::enrichProductInfo);
 
         return upsertSupport.upsertAll(source, deals, now);
+    }
+
+    private CollectedDeal enrichProductInfo(CollectedDeal deal) {
+        CollectedProductInfo productInfo = detailParser.parse(client.fetchDetailHtml(deal.url()));
+        return deal.withProductInfo(productInfo.shopName(), productInfo.productUrl());
     }
 
     private CollectedDeal normalize(QuasarzoneDealItem item, OffsetDateTime now) {

@@ -2,7 +2,7 @@
 
 > 복수 출처의 수집 파이프라인은 구현됐다. 현재 수집 출처 목록은 이 문서의 표에서만 관리한다. 교차 출처 dedup·Redis·worker 분리·AI·알림은 아직 방향만 유지한다.
 > 문서 뒤의 **부록 A**는 초기 탐색 메모다. 현재 코드와 다른 예시는 구현 지침이 아니며, 실제 필요가 생길 때 다시 설계한다.
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-22
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-23
 
 ---
 
@@ -13,6 +13,7 @@
 | 복수 출처 수집(crawl/fetch), 파싱·저장 | 2차 진입 | ✅ |
 | 목록 HTML의 출처별 댓글 수 수집·표시 | 2차 진입 | ✅ |
 | 카테고리 정확 일치 별칭 최소 정규화 | 2차 진입 | ✅ |
+| 신규 Deal의 판매몰 이름·상품 URL 제한적 상세 보강 | 2차 진입 | ✅ |
 | 출처별 runtime limit(`enabled`, timeout, 페이지·항목 상한) | 2차 진입 | ✅ |
 | 출처별 최초(Bootstrap)·증분(Incremental) 수집 구분 | 2차 진입 | ✅ |
 | 출처 내 중복 방지(`source_id + external_id`) | 2차 진입 | ✅ |
@@ -40,7 +41,7 @@
 현재는 단일 Spring Boot 앱 안에서 `CollectScheduler`가 등록된 `SourceCollector` 구현체를 20분 주기로 실행한다. 출처별 하위 패키지(`collector/{source}/`)가 **Client(fetch) → Parser(parse) → CollectService(normalize)**를 담당하고, 여러 출처에서 실제로 반복이 확인된 부분은 `collector/support/`에 둔다:
 
 - `SourceCollector` — 출처 하나의 수집 계약. 스케줄러가 구현체를 모두 순회하므로 **출처가 늘어도 스케줄러는 바뀌지 않는다**(A.3의 구상이 이 형태로 정착).
-- `DealUpsertSupport`(persist) · `CollectedDeal`(정규화 형태) · `HtmlFetcher`(요청).
+- `DealUpsertSupport`(persist) · `CollectedDeal`(정규화 형태) · `HtmlFetcher`(요청) · `NewDealDetailSupport`(신규 Deal 상세 요청 제한·실패 격리).
 
 파서는 실제 HTML fixture로 검증한다. 같은 출처의 중복은 조회와 `source_id + external_id` 유니크 제약으로 막고, 재수집 시 기존 딜은 가격·카테고리·댓글 수·상태를 최신 관측값으로 갱신한다.
 
@@ -49,6 +50,10 @@
 **출처마다 제공 정보가 다르다.** 예를 들어 어떤 출처는 가격·썸네일이 구조화돼 있지만, 다른 출처는 제목 관례에서만 가격을 추출할 수 있다. 애매한 값은 null로 두고, 이런 차이는 `CollectedDeal`의 nullable 필드로 흡수한다.
 
 카테고리는 Parser가 원문을 그대로 추출하고 `CategoryNormalizer`가 normalize 단계에서 정확히 등록된 별칭만 대표 문자열로 바꾼다. 실제 별칭 목록은 코드와 테스트가 기준이며, 미등록 값은 원문을 유지한다. 단어 포함·유사도 매칭이나 완성형 통합 분류 체계는 도입하지 않는다. 재수집된 기존 Deal도 정규화된 최신 카테고리로 갱신한다.
+
+상품 링크는 목록의 임의 링크에서 추측하지 않는다. 출처별 상세 Parser가 광고·본문 링크와 구분되는 전용 영역에서 유효한 외부 HTTP(S) URL 하나만 추출한다. `originalUrl`은 커뮤니티 원문 링크로 유지하고, `productUrl`은 출처가 제공한 상품·행사 링크로 별도 저장한다. 판매몰 이름(`shopName`)도 출처가 표시한 문자열을 그대로 저장하며 아직 표준화하지 않는다. 별도 Shop 엔티티, canonical URL, 판매몰 상품 ID는 도입하지 않는다.
+
+상세 보강은 DB에 없는 신규 `externalId`에만 적용하고 실행당 요청 상한을 둔다. 상세 요청이나 파싱이 실패해도 해당 Deal은 목록 정보와 `productUrl = null`로 저장하며 전체 수집을 실패시키지 않는다. 상품 URL 자체를 확인하거나 redirect를 따라가는 추가 요청은 하지 않는다. 상한을 넘겼거나 상세 보강에 실패한 Deal은 이후 실행에서 기존 Deal로 간주하므로 현재는 자동 backfill하지 않는다.
 
 ### 2.3 출처별 runtime limit
 
@@ -67,21 +72,23 @@ pickdeal:
         max-items: 50
         bootstrap-max-pages: 3
         bootstrap-max-items: 150
+        max-detail-requests: 3
 ```
 
 | 설정 | 의미 | 현재 기본값 |
 | --- | --- | --- |
 | `scheduling.enabled` | 모든 자동 수집 스케줄 실행 여부. 테스트에서는 `false` | `true` |
 | `sources.{code}.enabled` | 해당 출처 수집기 등록 여부. `false`면 HTTP 요청하지 않음 | `true` |
-| `timeout` | 목록 HTTP 요청 한 건의 응답 대기 상한 | `10s` |
+| `timeout` | 목록·상세 HTTP 요청 한 건의 응답 대기 상한 | `10s` |
 | `max-pages` | 실행 한 번에 조회할 목록 페이지 수 상한 | `1` |
 | `max-items` | 실행 한 번에 정규화·upsert할 고유 게시글 수 상한 | `50` |
 | `bootstrap-max-pages` | 해당 출처의 최초 수집에서 조회할 페이지 수 상한 | `3` |
 | `bootstrap-max-items` | 해당 출처의 최초 수집에서 처리할 고유 게시글 수 상한 | `150` |
+| `max-detail-requests` | 실행 한 번에 신규 Deal 상세 페이지를 요청할 상한. `0`이면 상세 보강 비활성 | `3` |
 
 출처 등록 직후 해당 `source_id`의 Deal 존재 여부를 수집 시작 시 한 번만 확인한다. 하나도 없으면 Bootstrap 한도, 하나라도 있으면 Incremental 한도(`max-pages`, `max-items`)를 선택한다. 페이지를 모두 가져온 뒤 한 번에 upsert하므로 Bootstrap 도중 첫 페이지 저장 때문에 모드가 바뀌지 않는다. 수집 결과가 없어 Deal이 저장되지 않았다면 다음 실행도 Bootstrap으로 재시도한다.
 
-페이지는 1부터 순서대로 요청하며 선택된 항목 상한에 도달하면 남은 페이지를 요청하지 않는다. 한 실행 안에서 페이지 사이에 같은 `externalId`가 반복되면 한 번만 처리한다. 네 가지 페이지·항목 상한과 `timeout`은 양수여야 하며 잘못된 설정은 애플리케이션 기동 시 거부한다. 일반 수집의 기본 `max-pages: 1`은 작업 도입 전의 주기별 외부 요청량을 유지하고, Bootstrap의 3페이지 요청은 출처별 DB가 비어 있을 때만 발생한다.
+페이지는 1부터 순서대로 요청하며 선택된 항목 상한에 도달하면 남은 페이지를 요청하지 않는다. 한 실행 안에서 페이지 사이에 같은 `externalId`가 반복되면 한 번만 처리한다. 네 가지 페이지·항목 상한과 `timeout`은 양수여야 하고, `max-detail-requests`는 0 이상이어야 한다. 잘못된 설정은 애플리케이션 기동 시 거부한다. 일반 수집의 기본 `max-pages: 1`은 작업 도입 전의 주기별 목록 요청량을 유지한다. 현재 기본값 기준 외부 요청 상한은 Incremental에서 출처당 목록 1회 + 상세 3회, Bootstrap에서 목록 3회 + 상세 3회다.
 
 스케줄은 전체 수집 완료 시점부터 20분 뒤 다시 실행하는 현재 정책을 유지한다. 출처별 interval은 실제로 서로 다른 주기가 필요해질 때 검토한다. `lastSeenExternalId`, 마지막 수집 시각, 별도 cursor는 아직 도입하지 않는다.
 

@@ -18,11 +18,38 @@ public record CollectedDeal(
         Integer commentCount,
         String thumbnailUrl,
         boolean ended,
-        OffsetDateTime postedAt
+        OffsetDateTime postedAt,
+        String productUrl
 ) {
+
+    public CollectedDeal(
+            String externalId,
+            String url,
+            String storeName,
+            String title,
+            Long price,
+            String category,
+            Integer commentCount,
+            String thumbnailUrl,
+            boolean ended,
+            OffsetDateTime postedAt
+    ) {
+        this(externalId, url, storeName, title, price, category, commentCount,
+                thumbnailUrl, ended, postedAt, null);
+    }
 
     /** 출처에 게시된 원문 제목("[판매처] 상품명"). 판매처가 없으면 제목 그대로. */
     public String rawTitle() {
         return storeName != null ? "[" + storeName + "] " + title : title;
+    }
+
+    /** 상세 페이지에서 확인한 판매몰 이름·상품 URL을 반영한 새 값. */
+    public CollectedDeal withProductInfo(String detailShopName, String detailProductUrl) {
+        String resolvedShopName = detailShopName != null && !detailShopName.isBlank()
+                ? detailShopName.trim()
+                : storeName;
+        return new CollectedDeal(
+                externalId, url, resolvedShopName, title, price, category, commentCount,
+                thumbnailUrl, ended, postedAt, detailProductUrl);
     }
 }

@@ -18,7 +18,7 @@ class RuliwebClientTest {
         HtmlFetcher fetcher = Mockito.mock(HtmlFetcher.class);
         Duration timeout = Duration.ofSeconds(12);
         RuliwebCollectorProperties properties =
-                new RuliwebCollectorProperties(true, timeout, 3, 30, 3, 150);
+                new RuliwebCollectorProperties(true, timeout, 3, 30, 3, 150, 3);
         RuliwebClient client = new RuliwebClient(fetcher, properties);
         given(fetcher.fetch("https://bbs.ruliweb.com/market/board/1020", timeout))
                 .willReturn("<html>page 1</html>");
@@ -27,5 +27,22 @@ class RuliwebClientTest {
 
         assertThat(html).isEqualTo("<html>page 1</html>");
         verify(fetcher).fetch("https://bbs.ruliweb.com/market/board/1020", timeout);
+    }
+
+    @Test
+    @DisplayName("상세 URL에도 출처별 timeout을 적용한다")
+    void fetchesDetailWithTimeout() {
+        HtmlFetcher fetcher = Mockito.mock(HtmlFetcher.class);
+        Duration timeout = Duration.ofSeconds(12);
+        RuliwebCollectorProperties properties =
+                new RuliwebCollectorProperties(true, timeout, 3, 30, 3, 150, 3);
+        RuliwebClient client = new RuliwebClient(fetcher, properties);
+        String detailUrl = "https://bbs.ruliweb.com/market/board/1020/read/123";
+        given(fetcher.fetch(detailUrl, timeout)).willReturn("<html>detail</html>");
+
+        String html = client.fetchDetailHtml(detailUrl);
+
+        assertThat(html).isEqualTo("<html>detail</html>");
+        verify(fetcher).fetch(detailUrl, timeout);
     }
 }

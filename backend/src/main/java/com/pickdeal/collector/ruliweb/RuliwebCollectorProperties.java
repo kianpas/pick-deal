@@ -17,6 +17,7 @@ public record RuliwebCollectorProperties(
         @DefaultValue("1") @Min(1) int maxPages,
         @DefaultValue("50") @Min(1) int maxItems,
         @DefaultValue("3") @Min(1) int bootstrapMaxPages,
-        @DefaultValue("150") @Min(1) int bootstrapMaxItems
+        @DefaultValue("150") @Min(1) int bootstrapMaxItems,
+        @DefaultValue("3") @Min(0) int maxDetailRequests
 ) {
 }

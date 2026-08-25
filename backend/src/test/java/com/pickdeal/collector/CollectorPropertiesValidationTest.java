@@ -18,7 +18,7 @@ class CollectorPropertiesValidationTest {
     @DisplayName("페이지와 항목 한도는 1 이상이어야 한다")
     void rejectsNonPositiveLimits() {
         QuasarzoneCollectorProperties properties =
-                new QuasarzoneCollectorProperties(true, Duration.ofSeconds(10), 0, 0, 0, 0);
+                new QuasarzoneCollectorProperties(true, Duration.ofSeconds(10), 0, 0, 0, 0, 0);
 
         assertThat(validator.validate(properties))
                 .extracting(violation -> violation.getPropertyPath().toString())
@@ -30,10 +30,10 @@ class CollectorPropertiesValidationTest {
     @DisplayName("HTTP timeout은 Jsoup이 처리할 수 있는 양의 범위여야 한다")
     void rejectsInvalidTimeout() {
         RuliwebCollectorProperties zero =
-                new RuliwebCollectorProperties(true, Duration.ZERO, 1, 1, 3, 150);
+                new RuliwebCollectorProperties(true, Duration.ZERO, 1, 1, 3, 150, 3);
         RuliwebCollectorProperties tooLarge =
                 new RuliwebCollectorProperties(
-                        true, Duration.ofMillis((long) Integer.MAX_VALUE + 1), 1, 1, 3, 150);
+                        true, Duration.ofMillis((long) Integer.MAX_VALUE + 1), 1, 1, 3, 150, 3);
 
         assertThat(validator.validate(zero))
                 .extracting(violation -> violation.getPropertyPath().toString())
@@ -41,5 +41,19 @@ class CollectorPropertiesValidationTest {
         assertThat(validator.validate(tooLarge))
                 .extracting(violation -> violation.getPropertyPath().toString())
                 .containsExactly("timeout");
+    }
+
+    @Test
+    @DisplayName("상세 요청 상한은 0으로 끌 수 있지만 음수는 허용하지 않는다")
+    void validatesDetailRequestLimit() {
+        QuasarzoneCollectorProperties disabled =
+                new QuasarzoneCollectorProperties(true, Duration.ofSeconds(10), 1, 1, 3, 150, 0);
+        QuasarzoneCollectorProperties negative =
+                new QuasarzoneCollectorProperties(true, Duration.ofSeconds(10), 1, 1, 3, 150, -1);
+
+        assertThat(validator.validate(disabled)).isEmpty();
+        assertThat(validator.validate(negative))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .containsExactly("maxDetailRequests");
     }
 }

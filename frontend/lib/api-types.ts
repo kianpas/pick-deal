@@ -51,6 +51,8 @@ export interface DealSummary {
   discountRate: number | null;
   currency: string;
   category: string | null;
+  /** 출처 게시글이 표시한 판매몰 이름 원문. 표준화하지 않은 nullable 문자열. */
+  shopName: string | null;
   /** 해당 출처 원문 게시글에서 마지막으로 확인한 댓글 수. 미제공/확인 불가는 null. */
   commentCount: number | null;
   thumbnailUrl: string | null;
@@ -63,7 +65,6 @@ export interface DealSummary {
 
   // ---- 수집기 단계 추출 검토 · 현재 백엔드 미제공(전부 optional) ----
   // 백엔드가 실제로 내려주기 시작하면 그때 위 계약 블록으로 승격한다.
-  shop?: string;
   isHot?: boolean;
   freeShipping?: boolean;
   shippingNote?: string;
@@ -73,7 +74,10 @@ export interface DealSummary {
 /** 상세 응답 (DealDetailResponse) = 요약 + 본문/원문/외부ID/수집시각. */
 export interface DealDetail extends DealSummary {
   description: string | null;
+  /** 수집 출처의 커뮤니티 원문 게시글. */
   originalUrl: string;
+  /** 판매몰 상품·기획전 링크. 상세에서 확인하지 못하면 null. */
+  productUrl: string | null;
   externalId: string;
   collectedAt: string;
 }

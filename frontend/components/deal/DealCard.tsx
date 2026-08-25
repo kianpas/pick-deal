@@ -47,7 +47,8 @@ function PriceText({ deal, compact = false }: { deal: DealSummary; compact?: boo
  */
 export function DealCard({ deal, showThumbnail = true }: Props) {
   const detailHref = `/deals/${deal.id}`;
-  const { store, title } = splitStoreFromTitle(deal.title);
+  const { store: titleStore, title } = splitStoreFromTitle(deal.title);
+  const shopName = deal.shopName ?? titleStore;
   const badge = statusBadge(deal.status);
   // 종료/품절 딜은 남겨두되 취소선 + 흐림으로 한눈에 구분한다
   const ended = badge !== null;
@@ -65,9 +66,9 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
               {badge.label}
             </span>
           )}
-          {store && (
+          {shopName && (
             <span className="shrink-0 rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-muted">
-              {store}
+              {shopName}
             </span>
           )}
           <Link
@@ -141,9 +142,9 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
               {badge.label}
             </span>
           )}
-          {store && (
+          {shopName && (
             <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-muted">
-              {store}
+              {shopName}
             </span>
           )}
           <span>{deal.sourceName}</span>

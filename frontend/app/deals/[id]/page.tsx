@@ -50,7 +50,8 @@ export default async function DealDetailPage({
   }
 
   const badge = statusBadge(deal.status);
-  const { store, title } = splitStoreFromTitle(deal.title);
+  const { store: titleStore, title } = splitStoreFromTitle(deal.title);
+  const shopName = deal.shopName ?? titleStore;
   const ended = badge !== null;
 
   return (
@@ -80,9 +81,9 @@ export default async function DealDetailPage({
                   {badge.label}
                 </span>
               )}
-              {store && (
+              {shopName && (
                 <span className="rounded-md bg-surface-2 px-2 py-0.5 text-xs font-medium text-fg-muted">
-                  {store}
+                  {shopName}
                 </span>
               )}
               {deal.category && (
@@ -124,7 +125,7 @@ export default async function DealDetailPage({
 
           {/* 정보 테이블 — 원문 URL은 노출하지 않는다(하단 CTA와 중복) */}
           <div className="overflow-hidden rounded-xl border border-border bg-surface/40">
-            {(store ?? deal.shop) && <InfoRow label="판매처">{store ?? deal.shop}</InfoRow>}
+            {shopName && <InfoRow label="판매처">{shopName}</InfoRow>}
 
             <InfoRow label="가격">
               {deal.price === 0 ? (
@@ -164,17 +165,34 @@ export default async function DealDetailPage({
             </div>
           )}
 
-          {/* 원문 보기 CTA — 이 화면의 유일한 목적지라 모바일에선 하단에 고정한다 */}
+          {/* 구매처와 커뮤니티 원문은 서로 다른 목적지라 별도 CTA로 유지한다. */}
           <div className="sticky bottom-0 -mx-1 bg-gradient-to-t from-bg via-bg/95 to-transparent px-1 pb-4 pt-6 sm:static sm:mx-0 sm:bg-none sm:p-0 sm:pt-2">
-            <a
-              href={deal.originalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-strong sm:w-auto"
-            >
-              원문에서 보기
-              <ExternalLink className="size-4" />
-            </a>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {deal.productUrl && (
+                <a
+                  href={deal.productUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-strong sm:w-auto"
+                >
+                  {shopName ? `${shopName}에서 보기` : "구매처에서 보기"}
+                  <ExternalLink className="size-4" />
+                </a>
+              )}
+              <a
+                href={deal.originalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition sm:w-auto ${
+                  deal.productUrl
+                    ? "border border-border bg-surface text-fg hover:border-border-strong"
+                    : "bg-brand text-white hover:bg-brand-strong"
+                }`}
+              >
+                원문에서 보기
+                <ExternalLink className="size-4" />
+              </a>
+            </div>
           </div>
         </article>
       </div>

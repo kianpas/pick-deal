@@ -54,7 +54,8 @@ public class DealUpsertSupport {
         return dealRepository.findBySourceIdAndExternalId(source.getId(), collected.externalId())
                 .map(existing -> {
                     existing.updateFromRecollection(
-                            collected.price(), collected.category(), collected.commentCount(), status);
+                            collected.price(), collected.category(), collected.storeName(),
+                            collected.productUrl(), collected.commentCount(), status);
                     return false;
                 })
                 .orElseGet(() -> {
@@ -73,9 +74,11 @@ public class DealUpsertSupport {
                 null,
                 DEFAULT_CURRENCY,
                 collected.category(),
+                collected.storeName(),
                 collected.commentCount(),
                 collected.thumbnailUrl(),
                 collected.url(),
+                collected.productUrl(),
                 collected.externalId(),
                 null,
                 status,
