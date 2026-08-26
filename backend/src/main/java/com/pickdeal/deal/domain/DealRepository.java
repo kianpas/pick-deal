@@ -46,6 +46,23 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
     /** 재수집 시 기존 딜 갱신용 조회. */
     Optional<Deal> findBySourceIdAndExternalId(Long sourceId, String externalId);
 
+    /**
+     * 상품 URL이 같은 다른 출처 Deal을 후보로 찾는다.
+     *
+     * <p>제목은 출처마다 작성자가 달라 같게 정규화되는 일이 드물다. 상품 URL은 그보다 강한
+     * 근거이므로(docs/05 A.4) 제목 일치를 전제하지 않고 따로 조회한다.
+     */
+    @Query("""
+            select d from Deal d
+            left join fetch d.dealGroup
+            where d.source.id <> :sourceId
+              and d.productUrl = :productUrl
+            """)
+    List<Deal> findCrossSourceCandidatesByProductUrl(
+            @Param("sourceId") Long sourceId,
+            @Param("productUrl") String productUrl
+    );
+
     /** 정규화 제목이 정확히 같은 다른 출처 Deal을 1차 후보로 찾는다. */
     @Query("""
             select d from Deal d

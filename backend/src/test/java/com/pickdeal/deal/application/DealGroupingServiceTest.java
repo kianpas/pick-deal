@@ -69,6 +69,27 @@ class DealGroupingServiceTest {
     }
 
     @Test
+    @DisplayName("제목 표현이 서로 달라도 상품 URL이 같으면 그룹화한다")
+    void groupsByProductUrlEvenWhenTitlesDiffer() {
+        Source firstSource = saveSource("url-only-a");
+        Source secondSource = saveSource("url-only-b");
+        String productUrl = "https://shop.example.com/products/9850";
+
+        // 출처마다 작성자가 다르므로 제목이 같게 정규화되는 일은 드물다.
+        // 상품 URL은 그보다 강한 근거이므로 제목 일치를 전제하지 않아야 한다.
+        Deal first = saveDeal(firstSource, "uo-a", "[알리] AMD 라이젠7 9850X3D 멀티팩 정품", "알리",
+                648_013L, productUrl, null);
+        groupingService.groupIfMatched(first);
+        Deal second = saveDeal(secondSource, "uo-b", "[알리/국내정품] 9850X3D (멀티팩)", "알리",
+                648_013L, productUrl, null);
+        groupingService.groupIfMatched(second);
+
+        assertThat(first.getTitleNormHash()).isNotEqualTo(second.getTitleNormHash());
+        assertThat(second.getDealGroup()).isNotNull();
+        assertThat(second.getDealGroup()).isSameAs(first.getDealGroup());
+    }
+
+    @Test
     @DisplayName("용량이 다르면 제목이 비슷해도 그룹화하지 않는다")
     void keepsDifferentCapacitySeparate() {
         Source firstSource = saveSource("capacity-source-a");
