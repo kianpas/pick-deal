@@ -46,9 +46,34 @@ class QuasarzoneDetailParserTest {
         assertThat(result.productUrl()).isNull();
     }
 
+    @Test
+    @DisplayName("링크 행이 없으면 본문(org_contents)의 외부 링크를 상품 URL로 쓴다")
+    void fallsBackToBodyLink() {
+        CollectedProductInfo result = parser.parse(readFixture("saleinfo-detail-body-link.html"));
+
+        assertThat(result.shopName()).isEqualTo("SSG");
+        // 배너·광고는 본문 밖이라 선택되면 안 된다
+        assertThat(result.productUrl()).isEqualTo("http://ssg.li/dh3w3CMOOx");
+    }
+
+    @Test
+    @DisplayName("본문에 쓸 만한 외부 링크가 없으면 상품 URL을 만들지 않는다")
+    void ignoresBodyWithoutExternalLink() {
+        CollectedProductInfo result = parser.parse("""
+                <a href="https://ads.example.com/banner">본문 밖 광고</a>
+                <textarea id="org_contents"><p>이미지만 있는 본문</p><p><a href="https://quasarzone.com/bbs/qb_saleinfo/views/1">내부 링크</a></p></textarea>
+                """);
+
+        assertThat(result.productUrl()).isNull();
+    }
+
     private static String readFixture() {
+        return readFixture("saleinfo-detail.html");
+    }
+
+    private static String readFixture(String name) {
         try (InputStream in = QuasarzoneDetailParserTest.class
-                .getResourceAsStream("/fixtures/quasarzone/saleinfo-detail.html")) {
+                .getResourceAsStream("/fixtures/quasarzone/" + name)) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException(e);

@@ -9,13 +9,16 @@ import com.pickdeal.source.domain.Source;
 import com.pickdeal.source.domain.SourceRepository;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
  * 출처와 무관한 저장 단계(persist)를 모은다. 중복은 (source, externalId) 유니크 제약과
  * 짝을 이루는 존재 조회로 차단하고, 기존 딜은 변동 가능한 값만 갱신한다.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class DealUpsertSupport {
@@ -49,7 +52,34 @@ public class DealUpsertSupport {
                 saved++;
             }
         }
+        logFieldCoverage(source, deals);
         return saved;
+    }
+
+    /**
+     * 필드별 확보율을 남긴다. 파서가 의존하는 선택자는 사이트 구조가 바뀌면 예외 없이
+     * 조용히 null이 되므로(실제로 상품 URL이 0건이 된 적이 있다) 수치로 감시한다.
+     */
+    private void logFieldCoverage(Source source, List<CollectedDeal> deals) {
+        if (deals.isEmpty()) {
+            return;
+        }
+        int total = deals.size();
+        log.info("수집 필드 확보율 [{}]: price={}/{} shop={}/{} productUrl={}/{} thumb={}/{} comments={}/{}",
+                source.getCode(),
+                count(deals, deal -> deal.price() != null), total,
+                count(deals, deal -> hasText(deal.storeName())), total,
+                count(deals, deal -> hasText(deal.productUrl())), total,
+                count(deals, deal -> hasText(deal.thumbnailUrl())), total,
+                count(deals, deal -> deal.commentCount() != null), total);
+    }
+
+    private long count(List<CollectedDeal> deals, Predicate<CollectedDeal> predicate) {
+        return deals.stream().filter(predicate).count();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private boolean upsert(Source source, CollectedDeal collected, OffsetDateTime now) {

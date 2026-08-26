@@ -31,12 +31,11 @@ public class DealGroupingService {
             deal.getDealGroup().considerRepresentative(deal);
             return;
         }
-        if (deal.getTitleNormHash() == null || deal.getSource().getId() == null) {
+        if (deal.getSource().getId() == null) {
             return;
         }
 
-        List<Deal> matches = dealRepository.findCrossSourceCandidates(
-                        deal.getSource().getId(), deal.getTitleNormHash()).stream()
+        List<Deal> matches = findCandidates(deal).stream()
                 .filter(candidate -> isStrongMatch(deal, candidate))
                 .toList();
         if (matches.isEmpty()) {
@@ -76,6 +75,26 @@ public class DealGroupingService {
         }
         deal.joinGroup(group);
         group.considerRepresentative(deal);
+    }
+
+    /**
+     * 후보 탐색(retrieval)과 판정(scoring)을 분리한다. 탐색은 강한 근거를 각각 독립적으로 훑고,
+     * 합칠지 여부는 {@link #isStrongMatch}가 판단한다. 제목 해시만 검색 키로 쓰면 상품 URL이
+     * 같아도 제목 표현이 다른 실제 중복을 놓친다.
+     */
+    private List<Deal> findCandidates(Deal deal) {
+        Long sourceId = deal.getSource().getId();
+        Map<Long, Deal> candidates = new LinkedHashMap<>();
+
+        if (hasText(deal.getProductUrl())) {
+            dealRepository.findCrossSourceCandidatesByProductUrl(sourceId, deal.getProductUrl().trim())
+                    .forEach(candidate -> candidates.put(candidate.getId(), candidate));
+        }
+        if (deal.getTitleNormHash() != null) {
+            dealRepository.findCrossSourceCandidates(sourceId, deal.getTitleNormHash())
+                    .forEach(candidate -> candidates.put(candidate.getId(), candidate));
+        }
+        return List.copyOf(candidates.values());
     }
 
     private boolean isStrongMatch(Deal deal, Deal candidate) {
