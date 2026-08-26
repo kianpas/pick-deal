@@ -5,7 +5,7 @@ PickDeal 프로젝트에서 작업할 때의 컨텍스트와 규칙. 상세 설�
 ## 프로젝트 개요
 
 - **PickDeal**: 핫딜 수집/조회 서비스 (MVP 단계)
-- **Monorepo**: `frontend/` (Next.js, 목록·상세·키워드 설정 및 사이드바 출처 설정 백엔드 연동 완료) + `backend/` (Spring Boot REST API + 복수 출처 수집기 + 교차 출처 DealGroup 1차 연결) + `docs/` (설계 문서)
+- **Monorepo**: `frontend/` (Next.js, 그룹 대표 목록·출처별 상세·키워드 설정 및 사이드바 출처 설정 백엔드 연동 완료) + `backend/` (Spring Boot REST API + 복수 출처 수집기 + 교차 출처 DealGroup 연결·조회) + `docs/` (설계 문서)
 - **설계 의도/정책**의 단일 진실 출처는 `docs/01~06`. 단, **실제 패키지 구조·라이브러리 버전**은 코드와 `build.gradle`/`package.json`이 진실이다(둘이 어긋나면 코드 기준으로 docs를 갱신).
 - **문서 맵** — 용어·재사용 자산은 `CONTEXT.md`, 되돌리기 비싼 결정의 이력은 `docs/adr/`, 상세 설계는 `docs/01~06`, 지금 일하는 규칙은 이 파일(AGENTS.md).
 
@@ -76,7 +76,7 @@ PickDeal 프로젝트에서 작업할 때의 컨텍스트와 규칙. 상세 설�
 
 ## 현재 단계와 도입하지 않는 것
 
-핵심 조회·설정 API 이후 **복수 출처 수집기와 보수적인 교차 출처 DealGroup 연결까지 구현된 상태**다. 현재 수집 출처와 자동 그룹 규칙은 `docs/05-collector-design.md`를 단일 진실 출처로 삼는다. DealGroup의 목록·상세 노출은 다음 작업이다. 다음은 의도적으로 보류 중이므로 추가 제안 전 확인:
+핵심 조회·설정 API 이후 **복수 출처 수집기와 보수적인 교차 출처 DealGroup 연결·목록·상세 노출까지 구현된 상태**다. 현재 수집 출처와 자동 그룹 규칙은 `docs/05-collector-design.md`를 단일 진실 출처로 삼는다. 다음은 의도적으로 보류 중이므로 추가 제안 전 확인:
 - Redis (캐시/큐)
 - 별도 collector worker 컨테이너
 - 인증/멀티유저 (현재 단일 고정 user_id)

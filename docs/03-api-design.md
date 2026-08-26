@@ -2,7 +2,7 @@
 
 > PickDeal — REST API 초안 및 공통 규약
 > 본 문서는 MVP 범위(`docs/01` 3장)에 대응한다. 확장 API는 별도 표기한다.
-> 최초 작성: 2026-05-20 · 현재 상태 확인: 2026-08-23
+> 최초 작성: 2026-05-20 · 현재 상태 확인: 2026-08-26
 > MVP 표의 API는 현재 모두 구현돼 있다. 3차 API는 방향만 기록하며 아직 구현하지 않는다.
 
 ---
@@ -105,6 +105,8 @@ GET /api/v1/deals
 2. **제외 키워드**가 제목/요약에 포함된 딜은 제외한다.
 3. **관심 키워드**가 1개 이상 등록되어 있으면, 관심 키워드를 포함하는 딜만 노출한다.
 
+출처 표시/`sourceId` 조건을 통과한 Deal을 먼저 `DealGroup` 단위로 묶고, 검색어·카테고리·키워드는 그룹 구성원 중 일치하는 항목이 있는지 확인한다. 제외 키워드는 구성원 하나라도 일치하면 그룹 전체를 제외한다. 정렬과 페이지네이션은 그룹화 다음에 적용하므로 `meta.totalElements`는 원본 게시글 수가 아니라 실제 카드 수다.
+
 > 종료(EXPIRED)/품절(SOLD_OUT) 딜도 목록에 **포함**한다 — 화면이 `status`로 구분해(취소선 등) 표시한다. 조용히 숨기지 않는 것이 핫딜 목록 관례다.
 
 응답 예시:
@@ -125,6 +127,9 @@ GET /api/v1/deals
       "thumbnailUrl": "https://.../thumb.jpg",
       "sourceId": 3,
       "sourceName": "샘플커뮤니티",
+      "groupId": 51,
+      "sourceCount": 2,
+      "sourceNames": ["루리웹", "퀘이사존"],
       "postedAt": "2026-05-20T18:10:00+09:00",
       "collectedAt": "2026-05-20T18:12:00+09:00",
       "status": "ACTIVE"
@@ -137,6 +142,7 @@ GET /api/v1/deals
 > 목록 응답은 카드 렌더링에 필요한 요약 필드만 포함한다(본문/원문 링크 등은 상세에서 제공).
 > `shopName`은 출처 게시글이 표시한 판매몰 이름을 표준화하지 않고 저장한 nullable 문자열이다. 제목 관례에서 보완할 수는 있지만 Shop 리소스로 해석하지 않는다.
 > `commentCount`는 해당 출처의 원문 게시글에서 마지막으로 확인한 댓글 수다. 출처가 제공하지 않거나 확인할 수 없으면 `null`이며, 여러 출처의 값을 합산하거나 긍정 반응으로 해석하지 않는다.
+> `id`, `sourceId`, `sourceName`, `commentCount`와 상품 요약 필드는 그룹 대표 Deal 기준이다. `sourceCount`와 `sourceNames`는 현재 출처 표시/필터 조건을 통과한 구성원 기준이다. `groupId`는 그룹이 없으면 `null`이다. 그룹 상태는 하나라도 활성이라면 `ACTIVE`, 모두 종료된 경우 품절 우선으로 집계한다.
 
 ### 2.2 카테고리 목록 조회
 
@@ -176,6 +182,21 @@ GET /api/v1/deals/{id}
     "productUrl": "https://shop.example.com/products/123",
     "sourceId": 3,
     "sourceName": "샘플커뮤니티",
+    "groupId": 51,
+    "sourceCount": 2,
+    "sourceNames": ["루리웹", "퀘이사존"],
+    "sourcePosts": [
+      {
+        "dealId": 1024,
+        "sourceId": 3,
+        "sourceName": "샘플커뮤니티",
+        "originalUrl": "https://source.example.com/deal/abc",
+        "productUrl": "https://shop.example.com/products/123",
+        "commentCount": 18,
+        "postedAt": "2026-05-20T18:10:00+09:00",
+        "status": "ACTIVE"
+      }
+    ],
     "externalId": "abc",
     "postedAt": "2026-05-20T18:10:00+09:00",
     "collectedAt": "2026-05-20T18:12:00+09:00",
@@ -186,6 +207,7 @@ GET /api/v1/deals/{id}
 
 - `originalUrl`은 수집 출처의 커뮤니티 원문 게시글이고, `productUrl`은 원문이 별도 제공한 HTTP(S) 구매 링크다. 두 값의 의미를 합치거나 서로 대체하지 않는다.
 - `productUrl`은 상세 수집에 성공한 신규 Deal에만 있을 수 있는 nullable 값이다. 없으면 화면은 원문 링크만 제공한다.
+- `sourcePosts`는 같은 `DealGroup`의 출처별 원본 게시글이며 그룹이 없으면 현재 Deal 한 건을 반환한다. 기존 `/deals/{id}` URL과 상단 상세 필드는 요청한 Deal 기준으로 유지한다.
 - 존재하지 않으면 404 + `code: DEAL_NOT_FOUND`.
 
 ### 2.4 (선택) 딜 수동 등록 — 내부용

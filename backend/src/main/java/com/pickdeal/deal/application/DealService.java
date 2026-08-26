@@ -17,9 +17,12 @@ import com.pickdeal.keyword.domain.KeywordRepository;
 import com.pickdeal.source.domain.Source;
 import com.pickdeal.source.domain.SourceRepository;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,26 +48,30 @@ public class DealService {
         List<Keyword> excludeKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.EXCLUDE);
         List<Keyword> interestKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.INTEREST);
 
-        List<Deal> filteredDeals = dealRepository.findVisibleDeals(DEFAULT_USER_ID).stream()
+        List<Deal> sourceEligibleDeals = dealRepository.findVisibleDeals(DEFAULT_USER_ID).stream()
                 .filter(deal -> sourceIds == null || sourceIds.isEmpty() || sourceIds.contains(deal.getSource().getId()))
-                .filter(deal -> matchesCategory(deal, category))
-                .filter(deal -> matchesQuery(deal, query))
-                .filter(deal -> !containsAnyKeyword(deal, excludeKeywords))
-                .filter(deal -> interestKeywords.isEmpty() || containsAnyKeyword(deal, interestKeywords))
-                .sorted(dealComparator(sort))
                 .toList();
 
-        int fromIndex = Math.min(page * size, filteredDeals.size());
-        int toIndex = Math.min(fromIndex + size, filteredDeals.size());
-
-        List<DealSummaryResponse> items = filteredDeals.subList(fromIndex, toIndex).stream()
-                .map(DealSummaryResponse::from)
+        List<DealGroupView> filteredGroups = groupDeals(sourceEligibleDeals).stream()
+                .filter(group -> group.members().stream().anyMatch(deal -> matchesCategory(deal, category)))
+                .filter(group -> group.members().stream().anyMatch(deal -> matchesQuery(deal, query)))
+                .filter(group -> group.members().stream().noneMatch(deal -> containsAnyKeyword(deal, excludeKeywords)))
+                .filter(group -> interestKeywords.isEmpty()
+                        || group.members().stream().anyMatch(deal -> containsAnyKeyword(deal, interestKeywords)))
+                .sorted(groupComparator(sort))
                 .toList();
 
-        int totalPages = filteredDeals.isEmpty() ? 0 : (int) Math.ceil((double) filteredDeals.size() / size);
+        int fromIndex = Math.min(page * size, filteredGroups.size());
+        int toIndex = Math.min(fromIndex + size, filteredGroups.size());
+
+        List<DealSummaryResponse> items = filteredGroups.subList(fromIndex, toIndex).stream()
+                .map(this::toSummary)
+                .toList();
+
+        int totalPages = filteredGroups.isEmpty() ? 0 : (int) Math.ceil((double) filteredGroups.size() / size);
         boolean hasNext = page + 1 < totalPages;
 
-        return new DealListResponse(items, new PageMetaResponse(page, size, filteredDeals.size(), totalPages, hasNext));
+        return new DealListResponse(items, new PageMetaResponse(page, size, filteredGroups.size(), totalPages, hasNext));
     }
 
     /**
@@ -86,7 +93,10 @@ public class DealService {
         Deal deal = dealRepository.findByIdWithSource(dealId)
                 .orElseThrow(() -> new ResourceNotFoundException("Deal not found: " + dealId));
 
-        return DealDetailResponse.from(deal);
+        List<Deal> sourceDeals = deal.getDealGroup() == null
+                ? List.of(deal)
+                : dealRepository.findByDealGroupIdWithSource(deal.getDealGroup().getId());
+        return DealDetailResponse.from(deal, sourceDeals);
     }
 
     @Transactional
@@ -153,14 +163,95 @@ public class DealService {
         return text != null && text.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT));
     }
 
-    private Comparator<Deal> dealComparator(String sort) {
+    private List<DealGroupView> groupDeals(List<Deal> deals) {
+        Map<String, List<Deal>> grouped = new LinkedHashMap<>();
+        for (Deal deal : deals) {
+            String key = deal.getDealGroup() == null
+                    ? "deal:" + deal.getId()
+                    : "group:" + deal.getDealGroup().getId();
+            grouped.computeIfAbsent(key, ignored -> new ArrayList<>()).add(deal);
+        }
+
+        return grouped.values().stream()
+                .map(members -> new DealGroupView(selectRepresentative(members), List.copyOf(members)))
+                .toList();
+    }
+
+    private Deal selectRepresentative(List<Deal> members) {
+        Deal configuredRepresentative = members.get(0).getDealGroup() == null
+                ? null
+                : members.get(0).getDealGroup().getRepresentativeDeal();
+        if (configuredRepresentative != null
+                && members.stream().anyMatch(member -> member.getId().equals(configuredRepresentative.getId()))) {
+            return configuredRepresentative;
+        }
+
+        return members.stream()
+                .max(Comparator.comparingInt(this::representativeScore)
+                        .thenComparing(this::dealSortTime))
+                .orElseThrow();
+    }
+
+    private int representativeScore(Deal deal) {
+        int score = 0;
+        if (StringUtils.hasText(deal.getProductUrl())) {
+            score += 4;
+        }
+        if (deal.getPrice() != null) {
+            score += 2;
+        }
+        if (StringUtils.hasText(deal.getThumbnailUrl())) {
+            score += 1;
+        }
+        return score;
+    }
+
+    private Comparator<DealGroupView> groupComparator(String sort) {
         if ("discount".equalsIgnoreCase(sort)) {
             return Comparator
-                    .comparing((Deal deal) -> deal.getDiscountRate() == null ? Integer.MIN_VALUE : deal.getDiscountRate())
-                    .thenComparing(this::dealSortTime)
+                    .comparing((DealGroupView group) -> group.representative().getDiscountRate() == null
+                            ? Integer.MIN_VALUE
+                            : group.representative().getDiscountRate())
+                    .thenComparing(this::latestGroupTime)
                     .reversed();
         }
-        return Comparator.comparing(this::dealSortTime).reversed();
+        return Comparator.comparing(this::latestGroupTime).reversed();
+    }
+
+    private OffsetDateTime latestGroupTime(DealGroupView group) {
+        return group.members().stream()
+                .map(this::dealSortTime)
+                .max(Comparator.naturalOrder())
+                .orElse(OffsetDateTime.MIN);
+    }
+
+    private DealSummaryResponse toSummary(DealGroupView group) {
+        OffsetDateTime latestPostedAt = group.members().stream()
+                .map(Deal::getPostedAt)
+                .max(Comparator.naturalOrder())
+                .orElse(group.representative().getPostedAt());
+        OffsetDateTime latestCollectedAt = group.members().stream()
+                .map(Deal::getCollectedAt)
+                .max(Comparator.naturalOrder())
+                .orElse(group.representative().getCollectedAt());
+
+        return DealSummaryResponse.from(
+                group.representative(),
+                group.members(),
+                aggregateStatus(group.members()).name(),
+                latestPostedAt,
+                latestCollectedAt
+        );
+    }
+
+    private DealStatus aggregateStatus(List<Deal> members) {
+        if (members.stream().anyMatch(deal -> deal.getStatus() == DealStatus.ACTIVE)) {
+            return DealStatus.ACTIVE;
+        }
+        if (members.stream().anyMatch(deal -> deal.getStatus() == DealStatus.SOLD_OUT)) {
+            return DealStatus.SOLD_OUT;
+        }
+        return DealStatus.EXPIRED;
     }
 
     private OffsetDateTime dealSortTime(Deal deal) {
@@ -185,5 +276,8 @@ public class DealService {
             return DEFAULT_CURRENCY;
         }
         return currency.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private record DealGroupView(Deal representative, List<Deal> members) {
     }
 }
