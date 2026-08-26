@@ -3,6 +3,8 @@ package com.pickdeal.deal.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.pickdeal.deal.domain.Deal;
+import com.pickdeal.deal.domain.DealGroup;
+import com.pickdeal.deal.domain.DealGroupRepository;
 import com.pickdeal.deal.domain.DealRepository;
 import com.pickdeal.deal.domain.DealStatus;
 import com.pickdeal.deal.dto.DealSummaryResponse;
@@ -30,6 +32,9 @@ class DealServiceTest {
 
     @Autowired
     private DealRepository dealRepository;
+
+    @Autowired
+    private DealGroupRepository dealGroupRepository;
 
     @Autowired
     private SourceRepository sourceRepository;
@@ -124,8 +129,91 @@ class DealServiceTest {
                 });
     }
 
-    private void saveDeal(Source source, String externalId, String category, DealStatus status) {
-        saveDeal(source, externalId, category, status, null);
+    @Test
+    @DisplayName("같은 그룹의 교차 출처 딜은 목록 한 건으로 접고 그룹 단위로 페이지 수를 계산한다")
+    void findDealsCollapsesCrossSourceGroupBeforePagination() {
+        keywordRepository.deleteAll();
+        Source firstSource = sourceRepository.save(
+                new Source("그룹출처A", "https://group-a.example.com", "group-list-a", true));
+        Source secondSource = sourceRepository.save(
+                new Source("그룹출처B", "https://group-b.example.com", "group-list-b", true));
+        Deal first = saveDeal(firstSource, "group-list-1", "기타", DealStatus.ACTIVE, 3);
+        Deal second = saveDeal(secondSource, "group-list-2", "기타", DealStatus.EXPIRED, 9);
+        joinGroup(first, second);
+
+        var response = dealService.findDeals(
+                0, 1, "latest", List.of(firstSource.getId(), secondSource.getId()), null, null);
+
+        assertThat(response.items()).singleElement().satisfies(summary -> {
+            assertThat(summary.id()).isEqualTo(first.getId());
+            assertThat(summary.groupId()).isNotNull();
+            assertThat(summary.sourceCount()).isEqualTo(2);
+            assertThat(summary.sourceNames()).containsExactly("그룹출처A", "그룹출처B");
+            assertThat(summary.status()).isEqualTo("ACTIVE");
+            assertThat(summary.commentCount()).isEqualTo(3); // 출처별 반응은 합산하지 않는다.
+        });
+        assertThat(response.meta().totalElements()).isEqualTo(1);
+        assertThat(response.meta().totalPages()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("출처 필터로 대표 출처가 빠지면 남은 출처를 목록 대표로 사용한다")
+    void sourceFilterChoosesRepresentativeFromEligibleMembers() {
+        keywordRepository.deleteAll();
+        Source firstSource = sourceRepository.save(
+                new Source("필터출처A", "https://filter-a.example.com", "group-filter-a", true));
+        Source secondSource = sourceRepository.save(
+                new Source("필터출처B", "https://filter-b.example.com", "group-filter-b", true));
+        Deal first = saveDeal(firstSource, "group-filter-1", "기타", DealStatus.ACTIVE);
+        Deal second = saveDeal(secondSource, "group-filter-2", "기타", DealStatus.ACTIVE);
+        joinGroup(first, second);
+
+        DealSummaryResponse summary = dealService
+                .findDeals(0, 20, "latest", List.of(secondSource.getId()), null, null)
+                .items().get(0);
+
+        assertThat(summary.id()).isEqualTo(second.getId());
+        assertThat(summary.sourceCount()).isEqualTo(1);
+        assertThat(summary.sourceNames()).containsExactly("필터출처B");
+    }
+
+    @Test
+    @DisplayName("그룹 딜 상세는 출처별 원문과 댓글 수를 각각 제공한다")
+    void groupedDetailExposesSourcePostsWithoutSummingComments() {
+        keywordRepository.deleteAll();
+        Source firstSource = sourceRepository.save(
+                new Source("상세출처A", "https://detail-a.example.com", "group-detail-a", true));
+        Source secondSource = sourceRepository.save(
+                new Source("상세출처B", "https://detail-b.example.com", "group-detail-b", true));
+        Deal first = saveDeal(firstSource, "group-detail-1", "기타", DealStatus.ACTIVE, 4);
+        Deal second = saveDeal(secondSource, "group-detail-2", "기타", DealStatus.ACTIVE, 11);
+        DealGroup group = joinGroup(first, second);
+
+        var detail = dealService.findDeal(first.getId());
+
+        assertThat(detail.groupId()).isEqualTo(group.getId());
+        assertThat(detail.sourcePosts()).hasSize(2);
+        assertThat(detail.sourcePosts()).extracting(post -> post.sourceName())
+                .containsExactlyInAnyOrder("상세출처A", "상세출처B");
+        assertThat(detail.sourcePosts()).extracting(post -> post.commentCount())
+                .containsExactlyInAnyOrder(4, 11);
+        assertThat(detail.sourcePosts()).extracting(post -> post.originalUrl())
+                .containsExactlyInAnyOrder(
+                        "https://cat.example.com/group-detail-1",
+                        "https://cat.example.com/group-detail-2"
+                );
+    }
+
+    private DealGroup joinGroup(Deal representative, Deal member) {
+        DealGroup group = dealGroupRepository.save(new DealGroup(representative));
+        representative.joinGroup(group);
+        member.joinGroup(group);
+        dealRepository.flush();
+        return group;
+    }
+
+    private Deal saveDeal(Source source, String externalId, String category, DealStatus status) {
+        return saveDeal(source, externalId, category, status, null);
     }
 
     private Deal saveDeal(Source source, String externalId, String category, DealStatus status, Integer commentCount) {

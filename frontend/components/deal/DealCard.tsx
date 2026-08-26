@@ -52,6 +52,7 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
   const badge = statusBadge(deal.status);
   // 종료/품절 딜은 남겨두되 취소선 + 흐림으로 한눈에 구분한다
   const ended = badge !== null;
+  const sourceLabel = deal.sourceNames.join(" · ");
 
   if (!showThumbnail) {
     return (
@@ -86,7 +87,12 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
         </div>
 
         <div className="hidden shrink-0 items-center gap-2 text-xs text-fg-muted sm:flex">
-          <span>{deal.sourceName}</span>
+          <span>{sourceLabel}</span>
+          {deal.sourceCount > 1 && (
+            <span className="rounded-md bg-brand-soft px-1.5 py-0.5 font-medium text-brand">
+              출처 {deal.sourceCount}곳
+            </span>
+          )}
           {deal.commentCount !== null && (
             <>
               <span className="text-fg-subtle">·</span>
@@ -147,7 +153,12 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
               {shopName}
             </span>
           )}
-          <span>{deal.sourceName}</span>
+          <span>{sourceLabel}</span>
+          {deal.sourceCount > 1 && (
+            <span className="rounded-md bg-brand-soft px-1.5 py-0.5 font-medium text-brand">
+              출처 {deal.sourceCount}곳
+            </span>
+          )}
           {deal.commentCount !== null && (
             <>
               <span className="text-fg-subtle">·</span>

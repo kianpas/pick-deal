@@ -17,6 +17,8 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
     @Query("""
             select d from Deal d
             join fetch d.source s
+            left join fetch d.dealGroup g
+            left join fetch g.representativeDeal
             where s.active = true
               and not exists (
                     select sv.id from SourceVisibility sv
@@ -28,8 +30,12 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
     List<Deal> findVisibleDeals(@Param("userId") Long userId);
 
     /** 상세 조회용. 출처를 fetch join해 N+1을 피한다. */
-    @Query("select d from Deal d join fetch d.source where d.id = :id")
+    @Query("select d from Deal d join fetch d.source left join fetch d.dealGroup where d.id = :id")
     Optional<Deal> findByIdWithSource(@Param("id") Long id);
+
+    /** 상세 화면의 교차 출처 원문 목록용. 출처 표시 설정과 무관하게 그룹 원본을 모두 보존해 보여준다. */
+    @Query("select d from Deal d join fetch d.source where d.dealGroup.id = :groupId")
+    List<Deal> findByDealGroupIdWithSource(@Param("groupId") Long groupId);
 
     /** 중복 수집 방지용 — ({@code sourceId}, {@code externalId}) 유니크 제약과 짝을 이룬다. */
     boolean existsBySourceIdAndExternalId(Long sourceId, String externalId);

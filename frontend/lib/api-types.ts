@@ -58,6 +58,11 @@ export interface DealSummary {
   thumbnailUrl: string | null;
   sourceId: number;
   sourceName: string;
+  /** 교차 출처 그룹 ID. 그룹에 연결되지 않은 Deal은 null. */
+  groupId: number | null;
+  /** 현재 목록의 출처 표시/필터 조건을 통과한 그룹 구성원 수. */
+  sourceCount: number;
+  sourceNames: string[];
   postedAt: string;
   /** PickDeal이 수집/등록한 시각. "마지막 수집 N분 전" 표시에 쓴다. */
   collectedAt: string;
@@ -78,8 +83,21 @@ export interface DealDetail extends DealSummary {
   originalUrl: string;
   /** 판매몰 상품·기획전 링크. 상세에서 확인하지 못하면 null. */
   productUrl: string | null;
+  /** 같은 그룹으로 연결된 출처별 원문. 그룹이 없으면 현재 Deal 한 건. */
+  sourcePosts: DealSourcePost[];
   externalId: string;
   collectedAt: string;
+}
+
+export interface DealSourcePost {
+  dealId: number;
+  sourceId: number;
+  sourceName: string;
+  originalUrl: string;
+  productUrl: string | null;
+  commentCount: number | null;
+  postedAt: string;
+  status: DealStatus;
 }
 
 // ---- 출처 (Source) ----
