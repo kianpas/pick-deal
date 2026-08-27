@@ -47,7 +47,7 @@
 | `comment_count` | int | null | 해당 출처 원문 게시글에서 마지막으로 확인한 댓글 수 |
 | `thumbnail_url` | varchar(1000) | null | 썸네일 URL |
 | `original_url` | varchar(1000) | not null | 수집 출처의 커뮤니티 원문 게시글 링크 |
-| `product_url` | varchar(2000) | null | 원문이 전용 영역에서 제공한 HTTP(S) 상품·행사 링크 |
+| `product_url` | varchar(2000) | null | 출처별 상세 Parser가 원문에서 선택한 HTTP(S) 상품·행사 링크 |
 | `title_norm_hash` | varchar(64) | null | 판매몰 말머리·기호를 보수적으로 정리한 제목의 SHA-256 후보 키 |
 | `group_id` | bigint | FK→deal_group.id, null | 강한 일치로 연결된 교차 출처 그룹 |
 | `status` | varchar(20) | not null default 'ACTIVE' | `ACTIVE` \| `EXPIRED` \| `SOLD_OUT` |

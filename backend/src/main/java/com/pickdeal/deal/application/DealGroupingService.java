@@ -101,16 +101,16 @@ public class DealGroupingService {
         boolean sameProductUrl = hasText(deal.getProductUrl())
                 && hasText(candidate.getProductUrl())
                 && Objects.equals(deal.getProductUrl().trim(), candidate.getProductUrl().trim());
-        if (sameProductUrl) {
-            return true;
-        }
+        boolean sameTitleHash = deal.getTitleNormHash() != null
+                && deal.getTitleNormHash().equals(candidate.getTitleNormHash());
 
         String shopKey = DealMatchNormalizer.normalizeShopName(deal.getShopName());
         String candidateShopKey = DealMatchNormalizer.normalizeShopName(candidate.getShopName());
-        return shopKey != null
+        boolean sameShopAndPrice = shopKey != null
                 && shopKey.equals(candidateShopKey)
                 && deal.getPrice() != null
                 && deal.getPrice().equals(candidate.getPrice());
+        return sameShopAndPrice && (sameProductUrl || sameTitleHash);
     }
 
     private boolean hasText(String value) {
