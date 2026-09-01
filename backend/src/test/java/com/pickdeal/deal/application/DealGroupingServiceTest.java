@@ -51,7 +51,7 @@ class DealGroupingServiceTest {
     }
 
     @Test
-    @DisplayName("정규화 제목과 상품 URL이 같으면 관측 가격이 달라도 그룹화한다")
+    @DisplayName("상품 URL·판매처·가격이 같으면 정보가 풍부한 Deal을 대표로 선택한다")
     void groupsExactTitleAndProductUrl() {
         Source firstSource = saveSource("url-source-a");
         Source secondSource = saveSource("url-source-b");
@@ -61,7 +61,7 @@ class DealGroupingServiceTest {
                 50_000L, productUrl, null);
         groupingService.groupIfMatched(first);
         Deal second = saveDeal(secondSource, "url-b", "키보드 K1", "테스트몰",
-                49_000L, productUrl, "https://images.example.com/k1.jpg");
+                50_000L, productUrl, "https://images.example.com/k1.jpg");
         groupingService.groupIfMatched(second);
 
         assertThat(second.getDealGroup()).isSameAs(first.getDealGroup());
@@ -87,6 +87,42 @@ class DealGroupingServiceTest {
         assertThat(first.getTitleNormHash()).isNotEqualTo(second.getTitleNormHash());
         assertThat(second.getDealGroup()).isNotNull();
         assertThat(second.getDealGroup()).isSameAs(first.getDealGroup());
+    }
+
+    @Test
+    @DisplayName("상품 URL이 같아도 판매처가 다르면 자동 그룹화하지 않는다")
+    void rejectsSameProductUrlWithDifferentShop() {
+        Source firstSource = saveSource("url-shop-a");
+        Source secondSource = saveSource("url-shop-b");
+        String sharedLandingUrl = "https://event.example.com/summer-sale";
+
+        Deal first = saveDeal(firstSource, "us-a", "서로 다른 상품 A", "판매몰A",
+                10_000L, sharedLandingUrl, null);
+        groupingService.groupIfMatched(first);
+        Deal second = saveDeal(secondSource, "us-b", "서로 다른 상품 B", "판매몰B",
+                10_000L, sharedLandingUrl, null);
+        groupingService.groupIfMatched(second);
+
+        assertThat(first.getDealGroup()).isNull();
+        assertThat(second.getDealGroup()).isNull();
+    }
+
+    @Test
+    @DisplayName("상품 URL과 판매처가 같아도 가격이 다르면 자동 그룹화하지 않는다")
+    void rejectsSameProductUrlWithDifferentPrice() {
+        Source firstSource = saveSource("url-price-a");
+        Source secondSource = saveSource("url-price-b");
+        String sharedLandingUrl = "https://event.example.com/summer-sale";
+
+        Deal first = saveDeal(firstSource, "up-a", "서로 다른 상품 A", "판매몰",
+                10_000L, sharedLandingUrl, null);
+        groupingService.groupIfMatched(first);
+        Deal second = saveDeal(secondSource, "up-b", "서로 다른 상품 B", "판매몰",
+                20_000L, sharedLandingUrl, null);
+        groupingService.groupIfMatched(second);
+
+        assertThat(first.getDealGroup()).isNull();
+        assertThat(second.getDealGroup()).isNull();
     }
 
     @Test

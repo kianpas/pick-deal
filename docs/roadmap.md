@@ -151,10 +151,6 @@ DB
 UNIQUE(source_id, external_id)
 ```
 
-교차 출처 dedup은 아직 구현하지 않았다.
-
-`title_norm_hash` 컬럼과 인덱스는 향후 교차 출처 dedup을 위한 자리만 마련된 상태다.
-
 교차 출처 dedup은 작업 8에서 도입했다(`DealGroupingService`, `deal_group`). 원본 Deal은 삭제하지 않고 그룹으로 연결만 한다. 다만 **판정 근거가 되는 상품 URL 확보율이 낮아 아직 실제로 묶인 그룹은 없다**(2.0 참고).
 
 현재 `Deal`에는 실제 판매 쇼핑몰을 별도 엔티티로 두지 않고 필드로만 갖는다.
