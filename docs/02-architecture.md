@@ -1,7 +1,7 @@
 # 02. 아키텍처 설계 (Architecture)
 
 > PickDeal — 전체 아키텍처 / 프론트엔드 화면 구조 / 백엔드 패키지 구조 / 확장 방향
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-26
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-09-05
 
 ---
 
@@ -11,8 +11,8 @@
 
 ### 1.1 Frontend
 
-- **Next.js (App Router)** — 2026-05 기준 최신 stable은 **16.2.x (LTS)**.
-  - Next.js 16부터 Turbopack과 React Compiler 지원이 stable로 기본 활성화된다.
+- **Next.js (App Router)** — 현재 설치 버전은 `frontend/package.json`을 기준으로 한다.
+  - Next.js 16에서 Turbopack이 기본 번들러가 됐고 React Compiler 지원은 stable이지만, React Compiler는 기본 활성화가 아니며 별도 의존성과 `reactCompiler` 설정이 필요하다. 현재 프로젝트는 활성화하지 않았다.
   - App Router를 표준으로 사용한다(Pages Router 사용하지 않음).
 - **TypeScript** — strict 모드 사용.
 - **Tailwind CSS** — 유틸리티 기반 스타일링.
@@ -122,7 +122,7 @@ pick-deal/
 
 ## 4. 프론트엔드 화면 구조 (Next.js App Router)
 
-### 4.1 라우트 구조 (초안)
+### 4.1 현재 라우트 구조
 
 ```
 frontend/
@@ -133,30 +133,29 @@ frontend/
    │  └─ [id]/
    │     └─ page.tsx           # 핫딜 상세
    └─ settings/
-      ├─ page.tsx              # 설정 메인 (탭)
-      ├─ sources/
-      │  └─ page.tsx           # 출처 표시/숨김 설정
       └─ keywords/
          └─ page.tsx           # 관심/제외 키워드 관리
 ```
+
+출처 표시/숨김은 별도 설정 라우트가 아니라 데스크톱 `LeftSidebar`에서 제공한다. 모바일에서는 현재 해당 사이드바가 숨겨지므로 출처 설정 접근 경로가 없다.
 
 ### 4.2 화면별 정의
 
 | 화면 | 경로 | 설명 | 사용 API |
 | --- | --- | --- | --- |
-| 핫딜 목록 | `/` | 필터(출처/정렬) + 무한스크롤 또는 페이지네이션. 숨김 출처/제외 키워드 자동 반영 | `GET /api/v1/deals` |
-| 핫딜 상세 | `/deals/[id]` | 단일 딜 상세 + 원본 링크 이동 | `GET /api/v1/deals/{id}` |
-| 출처 설정 | `/settings/sources` | 출처 목록 + 표시/숨김 토글 | `GET /api/v1/sources`, `PATCH /api/v1/sources/{id}/visibility` |
+| 핫딜 목록 | `/` | 그룹 대표 목록, 검색·카테고리, 더 보기. 숨김 출처와 키워드 설정 자동 반영 | `GET /api/v1/deals`, `GET /api/v1/deals/categories` |
+| 핫딜 상세 | `/deals/[id]` | 딜 상세 + 그룹의 출처별 원문·상품 링크 | `GET /api/v1/deals/{id}` |
+| 출처 설정 | `/`의 `LeftSidebar` | 출처 목록 + 표시/숨김 토글(데스크톱) | `GET /api/v1/sources`, `PATCH /api/v1/sources/{id}/visibility` |
 | 키워드 설정 | `/settings/keywords` | 관심/제외 키워드 등록·조회·삭제 | `GET/POST/DELETE /api/v1/keywords` |
 
-### 4.3 컴포넌트 구성 (초안)
+### 4.3 주요 컴포넌트
 
 - `components/deal/DealCard.tsx` — 목록의 개별 딜 카드
-- `components/deal/DealList.tsx` — 목록 + 페이지네이션/무한스크롤
-- `components/deal/DealFilterBar.tsx` — 출처 필터/정렬 컨트롤
-- `components/source/SourceToggleItem.tsx` — 출처 표시/숨김 토글 행
-- `components/keyword/KeywordManager.tsx` — 키워드 입력/리스트/삭제
-- `components/common/*` — 버튼, 배지(할인율 등), 빈 상태, 에러 표시
+- `components/deal/DealFeed.tsx` — SSR 첫 페이지와 클라이언트 더 보기 상태
+- `components/deal/DealList.tsx` — 카드 목록
+- `components/deal/CategoryGrid.tsx`, `SortBar.tsx` — 카테고리와 목록 표시 옵션
+- `components/layout/LeftSidebar.tsx` — 출처 설정과 아직 백엔드에 연결되지 않은 데모 UI
+- `components/settings/KeywordManager.tsx` — 키워드 입력/목록/삭제
 
 ### 4.4 데이터 패칭 원칙
 
@@ -221,13 +220,13 @@ backend/
 
 - **Controller**: 요청/응답 DTO 매핑, 입력 검증, HTTP 상태 코드. 비즈니스 로직 없음.
 - **Service**: 도메인 규칙(키워드 필터링 우선순위 등). 트랜잭션 경계.
-- **Repository**: JPA. 동적 필터/정렬은 `Specification` 또는 QueryDSL 고려(택1, 구현 단계 결정).
+- **Repository**: JPA. 현재는 노출 가능한 Deal과 연관 데이터를 조회한다. 운영 데이터에서 병목이 확인되면 그룹·필터·정렬·페이지 처리를 DB 쿼리로 옮긴다.
 - **collector/scheduler**: 등록된 `SourceCollector` 구현체를 순회해 복수 출처를 수집한다. 수집 부하가 조회 API에 영향을 줄 때 worker 분리를 검토한다(`docs/05`).
 
 ### 5.2 키워드 필터링 위치
 
-- 키워드/출처 필터링은 **Service 계층에서 쿼리 조건으로** 반영한다(`docs/01` 3.2의 우선순위 규칙 준수).
-- 데이터량이 적은 MVP에서는 DB의 `ILIKE`(PostgreSQL) / `LIKE`(MySQL) 기반 단순 포함 검색으로 충분하다.
+- 키워드/출처 필터링은 **Service 계층에서** `docs/01` 3.2의 우선순위로 적용한다.
+- 현재 `DealService`는 노출 가능한 Deal을 조회한 뒤 메모리에서 그룹·필터·정렬·offset 페이지 처리를 한다. 데이터가 적은 MVP를 위한 의도적인 구현이며, 누적량에 따른 조회 비용이 확인되면 DB 처리로 전환한다.
 
 ---
 
@@ -248,5 +247,6 @@ backend/
 
 - API 규약/엔드포인트: `docs/03-api-design.md`
 - 테이블/인덱스/제약: `docs/04-database-design.md`
-- 수집기 확장 방향(최소 문서): `docs/05-collector-design.md`
-- 배포·로컬환경·구현 순서: `docs/06-deployment.md`
+- 현재 수집 출처·정책·그룹 규칙: `docs/05-collector-design.md`
+- 배포·로컬 환경 계약: `docs/06-deployment.md`
+- 현재 상태와 다음 작업: `docs/roadmap.md`

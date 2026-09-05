@@ -60,7 +60,7 @@ PickDeal 프로젝트에서 작업할 때의 컨텍스트와 규칙. 상세 설�
 
 ## 프론트엔드 규칙 (구현 시)
 
-- 목록/상세는 **서버 컴포넌트 SSR 우선**, 상호작용 필요한 부분만 클라이언트 컴포넌트로 분리. (현재는 `lib/mock-data.ts` 기반 단계 — 백엔드 API 연동 시 이 원칙을 적용)
+- 목록/상세는 **서버 컴포넌트 SSR 우선**, 상호작용 필요한 부분만 클라이언트 컴포넌트로 분리. 현재 목록·상세는 백엔드 API와 연동돼 있고, 데모 UI에서만 `lib/mock-data.ts`를 사용한다.
 - API base URL은 `NEXT_PUBLIC_API_BASE_URL` 환경변수.
 - 사용자 설정(키워드/출처 표시여부)은 **백엔드 DB가 SSOT**. localStorage에 저장 금지.
 - (인증 도입 시) SSR/Route Handler에서 백엔드 호출에 세션 쿠키·CSRF 토큰 전달이 필요하면 Next 프록시 라우트를 경유. MVP는 인증이 없어 현재는 해당 없음.
@@ -89,7 +89,7 @@ PickDeal 프로젝트에서 작업할 때의 컨텍스트와 규칙. 상세 설�
 - `DealUpsertSupport` — 출처 등록 + `(source, external_id)` 기반 upsert(신규 저장/기존 갱신).
 - `CollectedDeal` — 출처별 파싱 결과를 표준화한 형태. 출처마다 없는 정보가 있어 대부분 nullable.
 - `HtmlFetcher` — 브라우저 UA 기반 HTML 요청.
-- `DealGroupingService` — 정규화 제목과 추가 강한 근거가 정확히 일치한 다른 출처 Deal만 그룹 연결. 원본 Deal은 유지.
+- `DealGroupingService` — 판매처·가격이 같고 상품 URL 또는 정규화 제목 해시가 같은 다른 출처 Deal만 그룹 연결. 원본 Deal은 유지.
 
 **새 출처 추가 = 새 하위 패키지 + `SourceCollector` 구현체.** 파서는 `String html → 결과` 순수 함수로 두고 실제 응답 HTML 픽스처(`src/test/resources/fixtures/`)로 테스트한다.
 
@@ -100,7 +100,7 @@ PickDeal 프로젝트에서 작업할 때의 컨텍스트와 규칙. 상세 설�
 ## 작업 시 유의
 
 - 도메인 로직은 Service에 둔다. Controller는 DTO 매핑·검증·상태 코드만.
-- 키워드/출처 필터링은 Service에서 쿼리 조건으로 반영 (`docs/01` 3.2 우선순위 규칙).
+- 키워드/출처 필터링은 Service에서 `docs/01` 3.2 우선순위로 적용한다. 현재 MVP는 노출 가능한 Deal을 조회한 뒤 Service 메모리에서 그룹·필터·정렬·페이지 처리를 하며, 운영 데이터로 병목이 확인되면 DB 처리로 내린다.
 - DB 스키마/마이그레이션 변경은 `docs/04` 갱신과 함께.
 - API 추가/변경은 `docs/03` 갱신과 함께.
 - 필터 우선순위·API 계약 변경은 해당 Service/Controller 테스트와 함께 반영한다.

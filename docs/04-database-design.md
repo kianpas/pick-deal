@@ -1,7 +1,7 @@
 # 04. 데이터베이스 설계 (Database Design)
 
 > PickDeal — DB 테이블 초안 / 인덱스·제약 / PostgreSQL·MySQL 선택 기준 / 시드 전략
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-08-25
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-09-05
 > 표준 DBMS: **PostgreSQL**(개발·운영 공통, MySQL 선택 시 5장 참고)
 > **현재 상태**: 애플리케이션은 로컬 PostgreSQL `pickdeal` DB와 JPA `ddl-auto: update`로 기동한다. H2 in-memory(PostgreSQL 호환 모드)는 테스트에서만 `create-drop`으로 사용한다. 아래 테이블/제약/인덱스는 PostgreSQL 기준이다.
 
@@ -52,7 +52,7 @@
 | `group_id` | bigint | FK→deal_group.id, null | 강한 일치로 연결된 교차 출처 그룹 |
 | `status` | varchar(20) | not null default 'ACTIVE' | `ACTIVE` \| `EXPIRED` \| `SOLD_OUT` |
 | `posted_at` | timestamptz | not null | 출처 게시 시각 |
-| `collected_at` | timestamptz | not null default now() | 수집/등록 시각 |
+| `collected_at` | timestamptz | not null default now() | 최초 수집·등록 시각. 현재 재수집 성공 시각으로 갱신하지 않음 |
 | `created_at` | timestamptz | not null default now() | 레코드 생성 시각 |
 
 제약/인덱스:
@@ -79,7 +79,7 @@
 | `created_at` | timestamptz | not null | 생성 시각 |
 | `updated_at` | timestamptz | not null | 대표 변경 등 수정 시각 |
 
-그룹은 원본 Deal을 합치거나 삭제하지 않는다. 서로 다른 출처의 정규화 제목이 정확히 같고, 추가로 상품 URL이 정확히 같거나 판매몰·가격이 모두 같은 경우에만 자동 연결한다. 여러 기존 그룹과 동시에 충돌하면 자동 병합하지 않는다.
+그룹은 원본 Deal을 합치거나 삭제하지 않는다. 자동 판정 규칙은 `docs/05-collector-design.md` 5장에서 관리하며, 이 문서는 `deal_group`과 `deal.group_id`의 저장 구조와 제약만 소유한다.
 
 ### 2.4 `source_visibility` — 출처 표시/숨김 설정 (사용자별)
 
@@ -161,42 +161,11 @@
 
 ---
 
-## 4. 목록 조회 쿼리 개념 (MVP)
+## 4. 목록 조회 처리 (MVP)
 
-`GET /api/v1/deals`의 서버 측 필터를 SQL 개념으로 표현하면:
+현재 `DealRepository.findVisibleDeals`는 활성화된 출처 중 사용자가 숨기지 않은 출처의 Deal을 상태와 관계없이 조회한다. `EXPIRED`와 `SOLD_OUT`도 목록에 포함하며 UI가 상태를 구분한다.
 
-```sql
-SELECT d.*
-FROM deal d
-WHERE d.status = 'ACTIVE'
-  -- 1) 숨김 출처 제외
-  AND d.source_id NOT IN (
-        SELECT sv.source_id FROM source_visibility sv
-        WHERE sv.user_id = :userId AND sv.visible = false
-      )
-  -- 2) 제외 키워드: 제목/설명에 포함되면 제외
-  AND NOT EXISTS (
-        SELECT 1 FROM keyword k
-        WHERE k.user_id = :userId AND k.type = 'EXCLUDE'
-          AND (d.title ILIKE '%' || k.keyword || '%'
-            OR d.description ILIKE '%' || k.keyword || '%')
-      )
-  -- 3) 관심 키워드가 1개 이상이면, 하나라도 포함해야 노출
-  AND (
-        NOT EXISTS (SELECT 1 FROM keyword k WHERE k.user_id = :userId AND k.type = 'INTEREST')
-        OR EXISTS (
-            SELECT 1 FROM keyword k
-            WHERE k.user_id = :userId AND k.type = 'INTEREST'
-              AND (d.title ILIKE '%' || k.keyword || '%'
-                OR d.description ILIKE '%' || k.keyword || '%')
-        )
-      )
-ORDER BY d.posted_at DESC      -- sort=latest
-LIMIT :size OFFSET :page * :size;
-```
-
-- `ILIKE`는 PostgreSQL의 대소문자 무시 LIKE. MySQL에서는 기본 collation이 대소문자 무시인 경우 `LIKE`로 동일 동작(5장 참고).
-- MVP 데이터량에서는 위 서브쿼리 방식으로 충분하다. 성능 이슈 발생 시 `pg_trgm` 또는 사전 계산 컬럼 도입.
+`DealService`는 조회 결과를 그룹 단위로 접은 뒤 검색어·카테고리·관심/제외 키워드를 적용하고 정렬·offset 페이지 처리를 메모리에서 수행한다. 이 방식은 데이터가 적은 MVP의 현재 구현이다. 운영 데이터에서 응답 시간이나 조회 행 수가 문제가 되면 API의 그룹 단위 계약을 유지하면서 DB 쿼리·키셋 페이지네이션으로 옮긴다. 필터 우선순위와 그룹 단위 동작은 `docs/01` 3.2와 `docs/03` 2.1이 소유한다.
 
 ---
 
