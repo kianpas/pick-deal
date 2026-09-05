@@ -3,20 +3,17 @@
 import {
   Bell,
   ChevronDown,
-  Eye,
-  EyeOff,
   Home,
   Plus,
   Tag,
   UserCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { ShopIcon } from "@/components/common/ShopIcon";
 import { useFilters } from "@/components/filter/FilterProvider";
-import { getSources, updateSourceVisibility } from "@/lib/api";
-import type { SourceItem } from "@/lib/api-types";
+import { SourceVisibilityList } from "@/components/source/SourceVisibilityList";
 import { SHOP_COUNTS } from "@/lib/mock-data";
 import type { ShopId } from "@/lib/types";
 
@@ -36,52 +33,9 @@ const VISIBLE_SHOP_LIMIT = 8;
 
 export function LeftSidebar() {
   const { selectedShops, toggleShop, clearShops } = useFilters();
-  const router = useRouter();
   const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
   const [notifyEnabled, setNotifyEnabled] = useState(true);
-
-  // 출처 표시/숨김은 백엔드 DB가 SSOT(AGENTS.md). 마운트 시 실데이터를 불러온다.
-  const [sources, setSources] = useState<SourceItem[] | null>(null);
-  const [sourcesError, setSourcesError] = useState(false);
-  const [pendingSourceId, setPendingSourceId] = useState<number | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-    setSourcesError(false);
-    getSources()
-      .then((data) => {
-        if (active) setSources(data);
-      })
-      .catch(() => {
-        // 빈 목록으로 위장하지 않고 에러로 구분해 보여준다(재시도 가능)
-        if (active) setSourcesError(true);
-      });
-    return () => {
-      active = false;
-    };
-  }, [reloadKey]);
-
-  async function handleToggleSource(src: SourceItem) {
-    const nextVisible = !src.visible;
-    // 낙관적 업데이트(실패 시 롤백)
-    setSources((prev) =>
-      prev?.map((s) => (s.id === src.id ? { ...s, visible: nextVisible } : s)) ?? prev,
-    );
-    setPendingSourceId(src.id);
-    try {
-      await updateSourceVisibility(src.id, nextVisible);
-      // 목록은 서버(page.tsx)가 출처 숨김을 반영하므로 서버 컴포넌트를 재실행한다.
-      router.refresh();
-    } catch {
-      setSources((prev) =>
-        prev?.map((s) => (s.id === src.id ? { ...s, visible: src.visible } : s)) ?? prev,
-      );
-    } finally {
-      setPendingSourceId(null);
-    }
-  }
 
   const visible = expanded ? SHOP_COUNTS : SHOP_COUNTS.slice(0, VISIBLE_SHOP_LIMIT);
 
@@ -116,45 +70,9 @@ export function LeftSidebar() {
             <span className="text-[11px] text-fg-subtle">표시/숨김</span>
           </div>
 
-          {sourcesError ? (
-            <div className="space-y-1 px-3 py-1.5">
-              <p className="text-xs text-danger">출처를 불러오지 못했어요.</p>
-              <button
-                type="button"
-                onClick={() => setReloadKey((k) => k + 1)}
-                className="text-xs text-fg-muted underline transition hover:text-fg"
-              >
-                다시 시도
-              </button>
-            </div>
-          ) : sources === null ? (
-            <p className="px-3 py-1.5 text-xs text-fg-subtle">불러오는 중…</p>
-          ) : sources.length === 0 ? (
-            <p className="px-3 py-1.5 text-xs text-fg-subtle">출처가 없습니다.</p>
-          ) : (
-            <ul className="space-y-0.5">
-              {sources.map((src) => (
-                <li key={src.id}>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleSource(src)}
-                    disabled={pendingSourceId === src.id}
-                    aria-pressed={src.visible}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition hover:bg-surface disabled:opacity-50 ${
-                      src.visible ? "text-fg" : "text-fg-subtle"
-                    }`}
-                  >
-                    <span className="flex-1 truncate text-left">{src.name}</span>
-                    {src.visible ? (
-                      <Eye className="size-3.5 text-brand" />
-                    ) : (
-                      <EyeOff className="size-3.5 text-fg-subtle" />
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="px-3">
+            <SourceVisibilityList />
+          </div>
         </div>
 
         {/* Shops (쇼핑몰 다중 선택 필터) — 데모(판매처 개념은 수집기 단계로 보류) */}

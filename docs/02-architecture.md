@@ -137,7 +137,7 @@ frontend/
          └─ page.tsx           # 관심/제외 키워드 관리
 ```
 
-출처 표시/숨김은 별도 설정 라우트가 아니라 데스크톱 `LeftSidebar`에서 제공한다. 모바일에서는 현재 해당 사이드바가 숨겨지므로 출처 설정 접근 경로가 없다.
+출처 표시/숨김은 별도 설정 라우트가 아니다. 데스크톱은 `LeftSidebar`, 모바일은 화면 우하단 버튼으로 여는 drawer에서 같은 `SourceVisibilityList`를 사용한다.
 
 ### 4.2 화면별 정의
 
@@ -145,7 +145,7 @@ frontend/
 | --- | --- | --- | --- |
 | 핫딜 목록 | `/` | 그룹 대표 목록, 검색·카테고리, 더 보기. 숨김 출처와 키워드 설정 자동 반영 | `GET /api/v1/deals`, `GET /api/v1/deals/categories` |
 | 핫딜 상세 | `/deals/[id]` | 딜 상세 + 그룹의 출처별 원문·상품 링크 | `GET /api/v1/deals/{id}` |
-| 출처 설정 | `/`의 `LeftSidebar` | 출처 목록 + 표시/숨김 토글(데스크톱) | `GET /api/v1/sources`, `PATCH /api/v1/sources/{id}/visibility` |
+| 출처 설정 | 공통 화면 셸 | 데스크톱 사이드바·모바일 drawer의 표시/숨김 토글 | `GET /api/v1/sources`, `PATCH /api/v1/sources/{id}/visibility` |
 | 키워드 설정 | `/settings/keywords` | 관심/제외 키워드 등록·조회·삭제 | `GET/POST/DELETE /api/v1/keywords` |
 
 ### 4.3 주요 컴포넌트
@@ -155,6 +155,8 @@ frontend/
 - `components/deal/DealList.tsx` — 카드 목록
 - `components/deal/CategoryGrid.tsx`, `SortBar.tsx` — 카테고리와 목록 표시 옵션
 - `components/layout/LeftSidebar.tsx` — 출처 설정과 아직 백엔드에 연결되지 않은 데모 UI
+- `components/source/SourceVisibilityList.tsx` — 데스크톱·모바일이 공유하는 출처 조회·토글
+- `components/source/MobileSourceDrawer.tsx` — 모바일 출처 설정 drawer
 - `components/settings/KeywordManager.tsx` — 키워드 입력/목록/삭제
 
 ### 4.4 데이터 패칭 원칙

@@ -3,6 +3,7 @@ import { LeftSidebar } from "@/components/layout/LeftSidebar";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { FilterProvider } from "@/components/filter/FilterProvider";
+import { MobileSourceDrawer } from "@/components/source/MobileSourceDrawer";
 
 /**
  * 공통 화면 셸: 상단바 + 좌/우 사이드바 + 본문(children).
@@ -16,6 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <FilterProvider>
         <div className="flex">
           <LeftSidebar />
+          <MobileSourceDrawer />
 
           <main className="min-w-0 flex-1 px-3 py-4 sm:px-5 sm:py-5">
             {children}

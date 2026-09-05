@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CategoryGrid } from "./CategoryGrid";
 import { DealList } from "./DealList";
 import { SortBar } from "./SortBar";
-import { getDeals, type DealListParams } from "@/lib/api";
+import { getDealCategories, getDeals, type DealListParams } from "@/lib/api";
 import { formatRelativeTime } from "@/lib/format";
 import type { DealSummary, PageMeta } from "@/lib/api-types";
+import { SOURCE_VISIBILITY_CHANGED_EVENT } from "@/lib/ui-events";
 
 interface Props {
   /** 첫 페이지 딜 목록(서버에서 fetch). */
@@ -24,8 +25,8 @@ interface Props {
   activeCategory?: string;
 }
 
-/** 가장 최근 수집 시각(목록 기준). 수집 딜이 없으면 null. */
-function lastCollectedAt(deals: DealSummary[]): string | null {
+/** 목록에서 가장 최근에 처음 등록된 딜의 시각. 딜이 없으면 null. */
+function latestRegisteredAt(deals: DealSummary[]): string | null {
   let max: string | null = null;
   for (const deal of deals) {
     if (deal.collectedAt && (max === null || deal.collectedAt > max)) {
@@ -43,30 +44,75 @@ function lastCollectedAt(deals: DealSummary[]): string | null {
  */
 export function DealFeed({ deals, meta, loadFailed, listParams, categories, activeCategory }: Props) {
   const [showThumbnail, setShowThumbnail] = useState(true);
+  const [firstPageDeals, setFirstPageDeals] = useState(deals);
+  const [currentCategories, setCurrentCategories] = useState(categories);
+  const [currentLoadFailed, setCurrentLoadFailed] = useState(loadFailed);
   const [extraDeals, setExtraDeals] = useState<DealSummary[]>([]);
   const [nextPage, setNextPage] = useState(1);
   const [hasNext, setHasNext] = useState(meta?.hasNext ?? false);
-  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [refreshError, setRefreshError] = useState(false);
+  const refreshGeneration = useRef(0);
+
+  useEffect(() => {
+    async function refreshFirstPage() {
+      const generation = ++refreshGeneration.current;
+      setRefreshing(true);
+      setLoadingMore(false);
+      setRefreshError(false);
+      setLoadError(false);
+      setFirstPageDeals([]);
+      setExtraDeals([]);
+      setNextPage(1);
+      setHasNext(false);
+
+      try {
+        const [dealsResult, categoryResult] = await Promise.all([
+          getDeals({ ...listParams, page: 0 }),
+          getDealCategories(),
+        ]);
+        if (generation !== refreshGeneration.current) return;
+
+        setFirstPageDeals(dealsResult.items);
+        setCurrentCategories(categoryResult);
+        setCurrentLoadFailed(false);
+        setHasNext(dealsResult.meta.hasNext);
+      } catch {
+        if (generation === refreshGeneration.current) setRefreshError(true);
+      } finally {
+        if (generation === refreshGeneration.current) setRefreshing(false);
+      }
+    }
+
+    window.addEventListener(SOURCE_VISIBILITY_CHANGED_EVENT, refreshFirstPage);
+    return () => {
+      refreshGeneration.current += 1;
+      window.removeEventListener(SOURCE_VISIBILITY_CHANGED_EVENT, refreshFirstPage);
+    };
+  }, [listParams]);
 
   async function loadMore() {
-    setLoading(true);
+    const generation = refreshGeneration.current;
+    setLoadingMore(true);
     setLoadError(false);
     try {
       const result = await getDeals({ ...listParams, page: nextPage });
+      if (generation !== refreshGeneration.current) return;
       setExtraDeals((prev) => [...prev, ...result.items]);
       setNextPage((page) => page + 1);
       setHasNext(result.meta.hasNext);
     } catch {
-      setLoadError(true);
+      if (generation === refreshGeneration.current) setLoadError(true);
     } finally {
-      setLoading(false);
+      if (generation === refreshGeneration.current) setLoadingMore(false);
     }
   }
 
-  const allDeals = extraDeals.length > 0 ? [...deals, ...extraDeals] : deals;
+  const allDeals = extraDeals.length > 0 ? [...firstPageDeals, ...extraDeals] : firstPageDeals;
   const filtered = Boolean(listParams.q || listParams.category);
-  const collectedAt = lastCollectedAt(allDeals);
+  const registeredAt = latestRegisteredAt(allDeals);
 
   return (
     <div className="space-y-4">
@@ -74,11 +120,26 @@ export function DealFeed({ deals, meta, loadFailed, listParams, categories, acti
         showThumbnail={showThumbnail}
         onToggleThumbnail={() => setShowThumbnail((v) => !v)}
       />
-      {categories.length > 0 && (
-        <CategoryGrid categories={categories} active={activeCategory} />
+      {currentCategories.length > 0 && (
+        <CategoryGrid categories={currentCategories} active={activeCategory} />
       )}
 
-      {loadFailed ? (
+      {refreshing ? (
+        <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-fg-muted">
+          출처 설정을 반영하고 있어요.
+        </div>
+      ) : refreshError ? (
+        <div className="space-y-3 rounded-xl border border-dashed border-danger/40 py-12 text-center">
+          <p className="text-sm text-danger">출처 설정은 저장했지만 목록을 새로 불러오지 못했어요.</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="inline-flex rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-fg-muted transition hover:bg-surface-hover hover:text-fg"
+          >
+            다시 불러오기
+          </button>
+        </div>
+      ) : currentLoadFailed ? (
         <div className="space-y-3 rounded-xl border border-dashed border-danger/40 py-12 text-center">
           <p className="text-sm text-danger">딜 목록을 불러오지 못했어요.</p>
           <p className="text-xs text-fg-muted">백엔드 서버가 실행 중인지 확인한 뒤 다시 시도해 주세요.</p>
@@ -103,16 +164,16 @@ export function DealFeed({ deals, meta, loadFailed, listParams, categories, acti
               <button
                 type="button"
                 onClick={loadMore}
-                disabled={loading}
+                disabled={loadingMore || refreshing}
                 className="w-full rounded-xl border border-border bg-surface py-2.5 text-sm font-medium text-fg-muted transition hover:bg-surface-hover hover:text-fg disabled:opacity-50 sm:max-w-xs"
               >
-                {loading ? "불러오는 중…" : "더 보기"}
+                {loadingMore ? "불러오는 중…" : refreshing ? "목록 갱신 중…" : "더 보기"}
               </button>
             </div>
           )}
-          {collectedAt && (
+          {registeredAt && (
             <p className="text-center text-xs text-fg-subtle" suppressHydrationWarning>
-              마지막 수집 {formatRelativeTime(collectedAt)}
+              최근 등록 {formatRelativeTime(registeredAt)}
             </p>
           )}
         </>

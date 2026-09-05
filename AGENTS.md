@@ -5,7 +5,7 @@ PickDeal 프로젝트에서 작업할 때의 컨텍스트와 규칙. 상세 설�
 ## 프로젝트 개요
 
 - **PickDeal**: 핫딜 수집/조회 서비스 (MVP 단계)
-- **Monorepo**: `frontend/` (Next.js, 그룹 대표 목록·출처별 상세·키워드 설정 및 사이드바 출처 설정 백엔드 연동 완료) + `backend/` (Spring Boot REST API + 복수 출처 수집기 + 교차 출처 DealGroup 연결·조회) + `docs/` (설계 문서)
+- **Monorepo**: `frontend/` (Next.js, 그룹 대표 목록·출처별 상세·키워드 설정 및 데스크톱 사이드바·모바일 drawer 출처 설정 백엔드 연동 완료) + `backend/` (Spring Boot REST API + 복수 출처 수집기 + 교차 출처 DealGroup 연결·조회) + `docs/` (설계 문서)
 - **설계 의도/정책**의 단일 진실 출처는 `docs/01~06`. 단, **실제 패키지 구조·라이브러리 버전**은 코드와 `build.gradle`/`package.json`이 진실이다(둘이 어긋나면 코드 기준으로 docs를 갱신).
 - **문서 맵** — 용어·재사용 자산은 `CONTEXT.md`, 되돌리기 비싼 결정의 이력은 `docs/adr/`, 상세 설계는 `docs/01~06`, 조사·리뷰 기록은 `docs/notes/`, 지금 일하는 규칙은 이 파일(AGENTS.md).
 - 작업 순서나 다음 개발 항목을 판단할 때만 `docs/roadmap.md`를 참고한다. 수집기·파서·dedup처럼 외부 데이터에 의존하는 변경은 fixture 테스트뿐 아니라 실제 1회 수집 결과도 확인한다.
@@ -37,7 +37,7 @@ PickDeal 프로젝트에서 작업할 때의 컨텍스트와 규칙. 상세 설�
 - **Frontend** (`frontend/`): 패키지 매니저는 **npm**(`package-lock.json`).
   - 설치/실행: `npm install` → `npm run dev`.
   - 목록(`/`), 상세(`/deals/[id]`), 키워드 설정(`/settings/keywords`)은 `lib/api.ts`를 통해 백엔드 API와 연동한다.
-  - 출처 표시/숨김은 별도 페이지가 아니라 `LeftSidebar`의 출처 영역에서 변경하며, 백엔드 DB를 SSOT로 사용한다.
+  - 출처 표시/숨김은 별도 페이지가 아니라 데스크톱 `LeftSidebar`와 모바일 출처 drawer에서 변경하며, 백엔드 DB를 SSOT로 사용한다.
   - `lib/mock-data.ts`와 `lib/types.ts`는 데모/레거시 자산이며 신규 화면의 계약 타입은 `lib/api-types.ts`를 사용한다.
 
 ## 백엔드 패키지 규칙
