@@ -1,6 +1,7 @@
 package com.pickdeal.collector.quasarzone;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -20,6 +21,32 @@ class QuasarzoneListParserTest {
     @BeforeAll
     static void loadFixture() {
         fixtureHtml = readResource("/fixtures/quasarzone/saleinfo-list.html");
+    }
+
+    @Test
+    @DisplayName("변경된 v2 목록에서 일반 핫딜만 추출한다")
+    void parsesV2DealItems() {
+        List<QuasarzoneDealItem> items = parser.parse(
+                readResource("/fixtures/quasarzone/saleinfo-list-v2.html"));
+
+        assertThat(items).hasSize(2);
+
+        QuasarzoneDealItem active = items.get(0);
+        assertThat(active.externalId()).isEqualTo("1984229");
+        assertThat(active.storeName()).isEqualTo("알리");
+        assertThat(active.title()).isEqualTo("투키 Toocki 신상 싱글풀 릴케이블 100W");
+        assertThat(active.price()).isNull();
+        assertThat(active.category()).isEqualTo("기타");
+        assertThat(active.commentCount()).isEqualTo(1);
+        assertThat(active.postedAtText()).isEqualTo("2시간 전");
+        assertThat(active.thumbnailUrl()).isEqualTo("https://img2.quasarzone.com/editor/v2-active.webp");
+        assertThat(active.ended()).isFalse();
+
+        QuasarzoneDealItem ended = items.get(1);
+        assertThat(ended.externalId()).isEqualTo("1984033");
+        assertThat(ended.storeName()).isEqualTo("지마켓");
+        assertThat(ended.price()).isEqualTo(2_405_000L);
+        assertThat(ended.ended()).isTrue();
     }
 
     @Test
@@ -57,9 +84,50 @@ class QuasarzoneListParserTest {
         assertThat(items.get(0).price()).isEqualTo(0L);      // 무료 딜: ￦ 0 (KRW)
         assertThat(items.get(1).price()).isEqualTo(36000L);  // ￦ 36,000 (KRW)
 
-        // 픽스처의 모든 딜은 가격을 가진다 — '10,850원 (KRW)' 같은 접미 변형도 파싱돼야 한다
-        assertThat(items).allSatisfy(item ->
-                assertThat(item.price()).isNotNull().isGreaterThanOrEqualTo(0L));
+        // 원화 표기의 접미 변형은 파싱하고, 통화 컬럼이 없는 현재 모델에서 USD는 null로 둔다.
+        assertThat(items).filteredOn(item -> item.title().contains("UGREEN USB-C 허브"))
+                .singleElement().extracting(QuasarzoneDealItem::price).isNull();
+        assertThat(items).filteredOn(item -> item.externalId().equals("1968615"))
+                .singleElement().extracting(QuasarzoneDealItem::price).isEqualTo(10_850L);
+    }
+
+    @Test
+    @DisplayName("외화 가격을 원화 정수로 오인하지 않는다")
+    void doesNotTreatForeignCurrencyAsKrw() {
+        List<QuasarzoneDealItem> items = parser.parse(singleItemHtml(
+                "1984189", "[알리] 투키 무선 충전기", "$ 25 (USD)"));
+
+        assertThat(items).singleElement().extracting(QuasarzoneDealItem::price).isNull();
+    }
+
+    @Test
+    @DisplayName("일반 핫딜 목록에 섞인 파트너 핫딜은 수집하지 않는다")
+    void skipsPartnerDeals() {
+        String normal = singleItemHtml("1984189", "[알리] 일반 핫딜", "￦ 20,415 (KRW)");
+        String partner = singleItemHtml(
+                "269999", "[지마켓] 파트너 핫딜", "￦ 15,750 (KRW)")
+                .replace("/bbs/qb_saleinfo/views/", "/bbs/qb_partnersaleinfo/views/");
+
+        assertThat(parser.parse(normal + partner))
+                .singleElement()
+                .extracting(QuasarzoneDealItem::externalId)
+                .isEqualTo("1984189");
+    }
+
+    @Test
+    @DisplayName("Cloudflare 보안검사 응답을 빈 목록 성공으로 처리하지 않는다")
+    void rejectsCloudflareChallengePage() {
+        String challenge = """
+                <html><body>
+                  <div id="captcha-container"></div>
+                  <p>Enable JavaScript and cookies to continue</p>
+                  <p>퀘이사존에 접속하려면 보안검사를 완료하세요.</p>
+                </body></html>
+                """;
+
+        assertThatThrownBy(() -> parser.parse(challenge))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("보안검사 페이지");
     }
 
     @Test
@@ -121,6 +189,28 @@ class QuasarzoneListParserTest {
                 """;
 
         assertThat(parser.parse(blinded)).isEmpty();
+    }
+
+    private static String singleItemHtml(String externalId, String title, String price) {
+        return """
+                <div class="market-info-list">
+                  <div class="market-info-list-cont">
+                    <p class="tit">
+                      <span class="label">진행중</span>
+                      <a href="/bbs/qb_saleinfo/views/%s" class="subject-link">
+                        <span class="ellipsis-with-reply-cnt">%s</span>
+                      </a>
+                    </p>
+                    <div class="market-info-sub">
+                      <p>
+                        <span class="category">PC/하드웨어</span>
+                        <span>가격 <span class="text-orange">%s</span></span>
+                      </p>
+                      <p><span class="date">1시간 전</span></p>
+                    </div>
+                  </div>
+                </div>
+                """.formatted(externalId, title, price);
     }
 
     private static String readResource(String path) {
