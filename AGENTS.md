@@ -1,6 +1,13 @@
 # AGENTS.md
 
-PickDeal은 단일 사용자 핫딜 수집·조회 MVP다. `frontend/`는 Next.js App Router·TypeScript·Tailwind, `backend/`는 Spring Boot·Java·JPA·PostgreSQL을 사용한다.
+PickDeal은 단일 사용자 핫딜 수집·조회 MVP다.
+
+## Stack
+
+- Frontend: `frontend/` — Next.js App Router, TypeScript strict, Tailwind CSS, npm
+- Backend: `backend/` — Spring Boot, Java 17, Gradle, JPA
+- Database: PostgreSQL
+- 정확한 라이브러리 버전은 `frontend/package.json`과 `backend/build.gradle`을 따른다.
 
 ## 작업 범위
 
