@@ -1,106 +1,80 @@
 # AGENTS.md
 
-PickDeal 프로젝트에서 작업할 때의 컨텍스트와 규칙. 상세 설계는 `docs/` 참고.
+PickDeal은 단일 사용자 핫딜 수집·조회 MVP다. `frontend/`는 Next.js App Router·TypeScript·Tailwind, `backend/`는 Spring Boot·Java·JPA·PostgreSQL을 사용한다.
 
-## 프로젝트 개요
+## 작업 범위
 
-- **PickDeal**: 핫딜 수집/조회 서비스 (MVP 단계)
-- **Monorepo**: `frontend/` (Next.js, 그룹 대표 목록·출처별 상세·키워드 설정 및 데스크톱 사이드바·모바일 drawer 출처 설정 백엔드 연동 완료) + `backend/` (Spring Boot REST API + 복수 출처 수집기 + 교차 출처 DealGroup 연결·조회) + `docs/` (설계 문서)
-- **설계 의도/정책**의 단일 진실 출처는 `docs/01~06`. 단, **실제 패키지 구조·라이브러리 버전**은 코드와 `build.gradle`/`package.json`이 진실이다(둘이 어긋나면 코드 기준으로 docs를 갱신).
-- **문서 맵** — 용어·재사용 자산은 `CONTEXT.md`, 되돌리기 비싼 결정의 이력은 `docs/adr/`, 상세 설계는 `docs/01~06`, 조사·리뷰 기록은 `docs/notes/`, 지금 일하는 규칙은 이 파일(AGENTS.md).
-- 작업 순서나 다음 개발 항목을 판단할 때만 `docs/roadmap.md`를 참고한다. 수집기·파서·dedup처럼 외부 데이터에 의존하는 변경은 fixture 테스트뿐 아니라 실제 1회 수집 결과도 확인한다.
+- 설명·검토·진단·계획 요청은 조회와 결과 보고까지, 구현·수정 요청은 범위 내 변경과 관련 검증까지 수행한다.
+- 허용된 로컬 작업은 진행하되, 배포·운영 데이터 변경·파괴적 작업·비용 발생·범위 확대는 별도 승인이 없다면 확인한다. 기존 사용자 변경을 보존한다.
+- 비밀정보를 코드·문서·로그에 남기지 않는다. 인증 없는 쓰기 API를 공개 인터넷에 노출하지 않는다.
+- 결과는 변경 요점, 검증 결과, 남은 문제를 간결하게 보고한다. 실행하지 못한 검증을 통과로 표현하지 않는다.
 
-## 설계 원칙 (설계·문서 요청 시 반드시 적용)
+## 문서 사용
 
-> 이 프로젝트는 **단일 사용자 핫딜 뷰어 MVP**다. 과설계는 결함으로 취급한다.
+전체 문서를 매번 읽지 말고 작업에 필요한 부분만 확인한다.
 
-- **범위에 비례한 격식.** MVP 작업엔 MVP 분량의 설계만 한다. 문서를 균일한 밀도로 채우지 말 것 — 계약(API/스키마)엔 깊게, 먼 미래(2차·3차)엔 한 문단. 균일한 성실함은 생성물의 냄새다.
-- **비용 비대칭으로 칼질한다.** "이걸 나중에 하면 지금보다 얼마나 더 비싼가?"를 기준으로:
-  - *지금 한다* — 나중에 붙이면 비싼 것: 데이터 정합성 제약(유니크/FK), 공개 API 계약, 되돌리기 힘든 경계. (예: `source_id + external_id` 유니크)
-  - *미룬다* — 나중에 싸게 붙는 것: 미래 기능 풀설계, 안 쓰는 추상 레이어, 인프라 분리(Redis/worker/nginx).
-  - 단, **실제로 만들 계획이 선 기능은 "미래"가 아니다.** 예: 기본 회원가입/로그인은 계획된 마일스톤이라 `user_id`를 지금 유지한다.
-- **미래 단계는 "방향 한 문단"까지만.** 아직 안 만든 것을 완성형으로 설계하지 않는다(붙일 때 다시 쓰게 된다).
-- **환경 패리티.** 개발/운영 DB는 같은 것을 권장. 임시 우회(H2 등)는 리스크를 명시한다.
-- **절제도 산출물이다.** 안 쓴 것으로 판단을 보여라. 새 문서/추상화를 만들기 전에 "지금 필요한가? 더 짧게 끝낼 수 있나?"를 먼저 자문한다.
+- `CONTEXT.md`: 용어·재사용 자산 색인.
+- `docs/01~06`: 요구사항·상세 계약. 필터 정책은 `docs/01` §3.2, API는 `docs/03`, DB는 `docs/04`, 수집기는 `docs/05`, 배포는 `docs/06`.
+- `docs/roadmap.md`: 현재 상태·다음 작업을 판단할 때 확인.
+- `docs/adr/`, `docs/notes/`: 결정 근거·과거 조사 기록이 필요할 때 확인.
 
-## 스택
+현재 버전·파일 구조는 코드와 빌드 설정을, 설계 의도는 해당 설계 문서를 기준으로 한다. 둘이 충돌하면 차이를 확인하고 요청 범위에서 해결한다. 구현에 맞추려고 설계 정책을 임의로 바꾸지 않는다.
 
-- **Backend**: Spring Boot 4.0.6, Java 17, Gradle, JPA, PostgreSQL (로컬 `pickdeal` DB로 기동, 접속 정보는 `DB_USERNAME`/`DB_PASSWORD` 환경변수로 오버라이드. 테스트만 H2 in-memory)
-- **Frontend**: Next.js 16 App Router, TypeScript strict, Tailwind CSS
-- **API prefix**: `/api/v1/*`
+API·DB·필터 정책 변경은 해당 계약 문서와 테스트를 함께 갱신한다. 관련 없는 문서 정리나 상태 설명의 중복 추가는 하지 않는다.
 
-## 빌드 · 실행 · 테스트
+## 설계 범위
 
-- **Backend** (`backend/`):
-  - 테스트: `./gradlew test` — H2 in-memory라 별도 DB 준비 불필요.
-  - 실행: `./gradlew bootRun` (기본 포트 8080, 로컬 PostgreSQL `pickdeal` DB 필요).
-- **Frontend** (`frontend/`): 패키지 매니저는 **npm**(`package-lock.json`).
-  - 설치/실행: `npm install` → `npm run dev`.
-  - 목록(`/`), 상세(`/deals/[id]`), 키워드 설정(`/settings/keywords`)은 `lib/api.ts`를 통해 백엔드 API와 연동한다.
-  - 출처 표시/숨김은 별도 페이지가 아니라 데스크톱 `LeftSidebar`와 모바일 출처 drawer에서 변경하며, 백엔드 DB를 SSOT로 사용한다.
-  - `lib/mock-data.ts`와 `lib/types.ts`는 데모/레거시 자산이며 신규 화면의 계약 타입은 `lib/api-types.ts`를 사용한다.
+- 현재 요구사항과 데이터 정합성·API 계약·되돌리기 어려운 경계에 집중한다. 기존 자산을 재사용하고, 필요 없는 문서·추상화는 추가하지 않는다.
+- 미확정 미래 기능은 방향만 짧게 기록한다. Redis·메시지 큐·별도 worker·인증/멀티유저는 보류 중이며 필요성이 확인되거나 사용자가 요청할 때 재검토한다. 기존 `user_id`는 유지한다.
+- 개발·운영 DB는 PostgreSQL을 기준으로 한다. H2 테스트 통과만으로 PostgreSQL 호환성을 판단하지 않는다.
 
-## 백엔드 패키지 규칙
+## Backend
 
-도메인 중심 + 계층별 하위 패키지. `com.pickdeal.{domain}/`:
+- `com.pickdeal.{domain}/` 아래 `api/`, `application/`, `domain/`, `dto/` 구조를 따른다. 도메인 패키지명은 API 리소스명과 맞춘다.
+- 트랜잭션·도메인 로직은 Service, Controller는 DTO 매핑·검증·상태 코드 처리를 맡는다.
+- API prefix는 `/api/v1`. 응답은 `ApiResponse<T>`, 페이지 정보는 `PageMetaResponse`를 사용한다.
+- 에러는 `BusinessException`·`ErrorCode`·`GlobalExceptionHandler` 체계를 재사용한다.
+- 필터·그룹·정렬·페이지 처리의 DB 이관은 실제 병목이 확인되거나 명시적으로 요청된 경우에 진행한다.
 
-- `api/` — Controller (`DealController`, 관리용은 `InternalDealController`)
-- `application/` — Service (트랜잭션 경계, 도메인 규칙)
-- `domain/` — Entity + Repository + Enum
-- `dto/` — 요청/응답 분리 (`CreateDealRequest`, `DealDetailResponse` 등)
+## Frontend
 
-공통:
-- `common/error/` — `BusinessException` + `ErrorCode` enum 기반. 신규 에러는 `ErrorCode`에 추가하고 `GlobalExceptionHandler`가 처리.
-- `common/response/` — 응답은 `ApiResponse<T>`로 감싼다. 페이지는 `PageMetaResponse`.
-- `config/` — `CorsConfig`, `SeedDataInitializer` 등 설정 빈.
+- npm과 `package-lock.json`을 사용한다.
+- 목록·상세는 Server Component SSR 우선, 상호작용 부분만 Client Component로 분리한다.
+- 백엔드 호출은 `lib/api.ts`, 계약 타입은 `lib/api-types.ts`를 사용한다. `lib/mock-data.ts`·`lib/types.ts`는 데모용이며 신규 API 계약에 사용하지 않는다.
+- API base URL은 `NEXT_PUBLIC_API_BASE_URL`. 키워드·출처 설정은 백엔드 DB가 기준이며 localStorage에 저장하지 않는다.
 
-도메인 추가 시 위 4계층 구조를 그대로 따른다.
+### 디자인
 
-- 도메인 패키지명은 API 리소스와 일치시킨다. 예: 관심/제외 키워드는 `keyword` 패키지(`KeywordController`, 엔티티 `Keyword`) ↔ `/api/v1/keywords`.
+- 색·폰트 토큰은 `frontend/app/globals.css`가 기준이다. 컴포넌트의 hex/rgb 리터럴을 피하고 새 색은 기본·`.dark`·`.cassette` 테마에 모두 정의한다.
+- brand는 상호작용, price는 가격, positive/warning/danger는 상태에 사용한다.
+- 본문은 `font-sans`, 자릿수 비교용 숫자는 `font-mono tabular-nums`. 최소 크기는 `text-xs`.
+- 폰트는 현재 Google Fonts CDN 방식을 유지한다. `next/font` 전환은 기존 빌드 다운로드 실패 문제가 해결되는지 검증할 때만 한다.
+- 전역 focus-visible·reduced-motion 규칙을 재사용한다. 커스텀 요소·애니메이션은 키보드 접근과 감속 설정 적용 여부를 확인한다.
 
-## 프론트엔드 규칙 (구현 시)
+## 수집기
 
-- 목록/상세는 **서버 컴포넌트 SSR 우선**, 상호작용 필요한 부분만 클라이언트 컴포넌트로 분리. 현재 목록·상세는 백엔드 API와 연동돼 있고, 데모 UI에서만 `lib/mock-data.ts`를 사용한다.
-- API base URL은 `NEXT_PUBLIC_API_BASE_URL` 환경변수.
-- 사용자 설정(키워드/출처 표시여부)은 **백엔드 DB가 SSOT**. localStorage에 저장 금지.
-- (인증 도입 시) SSR/Route Handler에서 백엔드 호출에 세션 쿠키·CSRF 토큰 전달이 필요하면 Next 프록시 라우트를 경유. MVP는 인증이 없어 현재는 해당 없음.
+- 구조·출처·요청 제한·DealGroup 정책은 `docs/05-collector-design.md`를 따른다.
+- 새 출처는 `collector/{source}/`와 `SourceCollector` 구현체로 추가하고 공통 지원 코드를 재사용한다. Parser는 `String html → 결과` 순수 로직과 실제 HTML fixture로 검증한다.
+- 공통 계약이 같으면 출처 추가 시 해당 코드·테스트·fixture와 `docs/05` 출처 표만 갱신한다.
+- 새 출처의 robots.txt와 접근 정책을 확인하고 차단 우회는 하지 않는다.
+- 외부 응답에 의존하는 변경은 fixture 검증 후 허용된 로컬·개발 환경에서 요청 상한 내 1회 수집으로 확인한다. 운영 DB를 사용하거나 자동 스케줄러와 중복 실행하지 않는다. 접근·환경 제한이 있으면 우회하지 말고 미검증 사유를 보고한다.
 
-### 디자인 규칙
+## 실행·검증
 
-`app/globals.css`가 토큰의 단일 출처다(색·폰트). 코드가 표현하지 못하는 관례만 여기 적는다.
+명령은 각 디렉터리에서 실행한다.
 
-- **색은 토큰 경유.** 컴포넌트에 hex/rgb 리터럴 금지. 새 색이 필요하면 세 테마(기본/`.dark`/`.cassette`) 모두에 토큰을 추가한다. 액센트 역할 구분: 보라(brand)=상호작용, 앰버(price)=가격, 시맨틱(positive/warning/danger)=상태.
-- **폰트는 두 종.** 본문·UI는 `font-sans`(기본이라 명시 불필요), 가격처럼 자릿수 비교가 필요한 숫자는 `font-mono` + `tabular-nums`. 폰트는 Google Fonts CDN 링크로 받는다 — `next/font`는 빌드 때 한글 폰트 수백 개 파일을 내려받다 실패해 빌드를 깨뜨린다.
-- **포커스 링은 전역 규칙이 처리한다.** `globals.css`의 `:focus-visible` 규칙이 특이도 0(`:where`)으로 모든 인터랙티브 요소를 덮으므로 컴포넌트마다 focus 스타일을 붙이지 않는다. 커스텀 요소로 포커스를 받게 만들 때만 `tabindex`를 확인한다.
-- **모션은 감속 선호를 존중한다.** 전역 `prefers-reduced-motion` 규칙이 이미 전환을 무력화하므로, 개별 애니메이션에서 다시 처리할 필요는 없다.
-- 최소 폰트 크기는 `text-xs`(12px). 그보다 작은 임의값은 쓰지 않는다.
+- Backend 실행: `backend/`에서 `./gradlew bootRun`. 로컬 PostgreSQL `pickdeal` DB가 필요하며 접속 정보는 `DB_USERNAME`·`DB_PASSWORD`로 설정한다.
+- Frontend 실행: `frontend/`에서 `npm install` 후 `npm run dev`.
 
-## 현재 단계와 도입하지 않는 것
+변경 범위에 맞춰 검증하고, 새 변경·실패·미해결 문제가 없다면 통과한 검사를 반복하지 않는다.
 
-핵심 조회·설정 API 이후 **복수 출처 수집기와 보수적인 교차 출처 DealGroup 연결·목록·상세 노출까지 구현된 상태**다. 현재 수집 출처와 자동 그룹 규칙은 `docs/05-collector-design.md`를 단일 진실 출처로 삼는다. 다음은 의도적으로 보류 중이므로 추가 제안 전 확인:
-- Redis (캐시/큐)
-- 별도 collector worker 컨테이너
-- 인증/멀티유저 (현재 단일 고정 user_id)
-- 메시지 큐
+| 변경 | 검증 |
+| --- | --- |
+| 모든 변경 | `git diff --check` |
+| Frontend 코드 | `npm run lint`, `npm run typecheck` |
+| 라우팅·의존성·빌드 설정·SSR/Client 경계 | 위 검사 + `npm run build` |
+| Backend 코드 | `./gradlew test` (H2 in-memory, 별도 DB 불필요) |
+| DB 스키마·migration | 관련 테스트 + 허용된 PostgreSQL 환경에서 스키마 적용·기동 확인 |
+| 수집기·파서 | 관련 fixture 테스트 + 위 실수집 기준 |
 
-수집기는 `collector/` 패키지에 있다. 출처별 하위 패키지(`collector/{source}/`)에 fetch(Client)·parse(Parser)·normalize(CollectService)를 두고, 출처 공통 부분은 `collector/support/`에 있다:
-
-- `SourceCollector` — 출처 하나의 수집 계약(`sourceCode()`, `collect()`). `CollectScheduler`가 구현체를 모두 주입받아 순회하므로 **출처가 늘어도 스케줄러는 바뀌지 않는다.**
-- `DealUpsertSupport` — 출처 등록 + `(source, external_id)` 기반 upsert(신규 저장/기존 갱신).
-- `CollectedDeal` — 출처별 파싱 결과를 표준화한 형태. 출처마다 없는 정보가 있어 대부분 nullable.
-- `HtmlFetcher` — 브라우저 UA 기반 HTML 요청.
-- `DealGroupingService` — 판매처·가격이 같고 상품 URL 또는 정규화 제목 해시가 같은 다른 출처 Deal만 그룹 연결. 원본 Deal은 유지.
-
-**새 출처 추가 = 새 하위 패키지 + `SourceCollector` 구현체.** 파서는 `String html → 결과` 순수 함수로 두고 실제 응답 HTML 픽스처(`src/test/resources/fixtures/`)로 테스트한다.
-
-기존 공통 계약 안에서 출처만 추가할 때의 변경 범위는 **`docs/05`의 현재 출처 표 + 해당 `collector/{source}/` 코드 + 테스트 fixture**다. API·DB·공통 수집 구조·운영 정책이 함께 바뀔 때만 그 계약을 소유한 문서를 추가로 갱신한다.
-
-출처를 붙이기 전에 **robots.txt를 확인한다.** (예: FMKorea는 `User-agent: *`에 `Disallow: /`라 수집 대상이 아니다.)
-
-## 작업 시 유의
-
-- 도메인 로직은 Service에 둔다. Controller는 DTO 매핑·검증·상태 코드만.
-- 키워드/출처 필터링은 Service에서 `docs/01` 3.2 우선순위로 적용한다. 현재 MVP는 노출 가능한 Deal을 조회한 뒤 Service 메모리에서 그룹·필터·정렬·페이지 처리를 하며, 운영 데이터로 병목이 확인되면 DB 처리로 내린다.
-- DB 스키마/마이그레이션 변경은 `docs/04` 갱신과 함께.
-- API 추가/변경은 `docs/03` 갱신과 함께.
-- 필터 우선순위·API 계약 변경은 해당 Service/Controller 테스트와 함께 반영한다.
+UI 변경은 가능하면 관련 화면·상호작용도 확인한다. 새 테스트는 변경된 동작과 회귀 위험을 검증하는 경우에 추가한다.
