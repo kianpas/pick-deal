@@ -1,0 +1,21 @@
+# 새 Compose DB 전용. 기존 로컬 DB에는 이 프로필을 적용하지 않는다.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+    clean-disabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+pickdeal:
+  seed:
+    enabled: false
+
+logging:
+  level:
+    org.hibernate.SQL: info

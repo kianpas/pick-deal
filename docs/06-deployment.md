@@ -55,8 +55,87 @@ DB 위치는 아직 확정하지 않았다. 비용을 최소화하고 DB 운영�
 - `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`로 로컬 접속 정보를 바꿀 수 있다.
 - frontend는 `next dev`로 실행하고 `NEXT_PUBLIC_API_BASE_URL`로 backend 주소를 받는다.
 - 테스트는 H2 in-memory와 `ddl-auto: create-drop`을 사용하며 수집 scheduler를 끈다.
-- `SeedDataInitializer`는 프로필 구분 없이 빈 DB에 샘플 데이터를 넣는다.
-- Dockerfile, Compose, Flyway, reverse proxy와 CI/CD는 아직 없다.
+- 기본 로컬 실행은 빈 DB에 샘플 데이터를 넣지만 `compose` 프로필에서는 Seed를 끈다.
+- backend Dockerfile, backend/PostgreSQL Compose, Compose 전용 Flyway 초기화가 구현되어 있다. reverse proxy와 CI/CD는 아직 없다.
+
+### Backend Docker 이미지
+
+저장소 루트에서 `docker build -t pickdeal-backend:local ./backend`로 빌드한다.
+`backend/`가 빌드 컨텍스트이며 `.dockerignore`는 Gradle Wrapper·빌드 설정·소스만 포함한다.
+Java 17 JDK 단계에서 Wrapper로 `bootJar`를 만들고, 최종 Java 17 JRE 이미지에는 JAR만 복사한다.
+Temurin 이미지는 호스트 아키텍처를 따르므로 OCI A1에서는 ARM64로 빌드된다.
+다른 아키텍처에서 OCI용 이미지를 만들 때는 Buildx의 `--platform linux/arm64`를 사용한다.
+
+실행 프로세스는 UID/GID `10001`을 사용한다. 기본 힙은 128~768MB이며
+`JAVA_TOOL_OPTIONS`로 변경할 수 있다. 컨테이너 전체 메모리 제한은 힙 외 사용량을 고려해 별도로 설정한다.
+이미지 빌드는 테스트를 실행하지 않으므로 배포 전에 `./gradlew test`를 수행한다.
+
+컨테이너의 `localhost`는 DB 서버가 아니다. 실행 시 `SPRING_DATASOURCE_URL`에 실제 JDBC 주소를,
+`DB_USERNAME`·`DB_PASSWORD`에 접속 정보를 주입한다. `EXPOSE 8080`은 포트 안내이며 외부 공개 설정이 아니다.
+Compose는 `SPRING_PROFILES_ACTIVE=compose`로 Flyway·`validate`·Seed 비활성화를 적용한다.
+프로필 없이 이미지만 실행하면 기존 로컬 설정을 사용한다. 쓰기 API 접근 제어와 HTTPS를 완료한 뒤 공개 배포한다.
+
+### Docker Compose 실행 (공개 전 준비 환경)
+
+루트 `compose.yml`은 backend와 PostgreSQL 17을 함께 실행한다. 기존 DB 볼륨이 다른 PostgreSQL
+메이저 버전이면 그대로 연결하지 말고 논리 백업·복구 또는 정식 업그레이드 절차를 사용한다.
+아래 명령은 저장소 루트의 OCI Ubuntu 터미널에서 실행한다.
+
+```bash
+cp .env.example .env
+chmod 600 .env
+nano .env
+docker compose config --quiet
+docker compose up -d --build
+docker compose ps
+docker compose logs --tail=100 backend
+curl -f http://127.0.0.1:8080/api/v1/deals
+```
+
+`.env`의 `DB_PASSWORD`는 반드시 입력한다. 빈 값이면 Compose가 실행을 거부한다.
+비밀번호에 `$` 등 특수문자가 있으면 `.env`에서 작은따옴표로 감싼다.
+`docker compose config`는 비밀번호까지 출력할 수 있으므로 검증에는 `--quiet`를 사용한다.
+DB 계정 환경변수는 PostgreSQL의 최초 초기화 때만 적용된다. 기존 데이터가 있는 상태에서
+`.env` 비밀번호만 변경하면 DB 비밀번호는 바뀌지 않아 backend 연결이 실패한다.
+
+- PostgreSQL은 포트를 호스트에 공개하지 않는다. backend는 Docker 서비스명 `postgres`로 접속한다.
+- backend의 `8080`은 호스트 `127.0.0.1`에만 연결한다. OCI 외부/Vercel에서는 아직 접근할 수 없다.
+- DB가 `pg_isready` healthcheck를 통과한 뒤 backend를 시작한다. 이는 DB 준비 확인이며
+  backend 준비 완료는 로그와 API 응답으로 별도 확인한다.
+- 메모리 상한은 backend 1.5GiB(힙 768MiB), PostgreSQL 1GiB다. 로그는 서비스당 10MB × 3개로 제한한다.
+- `restart: unless-stopped`로 재부팅 후 자동 실행한다. DB 장애 후 backend 재연결은 애플리케이션에 맡긴다.
+- scheduler는 기본적으로 꺼져 있다. 단일 수집 서버임을 확인하고 `.env`에
+  `COLLECTOR_ENABLED=true`를 지정한 뒤 `docker compose up -d`로 반영한다.
+- 새 DB에는 Flyway V1이 스키마만 만든다. 샘플 Seed를 끄므로 수집 활성화 전에는 빈 목록이 정상이다.
+- Hibernate는 `validate`만 수행하며 SQL debug 로그는 끈다. HTTPS와 쓰기 API 접근 제어는 아직 미구현이다.
+
+### Flyway 적용 방식
+
+Flyway는 backend 안에서 동작하는 라이브러리이므로 별도 컨테이너나 서버 설치가 필요 없다.
+첫 기동 때 `db/migration/V1__initial_schema.sql`을 실행하고 `flyway_schema_history`에 버전·체크섬을 기록한다.
+다음 기동부터는 적용된 파일을 검증하고 새 버전만 실행한다. 이후 Hibernate가 엔티티와 테이블을 검증한다.
+앞으로 스키마를 변경할 때는 엔티티와 함께 `V2__...sql` 등 새 파일을 추가한다.
+이미 적용된 V1을 수정하거나 이력 테이블을 지워서 우회하지 않는다.
+
+기본 로컬 PostgreSQL과 기존 H2 테스트는 Flyway 비활성 상태를 유지한다.
+기존 테이블이 있는 DB에 `compose` 프로필을 적용하면 baseline 없이 실패하도록 설정했다.
+기존 DB 전환은 백업과 스키마 비교 후 별도로 진행하며 `baseline-on-migrate`를 자동으로 켜지 않는다.
+Flyway는 백업이나 실패한 변경의 자동 되돌리기를 대신하지 않는다.
+
+적용 상태는 다음 읽기 전용 명령으로 확인한다.
+
+```bash
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT version, description, success FROM flyway_schema_history;"'
+```
+
+`ComposeMigrationTest`는 새 DB 초기화·Hibernate 검증·Seed 미실행·중복/FK 제약·재적용 시 데이터 보존을 검증한다.
+기본 실행은 H2이며 PostgreSQL 실검증 시 `MIGRATION_TEST_DB_URL`에 일회용 테스트 DB 주소를 지정한다.
+이 테스트는 `migration_test` 사용자와 빈 비밀번호를 사용하므로 기존 개발/운영 DB를 지정하지 않는다.
+
+중지는 `docker compose stop`, 다시 시작은 `docker compose start`를 사용한다.
+`docker compose down`은 컨테이너·네트워크만 제거하고 `pickdeal_postgres_data` 볼륨은 유지한다.
+**`docker compose down -v`는 DB 데이터도 삭제하므로 사용하지 않는다.** 볼륨은 백업을 대신하지 않는다.
+데이터 유지 검증은 동일 DB의 행 수를 확인한 뒤 `down` → `up -d` 후 다시 비교한다.
 
 ## 4. 운영 설정 계약
 
