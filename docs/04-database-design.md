@@ -3,7 +3,7 @@
 > PickDeal — DB 테이블 초안 / 인덱스·제약 / PostgreSQL·MySQL 선택 기준 / 시드 전략
 > 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-09-05
 > 표준 DBMS: **PostgreSQL**(개발·운영 공통, MySQL 선택 시 5장 참고)
-> **현재 상태**: 애플리케이션은 로컬 PostgreSQL `pickdeal` DB와 JPA `ddl-auto: update`로 기동한다. H2 in-memory(PostgreSQL 호환 모드)는 테스트에서만 `create-drop`으로 사용한다. 아래 테이블/제약/인덱스는 PostgreSQL 기준이다.
+> **현재 상태**: 기본 로컬 실행은 기존 PostgreSQL `pickdeal` DB와 JPA `ddl-auto: update`를 유지한다. 새 Compose DB는 Flyway + `validate`를 사용한다. 일반 테스트는 H2 `create-drop`, 마이그레이션 전용 테스트는 Flyway + `validate`를 사용한다. 아래 테이블/제약/인덱스는 PostgreSQL 기준이다.
 
 ---
 
@@ -12,7 +12,7 @@
 - MVP는 단일 사용자지만, 설정성 테이블에는 **`user_id`를 미리 둔다**(고정값 사용, 향후 멀티유저 대비).
 - **`source_id + external_id` 유니크 제약**으로 같은 출처의 같은 글 중복 저장을 막는다. 교차 출처는 원본 Deal을 보존하고 nullable `group_id`로 연결한다.
 - 시간 컬럼은 타임존 포함 타입(PostgreSQL `timestamptz`)을 사용한다. 애플리케이션 기준 시간대는 **`Asia/Seoul`(KST)**이며 API 직렬화도 KST로 한다(`docs/03` 1.1). `timestamptz`는 내부적으로 UTC로 저장되더라도 입출력 기준은 KST다.
-- **마이그레이션(계획)**: 현재는 PostgreSQL에서 JPA `ddl-auto: update`를 사용하며 마이그레이션 도구는 없다. 운영 배포 전에 **Flyway**를 도입하고 기준 스키마를 `V1__init.sql`로 고정한다. 그전까지 엔티티가 실제 스키마의 진실 출처다.
+- **마이그레이션**: 새 Compose DB는 `compose` 프로필에서 Flyway의 `V1__initial_schema.sql`로 초기화하고 JPA `ddl-auto: validate`로 검증한다. 기본 로컬 실행은 기존 DB 보존을 위해 Flyway를 끄고 `update`를 유지한다. Compose의 스키마 변경은 엔티티와 버전 SQL을 함께 수정한다. 적용된 SQL 파일은 변경하지 않고 다음 버전 파일을 추가한다.
 
 ---
 
@@ -50,7 +50,7 @@
 | `product_url` | varchar(2000) | null | 출처별 상세 Parser가 원문에서 선택한 HTTP(S) 상품·행사 링크 |
 | `title_norm_hash` | varchar(64) | null | 판매몰 말머리·기호를 보수적으로 정리한 제목의 SHA-256 후보 키 |
 | `group_id` | bigint | FK→deal_group.id, null | 강한 일치로 연결된 교차 출처 그룹 |
-| `status` | varchar(20) | not null default 'ACTIVE' | `ACTIVE` \| `EXPIRED` \| `SOLD_OUT` |
+| `status` | varchar(30) | not null default 'ACTIVE' | `ACTIVE` \| `EXPIRED` \| `SOLD_OUT` |
 | `posted_at` | timestamptz | not null | 출처 게시 시각 |
 | `collected_at` | timestamptz | not null default now() | 최초 수집·등록 시각. 현재 재수집 성공 시각으로 갱신하지 않음 |
 | `created_at` | timestamptz | not null default now() | 레코드 생성 시각 |
@@ -114,6 +114,10 @@
 ---
 
 ## 3. ERD (개념)
+
+모든 테이블은 `BaseTimeEntity`에 따라 `created_at`, `updated_at`을 모두 갖는다.
+두 컬럼은 `timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP`이며, JPA 저장·수정 시각은 콜백이 갱신한다.
+초기 SQL에는 enum 값 CHECK와 엔티티에 선언된 인덱스·유니크·외래키를 포함한다.
 
 ```
             ┌──────────────┐
@@ -199,7 +203,7 @@ DBMS를 바꿔도 본 스키마는 거의 그대로 사용 가능하다(타입�
   1. **Flyway 기준 데이터 마이그레이션**: 출처처럼 반드시 필요한 기준 데이터만 반복 가능하게 관리한다.
   2. **JSON import**: `docs`나 `backend/.../seed/*.json`을 애플리케이션 기동 시(로컬 프로파일 한정) 로드해 삽입.
   3. **내부 등록 API**(`POST /api/v1/internal/deals`)로 수동 삽입.
-- 현재는 프로파일이 분리되지 않았다. 운영 배포 전에는 샘플 딜 시드를 로컬/개발로 한정하고, 운영에는 필요한 출처 기준 데이터만 넣도록 분리한다.
+- `compose` 프로필은 `pickdeal.seed.enabled=false`로 샘플 출처·딜·키워드 삽입을 막는다. 기본 로컬 실행과 기존 H2 테스트의 Seed 동작은 유지한다. 실제 출처는 수집기가 등록하므로 V1에는 데이터를 넣지 않는다.
 - 시드 딜은 `source_id + external_id` 유니크를 만족하도록 구성한다(중복 삽입 방지 확인용으로도 유용).
 
 ---

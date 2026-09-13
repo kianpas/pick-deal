@@ -13,10 +13,12 @@ import com.pickdeal.source.domain.SourceVisibilityRepository;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@ConditionalOnProperty(name = "pickdeal.seed.enabled", havingValue = "true", matchIfMissing = true)
 public class SeedDataInitializer {
 
     private static final Long DEFAULT_USER_ID = 1L;

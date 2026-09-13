@@ -1,6 +1,8 @@
 spring:
   application:
     name: pick-deal-api
+  flyway:
+    enabled: false
   datasource:
     url: jdbc:postgresql://localhost:5432/${DB_NAME:pickdeal}
     username: ${DB_USERNAME:postgres}

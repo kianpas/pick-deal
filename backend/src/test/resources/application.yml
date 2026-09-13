@@ -2,6 +2,8 @@
 spring:
   application:
     name: pick-deal-api
+  flyway:
+    enabled: false
   datasource:
     url: jdbc:h2:mem:pickdeal;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
     driver-class-name: org.h2.Driver
