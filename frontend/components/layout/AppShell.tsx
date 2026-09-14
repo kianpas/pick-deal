@@ -4,6 +4,7 @@ import { RightSidebar } from "@/components/layout/RightSidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { FilterProvider } from "@/components/filter/FilterProvider";
 import { MobileSourceDrawer } from "@/components/source/MobileSourceDrawer";
+import { READ_ONLY } from "@/lib/runtime-config";
 
 /**
  * 공통 화면 셸: 상단바 + 좌/우 사이드바 + 본문(children).
@@ -17,9 +18,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <FilterProvider>
         <div className="flex">
           <LeftSidebar />
-          <MobileSourceDrawer />
 
-          <main className="min-w-0 flex-1 px-3 py-4 sm:px-5 sm:py-5">
+          <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 scroll-mt-32 px-4 py-4 sm:px-5 sm:py-5 md:scroll-mt-20">
+            {!READ_ONLY && <MobileSourceDrawer />}
             {children}
           </main>
 

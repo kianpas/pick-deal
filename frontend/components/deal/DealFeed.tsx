@@ -116,6 +116,7 @@ export function DealFeed({ deals, meta, loadFailed, listParams, categories, acti
 
   return (
     <div className="space-y-4">
+      <h1 className="sr-only">핫딜 목록</h1>
       <SortBar
         showThumbnail={showThumbnail}
         onToggleThumbnail={() => setShowThumbnail((v) => !v)}

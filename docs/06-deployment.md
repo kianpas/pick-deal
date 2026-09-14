@@ -107,7 +107,7 @@ DB 계정 환경변수는 PostgreSQL의 최초 초기화 때만 적용된다. �
 - scheduler는 기본적으로 꺼져 있다. 단일 수집 서버임을 확인하고 `.env`에
   `COLLECTOR_ENABLED=true`를 지정한 뒤 `docker compose up -d`로 반영한다.
 - 새 DB에는 Flyway V1이 스키마만 만든다. 샘플 Seed를 끄므로 수집 활성화 전에는 빈 목록이 정상이다.
-- Hibernate는 `validate`만 수행하며 SQL debug 로그는 끈다. HTTPS와 쓰기 API 접근 제어는 아직 미구현이다.
+- Hibernate는 `validate`만 수행하며 SQL debug 로그는 끈다. 쓰기 HTTP 요청은 조회 전용 필터로 차단하며, HTTPS와 운영 CORS 설정은 아직 미구현이다.
 
 ### Flyway 적용 방식
 
@@ -160,13 +160,21 @@ docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -
 
 ## 5. 접근 범위와 네트워크
 
+### 공개 조회 모드
+
+- `compose` 프로필은 `pickdeal.read-only=true`가 기본이다. HTTP GET·HEAD·OPTIONS 외 요청은 경로와 무관하게 `403 / READ_ONLY`로 거부한다. 키워드·출처 변경 및 내부 Deal 등록도 포함한다. 수집기는 HTTP를 거치지 않으므로 정상 저장할 수 있다.
+- 기본 로컬 backend 실행에서는 필터가 비활성화되어 기존 설정 기능을 유지한다. 운영에서 `PICKDEAL_READ_ONLY=false`로 해제하지 않는다.
+- frontend는 production 빌드에서 조회 전용이 기본이다. Vercel에는 `NEXT_PUBLIC_READ_ONLY=true`를 명시하고 재배포한다. 키워드 메뉴·데스크톱 출처 설정·모바일 출처 drawer를 숨기고, `/settings/keywords` 직접 접근은 404로 처리한다. 데모 UI는 변경하지 않는다.
+- 로컬 `npm run dev`는 기존 UI를 유지한다. 로컬 production 빌드로 설정 화면을 검증할 때만 `NEXT_PUBLIC_READ_ONLY=false`를 지정한다. UI 숨김은 보안 경계가 아니며 backend 차단이 실제 보호다.
+- HTTPS와 운영 origin CORS 설정은 별도 작업이다. 조회 전용 모드만으로 Vercel 연결이 완료되지는 않는다.
+
 현재는 인증 없이 고정 `user_id = 1`을 사용한다. 다음 API를 공개하면 다른 방문자가 동일한 개인 설정이나 데이터를 변경할 수 있다.
 
 - 출처 표시/숨김
 - 키워드 등록·삭제
 - 내부 Deal 등록
 
-`/internal`이라는 경로명은 보안 경계가 아니다. 최초 배포에서는 서비스 전체를 개인 접근으로 제한하거나, 공개 조회와 쓰기 API를 구분해 보호한다. 클라이언트 번들에 비밀 헤더를 넣는 방식은 사용하지 않는다.
+`/internal`이라는 경로명은 보안 경계가 아니다. 최초 배포는 위 조회 전용 모드로 쓰기 요청을 차단한다. 클라이언트 번들에 비밀 헤더를 넣는 방식은 사용하지 않는다.
 
 OCI와 호스트 방화벽에서는 필요한 공개 포트만 연다.
 

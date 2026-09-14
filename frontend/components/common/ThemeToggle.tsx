@@ -23,7 +23,7 @@ export function ThemeToggle({ variant = "icon" }: Props) {
 
   if (theme === null) {
     return variant === "icon" ? (
-      <div className="size-9" aria-hidden />
+      <div className="size-11" aria-hidden />
     ) : (
       <div className="h-9" aria-hidden />
     );
@@ -49,7 +49,7 @@ export function ThemeToggle({ variant = "icon" }: Props) {
     <button
       type="button"
       onClick={toggle}
-      className="grid size-9 place-items-center rounded-lg border border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg transition"
+      className="grid size-11 place-items-center rounded-lg border border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg transition"
       aria-label={`${nextLabel}로 전환`}
     >
       <Icon className="size-4" />

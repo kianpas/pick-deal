@@ -26,7 +26,7 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
       <div className="w-24 shrink-0 bg-surface-2/60 px-3 py-2.5 text-xs font-medium text-fg-muted sm:w-28 sm:text-sm">
         {label}
       </div>
-      <div className="min-w-0 flex-1 px-3 py-2.5 text-sm text-fg">{children}</div>
+      <div className="min-w-0 flex-1 wrap-anywhere px-3 py-2.5 text-sm text-fg">{children}</div>
     </div>
   );
 }
@@ -61,7 +61,7 @@ export default async function DealDetailPage({
         {/* 뒤로 */}
         <Link
           href="/"
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-fg-muted transition hover:text-fg"
+          className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-sm text-fg-muted transition hover:text-fg"
         >
           <ArrowLeft className="size-4" />
           목록으로
@@ -70,7 +70,7 @@ export default async function DealDetailPage({
         <article className="space-y-5">
           {/* 헤더: 배지 + 제목 */}
           <header className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2 wrap-anywhere text-xs">
               {deal.isHot && (
                 <span className="inline-flex items-center gap-1 rounded-md bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning">
                   <Flame className="size-3" />
@@ -95,7 +95,7 @@ export default async function DealDetailPage({
             </div>
 
             <h1
-              className={`text-xl font-bold leading-snug sm:text-2xl ${
+              className={`wrap-anywhere text-xl font-bold leading-snug sm:text-2xl ${
                 ended ? "text-fg-muted line-through" : "text-fg"
               }`}
             >
@@ -173,7 +173,7 @@ export default async function DealDetailPage({
 
           {grouped && (
             <section className="space-y-2" aria-labelledby="source-posts-heading">
-              <div className="flex items-baseline justify-between gap-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id="source-posts-heading" className="text-base font-semibold text-fg">
                   출처별 게시글
                 </h2>
@@ -207,7 +207,7 @@ export default async function DealDetailPage({
                             href={post.productUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-fg transition hover:border-border-strong"
+                            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-fg transition hover:border-border-strong"
                           >
                             구매처
                             <ExternalLink className="size-3.5" />
@@ -217,7 +217,7 @@ export default async function DealDetailPage({
                           href={post.originalUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-strong"
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-strong"
                         >
                           원문
                           <ExternalLink className="size-3.5" />
@@ -232,17 +232,17 @@ export default async function DealDetailPage({
 
           {/* 단일 Deal은 원문 CTA를 유지하고, 그룹 원문은 출처별 영역에서 제공한다. */}
           {(deal.productUrl || !grouped) && (
-            <div className="sticky bottom-0 -mx-1 bg-gradient-to-t from-bg via-bg/95 to-transparent px-1 pb-4 pt-6 sm:static sm:mx-0 sm:bg-none sm:p-0 sm:pt-2">
+            <div className="pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <div className="flex flex-col gap-2 sm:flex-row">
               {deal.productUrl && (
                 <a
                   href={deal.productUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-strong sm:w-auto"
+                  className="inline-flex min-h-11 min-w-0 w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-strong sm:w-auto"
                 >
-                  {shopName ? `${shopName}에서 보기` : "구매처에서 보기"}
-                  <ExternalLink className="size-4" />
+                  <span className="min-w-0 wrap-anywhere">{shopName ? `${shopName}에서 보기` : "구매처에서 보기"}</span>
+                  <ExternalLink className="size-4 shrink-0" />
                 </a>
               )}
               {!grouped && (
@@ -250,7 +250,7 @@ export default async function DealDetailPage({
                   href={deal.originalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition sm:w-auto ${
+                  className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition sm:w-auto ${
                     deal.productUrl
                       ? "border border-border bg-surface text-fg hover:border-border-strong"
                       : "bg-brand text-white hover:bg-brand-strong"

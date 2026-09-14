@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
  */
 @Getter
 public enum ErrorCode {
+    READ_ONLY(HttpStatus.FORBIDDEN, "READ_ONLY"),
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "BAD_REQUEST"),
     NOT_FOUND(HttpStatus.NOT_FOUND, "NOT_FOUND"),
     DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "DUPLICATE_RESOURCE"),

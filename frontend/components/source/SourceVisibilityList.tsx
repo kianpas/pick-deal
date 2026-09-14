@@ -111,7 +111,7 @@ export function SourceVisibilityList() {
             onClick={() => handleToggleSource(source)}
             disabled={pendingSourceId !== null}
             aria-pressed={source.visible}
-            className={`flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition hover:bg-surface disabled:opacity-50 ${
+            className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition hover:bg-surface disabled:opacity-50 ${
               source.visible ? "text-fg" : "text-fg-subtle"
             }`}
           >

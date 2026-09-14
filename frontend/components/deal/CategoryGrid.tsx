@@ -37,7 +37,9 @@ export function CategoryGrid({ categories, active }: Props) {
 
   return (
     <div
-      className={`flex items-center gap-1 overflow-x-auto scrollbar-hide transition-opacity ${
+      role="group"
+      aria-label="카테고리 필터"
+      className={`flex flex-wrap items-center gap-2 transition-opacity ${
         isPending ? "opacity-60" : ""
       }`}
       aria-busy={isPending}
@@ -50,7 +52,7 @@ export function CategoryGrid({ categories, active }: Props) {
             type="button"
             onClick={() => setCategory(c.value)}
             aria-pressed={isActive}
-            className={`inline-flex shrink-0 items-center rounded-full px-3 py-1.5 text-sm font-medium transition ${
+            className={`inline-flex min-h-11 max-w-full items-center rounded-full px-3 py-1.5 text-start text-sm font-medium wrap-anywhere transition ${
               isActive
                 ? "bg-brand-soft text-brand"
                 : "text-fg-muted hover:bg-surface hover:text-fg"
