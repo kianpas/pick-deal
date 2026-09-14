@@ -8,6 +8,14 @@ import org.junit.jupiter.api.Test;
 class DealMatchNormalizerTest {
 
     @Test
+    void preservesDecimalPointsBetweenDigits() {
+        assertThat(DealMatchNormalizer.titleHash("우유 1.5L", null))
+                .isNotEqualTo(DealMatchNormalizer.titleHash("우유 15L", null));
+        assertThat(DealMatchNormalizer.titleHash("우유 １．５L", null))
+                .isEqualTo(DealMatchNormalizer.titleHash("우유 1.5L", null));
+    }
+
+    @Test
     @DisplayName("출처가 확인한 판매몰 말머리와 공백·기호만 제거한다")
     void normalizesExactShopPrefixAndFormatting() {
         assertThat(DealMatchNormalizer.normalizeTitle("[쿠팡] 삼성 SSD 1TB", "쿠팡"))

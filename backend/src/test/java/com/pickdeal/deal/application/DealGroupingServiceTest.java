@@ -202,6 +202,36 @@ class DealGroupingServiceTest {
         ));
     }
 
+    @Test
+    void skipsRepostWhenExistingGroupAlreadyHasSource() {
+        Source a = saveSource("repost-a");
+        Source b = saveSource("repost-b");
+        Deal first = saveDeal(a, "a1", "상품", "몰", 100L, null, null);
+        Deal second = saveDeal(b, "b1", "상품", "몰", 100L, null, null);
+        groupingService.groupIfMatched(second);
+        dealRepository.flush();
+
+        Deal repost = saveDeal(a, "a2", "상품", "몰", 100L, null, null);
+        groupingService.groupIfMatched(repost);
+        dealRepository.flush();
+
+        assertThat(first.getDealGroup()).isNotNull().isSameAs(second.getDealGroup());
+        assertThat(repost.getDealGroup()).isNull();
+        assertThat(dealRepository.findBySourceIdAndExternalId(a.getId(), "a2")).isPresent();
+    }
+
+    @Test
+    void rechecksTitlesEvenWhenLegacyHashesCollide() {
+        Source a = saveSource("decimal-a");
+        Source b = saveSource("decimal-b");
+        Deal first = saveDeal(a, "a1", "우유 1.5L", "몰", 100L, null, null);
+        Deal second = saveDeal(b, "b1", "우유 15L", "몰", 100L, null, null);
+        first.updateTitleNormHash(second.getTitleNormHash());
+        groupingService.groupIfMatched(second);
+        assertThat(first.getDealGroup()).isNull();
+        assertThat(second.getDealGroup()).isNull();
+    }
+
     private Deal saveDeal(
             Source source,
             String externalId,

@@ -25,6 +25,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class DealServiceTest {
 
+    @Test
+    void largePageReturnsEmptyPageWithoutOverflow() {
+        assertThat(dealService.findDeals(107374183, 20, "latest", null, null, null).items()).isEmpty();
+        var result = dealService.findDeals(Integer.MAX_VALUE, 100, "latest", null, null, null);
+        assertThat(result.items()).isEmpty();
+        assertThat(result.meta().hasNext()).isFalse();
+    }
+
     private static final Long DEFAULT_USER_ID = 1L;
 
     @Autowired

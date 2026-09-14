@@ -18,6 +18,37 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class DealUpsertGroupingTest {
 
+    @Test
+    void oversizedFieldsDoNotPreventOtherDealsFromBeingSaved() {
+        Source source = upsertSupport.findOrRegisterSource("length-test", "길이 검사", "https://example.com");
+        var now = OffsetDateTime.now();
+        var oversizedTitle = new CollectedDeal("bad", "https://example.com/1", null,
+                "가".repeat(301), 1L, null, null, null, false, now);
+        var oversizedOptional = new CollectedDeal("optional", "https://example.com/2", "몰".repeat(101),
+                "정상 제목", 1L, "가".repeat(51), null, "x".repeat(1001), false, now,
+                "https://example.com/" + "x".repeat(2000));
+        int saved = upsertSupport.upsertAll(source, List.of(oversizedTitle, oversizedOptional, collected("ok")), now);
+        dealRepository.flush();
+        assertThat(saved).isEqualTo(2);
+        assertThat(dealRepository.existsBySourceIdAndExternalId(source.getId(), "bad")).isFalse();
+        Deal optional = dealRepository.findBySourceIdAndExternalId(source.getId(), "optional").orElseThrow();
+        assertThat(optional.getProductUrl()).isNull();
+        assertThat(optional.getShopName()).isNull();
+        assertThat(optional.getCategory()).isNull();
+        assertThat(optional.getThumbnailUrl()).isNull();
+    }
+
+    @Test
+    void oversizedRequiredLinksAndComposedTitlesAreSkipped() {
+        Source source = upsertSupport.findOrRegisterSource("required-length", "필수 길이 검사", "https://example.com");
+        var now = OffsetDateTime.now();
+        var longId = new CollectedDeal("x".repeat(201), "https://example.com", null, "제목", 1L, null, null, null, false, now);
+        var longUrl = new CollectedDeal("url", "x".repeat(1001), null, "제목", 1L, null, null, null, false, now);
+        var longComposedTitle = new CollectedDeal("title", "https://example.com", "몰", "가".repeat(300), 1L, null, null, null, false, now);
+        assertThat(upsertSupport.upsertAll(source, List.of(longId, longUrl, longComposedTitle), now)).isZero();
+        dealRepository.flush();
+    }
+
     @Autowired
     private DealUpsertSupport upsertSupport;
 

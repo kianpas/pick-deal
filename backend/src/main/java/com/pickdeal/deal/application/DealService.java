@@ -61,15 +61,15 @@ public class DealService {
                 .sorted(groupComparator(sort))
                 .toList();
 
-        int fromIndex = Math.min(page * size, filteredGroups.size());
-        int toIndex = Math.min(fromIndex + size, filteredGroups.size());
+        int fromIndex = (int) Math.min((long) page * size, filteredGroups.size());
+        int toIndex = (int) Math.min((long) fromIndex + size, filteredGroups.size());
 
         List<DealSummaryResponse> items = filteredGroups.subList(fromIndex, toIndex).stream()
                 .map(this::toSummary)
                 .toList();
 
         int totalPages = filteredGroups.isEmpty() ? 0 : (int) Math.ceil((double) filteredGroups.size() / size);
-        boolean hasNext = page + 1 < totalPages;
+        boolean hasNext = (long) page + 1 < totalPages;
 
         return new DealListResponse(items, new PageMetaResponse(page, size, filteredGroups.size(), totalPages, hasNext));
     }
