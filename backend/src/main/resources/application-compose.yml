@@ -13,6 +13,7 @@ spring:
       ddl-auto: validate
 
 pickdeal:
+  read-only: true
   seed:
     enabled: false
 

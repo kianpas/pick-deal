@@ -16,6 +16,7 @@ import { useFilters } from "@/components/filter/FilterProvider";
 import { SourceVisibilityList } from "@/components/source/SourceVisibilityList";
 import { SHOP_COUNTS } from "@/lib/mock-data";
 import type { ShopId } from "@/lib/types";
+import { READ_ONLY } from "@/lib/runtime-config";
 
 const NAV: { icon: LucideIcon; label: string; href: string }[] = [
   { icon: Home, label: "홈", href: "/" },
@@ -44,7 +45,7 @@ export function LeftSidebar() {
       <nav className="flex-1 overflow-y-auto scrollbar-thin px-3 pb-4 pt-4 space-y-5">
         {/* Primary nav */}
         <ul className="space-y-0.5">
-          {NAV.map((item) => (
+          {NAV.filter((item) => !READ_ONLY || item.href !== "/settings/keywords").map((item) => (
             <li key={item.label}>
               <a
                 href={item.href}
@@ -62,7 +63,7 @@ export function LeftSidebar() {
         </ul>
 
         {/* Sources (출처 표시/숨김) — 백엔드 실데이터 */}
-        <div>
+        {!READ_ONLY && <div>
           <div className="flex items-center justify-between px-3 pb-2">
             <span className="text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
               출처
@@ -73,7 +74,7 @@ export function LeftSidebar() {
           <div className="px-3">
             <SourceVisibilityList />
           </div>
-        </div>
+        </div>}
 
         {/* Shops (쇼핑몰 다중 선택 필터) — 데모(판매처 개념은 수집기 단계로 보류) */}
         <div>

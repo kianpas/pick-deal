@@ -45,6 +45,7 @@ API·DB·필터 정책 변경은 해당 계약 문서와 테스트를 함께 갱
 
 ## Frontend
 
+- 프론트 UI 작업의 스킬 적용 범위는 `frontend/AGENTS.md`를 따른다. 프로젝트의 `better-layout`·`better-accessibility`는 `frontend/` UI 작업 전용이며 백엔드·DB·배포 작업에는 사용하지 않는다.
 - npm과 `package-lock.json`을 사용한다.
 - 목록·상세는 Server Component SSR 우선, 상호작용 부분만 Client Component로 분리한다.
 - 백엔드 호출은 `lib/api.ts`, 계약 타입은 `lib/api-types.ts`를 사용한다. `lib/mock-data.ts`·`lib/types.ts`는 데모용이며 신규 API 계약에 사용하지 않는다.

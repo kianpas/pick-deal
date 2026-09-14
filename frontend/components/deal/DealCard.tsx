@@ -57,24 +57,24 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
   if (!showThumbnail) {
     return (
       <article
-        className={`flex items-center gap-2 rounded-lg border border-border bg-surface/40 px-3 py-2 transition hover:border-border-strong ${
+        className={`flex flex-col gap-2 rounded-lg border border-border bg-surface/40 px-3 py-2 transition hover:border-border-strong ${
           ended ? "opacity-60" : ""
         }`}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {badge && (
             <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold ${badge.className}`}>
               {badge.label}
             </span>
           )}
           {shopName && (
-            <span className="shrink-0 rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-muted">
+            <span className="max-w-full wrap-anywhere rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-muted">
               {shopName}
             </span>
           )}
           <Link
             href={detailHref}
-            className={`min-w-0 flex-1 truncate text-sm font-medium hover:text-brand transition ${
+            className={`order-first min-h-11 w-full content-center wrap-anywhere text-sm font-medium hover:text-brand transition ${
               ended ? "text-fg-muted line-through" : "text-fg"
             }`}
           >
@@ -86,7 +86,7 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
           )}
         </div>
 
-        <div className="hidden shrink-0 items-center gap-2 text-xs text-fg-muted sm:flex">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-fg-muted wrap-anywhere">
           <span>{sourceLabel}</span>
           {deal.sourceCount > 1 && (
             <span className="rounded-md bg-brand-soft px-1.5 py-0.5 font-medium text-brand">
@@ -118,14 +118,15 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
       {/* Thumbnail */}
       <Link
         href={detailHref}
-        className="relative size-24 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-2 sm:size-28"
+        aria-label={`${title} 상세 보기`}
+        className="relative size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-2 sm:size-28"
       >
         {deal.thumbnailUrl ? (
           <Image
             src={deal.thumbnailUrl}
             alt={title}
             fill
-            sizes="(max-width: 640px) 96px, 112px"
+            sizes="(max-width: 640px) 80px, 112px"
             className="object-cover"
             unoptimized
           />
@@ -136,7 +137,7 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
 
       {/* Body */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-muted">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-muted wrap-anywhere">
           {deal.isHot && (
             <span className="inline-flex items-center gap-1 rounded-md bg-warning-soft px-1.5 py-0.5 text-xs font-semibold text-warning">
               <Flame className="size-3" />
@@ -181,7 +182,7 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
 
         <Link
           href={detailHref}
-          className={`mt-1.5 line-clamp-2 text-[15px] font-medium hover:text-brand transition sm:text-base ${
+          className={`mt-1.5 min-h-11 content-center wrap-anywhere text-[15px] font-medium hover:text-brand transition sm:text-base ${
             ended ? "text-fg-muted line-through" : "text-fg"
           }`}
         >

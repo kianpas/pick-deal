@@ -4,12 +4,15 @@ import { TopBar } from "@/components/layout/TopBar";
 import { KeywordManager } from "@/components/settings/KeywordManager";
 import { getKeywords } from "@/lib/api";
 import type { KeywordItem } from "@/lib/api-types";
+import { notFound } from "next/navigation";
+import { READ_ONLY } from "@/lib/runtime-config";
 
 /**
  * 키워드 관리 화면(/settings/keywords).
  * 초기 목록은 SSR로 받아 클라이언트 매니저에 주입한다(추가·삭제 상호작용은 클라이언트).
  */
 export default async function KeywordSettingsPage() {
+  if (READ_ONLY) notFound();
   let keywords: KeywordItem[] = [];
   try {
     keywords = await getKeywords();
@@ -22,7 +25,7 @@ export default async function KeywordSettingsPage() {
     <div className="min-h-screen bg-bg text-fg">
       <TopBar />
 
-      <main className="mx-auto w-full max-w-2xl px-4 py-5 sm:px-6 sm:py-6">
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-2xl scroll-mt-32 px-4 py-5 sm:px-6 sm:py-6 md:scroll-mt-20">
         <Link
           href="/"
           className="mb-4 inline-flex items-center gap-1.5 text-sm text-fg-muted transition hover:text-fg"
