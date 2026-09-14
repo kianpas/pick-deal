@@ -63,6 +63,13 @@ public class DealGroupingService {
             return;
         }
 
+        for (Long groupId : existingGroups.keySet()) {
+            if (dealRepository.existsByDealGroupIdAndSourceId(groupId, deal.getSource().getId())) {
+                log.warn("기존 그룹에 같은 출처가 있어 자동 그룹화를 건너뜀 [dealId={}]", deal.getId());
+                return;
+            }
+        }
+
         DealGroup group = existingGroups.values().stream()
                 .findFirst()
                 .orElseGet(() -> dealGroupRepository.save(new DealGroup(matches.get(0))));
@@ -101,8 +108,10 @@ public class DealGroupingService {
         boolean sameProductUrl = hasText(deal.getProductUrl())
                 && hasText(candidate.getProductUrl())
                 && Objects.equals(deal.getProductUrl().trim(), candidate.getProductUrl().trim());
-        boolean sameTitleHash = deal.getTitleNormHash() != null
-                && deal.getTitleNormHash().equals(candidate.getTitleNormHash());
+        // 과거 규칙으로 저장된 해시는 후보 탐색에만 사용하고 실제 제목을 다시 검증한다.
+        String titleHash = DealMatchNormalizer.titleHash(deal.getTitle(), deal.getShopName());
+        boolean sameTitleHash = titleHash != null
+                && titleHash.equals(DealMatchNormalizer.titleHash(candidate.getTitle(), candidate.getShopName()));
 
         String shopKey = DealMatchNormalizer.normalizeShopName(deal.getShopName());
         String candidateShopKey = DealMatchNormalizer.normalizeShopName(candidate.getShopName());

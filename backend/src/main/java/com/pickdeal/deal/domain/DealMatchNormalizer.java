@@ -30,7 +30,8 @@ public final class DealMatchNormalizer {
 
         String result = normalizedTitle
                 .toLowerCase(Locale.ROOT)
-                .replaceAll("[^\\p{L}\\p{N}]", "");
+                // 숫자 사이 소수점은 용량·모델 구분에 필요하다(1.5L != 15L).
+                .replaceAll("(?<!\\p{N})\\.|\\.(?!\\p{N})|[^\\p{L}\\p{N}.]", "");
         return result.isBlank() ? null : result;
     }
 

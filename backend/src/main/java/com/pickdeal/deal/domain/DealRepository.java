@@ -43,6 +43,8 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
     /** 출처의 최초 수집 여부 판별용 — 딜이 하나라도 있으면 증분 수집한다. */
     boolean existsBySourceId(Long sourceId);
 
+    boolean existsByDealGroupIdAndSourceId(Long groupId, Long sourceId);
+
     /** 재수집 시 기존 딜 갱신용 조회. */
     Optional<Deal> findBySourceIdAndExternalId(Long sourceId, String externalId);
 

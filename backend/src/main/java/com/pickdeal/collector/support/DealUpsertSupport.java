@@ -48,12 +48,42 @@ public class DealUpsertSupport {
     public int upsertAll(Source source, List<CollectedDeal> deals, OffsetDateTime now) {
         int saved = 0;
         for (CollectedDeal deal : deals) {
-            if (upsert(source, deal, now)) {
+            CollectedDeal valid = validateLengths(source, deal);
+            if (valid != null && upsert(source, valid, now)) {
                 saved++;
             }
         }
         logFieldCoverage(source, deals);
         return saved;
+    }
+
+    /** DB에 도달하기 전에 외부 문자열의 크기를 검사한다. URL은 잘라서 저장하지 않는다. */
+    private CollectedDeal validateLengths(Source source, CollectedDeal deal) {
+        if (!hasText(deal.externalId()) || deal.externalId().length() > 200
+                || !hasText(deal.url()) || deal.url().length() > 1000
+                || !hasText(deal.title())) {
+            log.warn("수집 필수 필드가 부적합하여 항목을 건너뜀 [{}]", source.getCode());
+            return null;
+        }
+        CollectedDeal valid = new CollectedDeal(deal.externalId(), deal.url(),
+                boundedOptional(source, "shopName", deal.storeName(), 100), deal.title(), deal.price(),
+                boundedOptional(source, "category", deal.category(), 50), deal.commentCount(),
+                boundedOptional(source, "thumbnailUrl", deal.thumbnailUrl(), 1000),
+                deal.ended(), deal.postedAt(),
+                boundedOptional(source, "productUrl", deal.productUrl(), 2000));
+        if (valid.rawTitle().length() > 300) {
+            log.warn("수집 제목이 저장 길이를 초과하여 항목을 건너뜀 [{}]", source.getCode());
+            return null;
+        }
+        return valid;
+    }
+
+    private String boundedOptional(Source source, String field, String value, int maxLength) {
+        if (value != null && value.length() > maxLength) {
+            log.warn("수집 선택 필드가 저장 길이를 초과하여 제외 [{}:{}]", source.getCode(), field);
+            return null;
+        }
+        return value;
     }
 
     /**
