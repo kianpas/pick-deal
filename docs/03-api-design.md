@@ -12,6 +12,7 @@
 ### 1.1 기본
 
 - Base URL: `/api/v1`
+- CORS: 운영 Compose는 `CORS_ALLOWED_ORIGINS`에 지정한 정확한 frontend origin만 허용한다(빈 값은 교차 origin 미허용). 쿠키 credentials는 허용하지 않으며, CORS와 별개로 공개 조회 모드의 쓰기 차단을 유지한다. 설정·배포 절차는 `docs/06`을 따른다.
 - 공개 조회용 `compose` 프로필은 `pickdeal.read-only=true`로 GET·HEAD·OPTIONS 외 모든 HTTP 요청을 Controller 실행 전에 `403 / READ_ONLY`로 거부한다. 수집기의 내부 DB 저장은 영향을 받지 않는다. 기본 로컬 실행은 기존 쓰기 API를 유지한다.
 - 포맷: `application/json; charset=utf-8`
 - 인증: **MVP 없음**(단일 사용자). 내부적으로 고정 `user_id`(예: `1`)를 사용한다. 이 상태의 설정·내부 쓰기 API는 공개 인터넷에 안전하지 않으므로 최초 배포에서 접근을 제한한다(`docs/06`). 향후 멀티유저 인증 도입 시 사용자 스코프로 전환한다.
