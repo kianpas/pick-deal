@@ -107,7 +107,7 @@ DB 계정 환경변수는 PostgreSQL의 최초 초기화 때만 적용된다. �
 - scheduler는 기본적으로 꺼져 있다. 단일 수집 서버임을 확인하고 `.env`에
   `COLLECTOR_ENABLED=true`를 지정한 뒤 `docker compose up -d`로 반영한다.
 - 새 DB에는 Flyway V1이 스키마만 만든다. 샘플 Seed를 끄므로 수집 활성화 전에는 빈 목록이 정상이다.
-- Hibernate는 `validate`만 수행하며 SQL debug 로그는 끈다. 쓰기 HTTP 요청은 조회 전용 필터로 차단하며, HTTPS와 운영 CORS 설정은 아직 미구현이다.
+- Hibernate는 `validate`만 수행하며 SQL debug 로그는 끈다. 쓰기 HTTP 요청은 조회 전용 필터로 차단한다. HTTPS는 호스트의 Caddy 등에서 구성하고 운영 CORS는 아래 환경변수로 지정한다.
 
 ### Flyway 적용 방식
 
@@ -166,7 +166,42 @@ docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -
 - 기본 로컬 backend 실행에서는 필터가 비활성화되어 기존 설정 기능을 유지한다. 운영에서 `PICKDEAL_READ_ONLY=false`로 해제하지 않는다.
 - frontend는 production 빌드에서 조회 전용이 기본이다. Vercel에는 `NEXT_PUBLIC_READ_ONLY=true`를 명시하고 재배포한다. 키워드 메뉴·데스크톱 출처 설정·모바일 출처 drawer를 숨기고, `/settings/keywords` 직접 접근은 404로 처리한다. 데모 UI는 변경하지 않는다.
 - 로컬 `npm run dev`는 기존 UI를 유지한다. 로컬 production 빌드로 설정 화면을 검증할 때만 `NEXT_PUBLIC_READ_ONLY=false`를 지정한다. UI 숨김은 보안 경계가 아니며 backend 차단이 실제 보호다.
-- HTTPS와 운영 origin CORS 설정은 별도 작업이다. 조회 전용 모드만으로 Vercel 연결이 완료되지는 않는다.
+- 조회 전용 모드만으로 Vercel 연결이 완료되지는 않는다. HTTPS 구성과 아래 운영 CORS·Vercel 환경변수 설정이 필요하다.
+
+### Vercel CORS 및 API 주소 연결
+
+OCI 저장소 루트의 `.env`에 실제 frontend origin을 지정한다. 경로나 끝의 `/`는 붙이지 않는다. 여러 주소는 쉼표로 구분하고 Preview 주소는 필요한 정확한 주소만 추가한다(`*.vercel.app` 전체 허용 금지).
+
+```dotenv
+CORS_ALLOWED_ORIGINS=https://pick-deal.vercel.app
+```
+
+Compose가 이를 `PICKDEAL_CORS_ALLOWED_ORIGINS`로 backend에 전달하고 `CorsConfig`가 읽는다. Compose에서는 localhost 자동 허용을 끄며, 값이 비어 있으면 교차 origin 브라우저 요청을 허용하지 않는다. Origin 없는 SSR·curl 요청은 별개다. 기본 로컬 개발은 기존 localhost 가변 포트 허용을 유지한다. 쿠키 인증은 사용하지 않으므로 credentials 허용은 켜지 않는다. CORS는 인증이나 쓰기 API 보호를 대신하지 않는다.
+
+머지된 코드를 가져오고 `.env`를 수정한 후 backend를 재빌드한다. DB 볼륨을 삭제하지 않는다.
+
+```bash
+git pull --ff-only origin main
+docker compose up -d --build backend
+```
+
+Vercel Production 환경변수를 설정하고 재배포한다.
+
+```dotenv
+NEXT_PUBLIC_API_BASE_URL=https://pickdeal.dedyn.io
+NEXT_PUBLIC_READ_ONLY=true
+```
+
+API base URL에 `/api/v1`을 붙이지 않는다. 아래 preflight 응답이 성공하고 `Access-Control-Allow-Origin: https://pick-deal.vercel.app`이 포함되는지 확인한다.
+
+```bash
+curl -i -X OPTIONS 'https://pickdeal.dedyn.io/api/v1/deals' \
+  -H 'Origin: https://pick-deal.vercel.app' \
+  -H 'Access-Control-Request-Method: GET' \
+  -H 'Access-Control-Request-Headers: content-type'
+```
+
+첫 목록은 SSR이므로 화면 표시만으로 CORS 성공을 판단하지 않는다. 브라우저 Network에서 더 보기 요청도 확인한다.
 
 현재는 인증 없이 고정 `user_id = 1`을 사용한다. 다음 API를 공개하면 다른 방문자가 동일한 개인 설정이나 데이터를 변경할 수 있다.
 

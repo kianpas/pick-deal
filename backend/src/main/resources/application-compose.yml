@@ -14,6 +14,8 @@ spring:
 
 pickdeal:
   read-only: true
+  cors:
+    allow-localhost: false
   seed:
     enabled: false
 
