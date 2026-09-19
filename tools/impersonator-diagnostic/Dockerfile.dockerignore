@@ -1,0 +1,11 @@
+**
+!backend/
+!backend/gradlew
+!backend/gradle/
+!backend/gradle/**
+!tools/
+!tools/impersonator-diagnostic/
+!tools/impersonator-diagnostic/build.gradle
+!tools/impersonator-diagnostic/settings.gradle
+!tools/impersonator-diagnostic/src/
+!tools/impersonator-diagnostic/src/**
