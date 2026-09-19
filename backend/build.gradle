@@ -7,6 +7,18 @@ plugins {
 group = 'com.pickdeal'
 version = '0.0.1-SNAPSHOT'
 
+springBoot {
+    mainClass = 'com.pickdeal.PickDealApplication'
+}
+
+// Spring을 기동하지 않는 독립 진단 프로그램 배포 파일.
+tasks.register('diagnosticDist', Sync) {
+    dependsOn tasks.named('classes')
+    into layout.buildDirectory.dir('diagnostic')
+    from(sourceSets.main.output) { into 'classes' }
+    from(configurations.runtimeClasspath) { into 'lib' }
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)

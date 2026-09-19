@@ -1,0 +1,15 @@
+# syntax=docker/dockerfile:1
+FROM eclipse-temurin:17-jdk-jammy AS build
+WORKDIR /workspace
+COPY gradlew build.gradle settings.gradle ./
+COPY gradle ./gradle
+RUN sed -i 's/\r$//' gradlew
+COPY src ./src
+RUN --mount=type=cache,target=/root/.gradle \
+    sh ./gradlew --no-daemon --max-workers=2 diagnosticDist
+
+FROM eclipse-temurin:17-jre-jammy
+WORKDIR /app
+COPY --from=build /workspace/build/diagnostic ./
+USER 10001:10001
+ENTRYPOINT ["java", "-Xms32m", "-Xmx128m", "-cp", "/app/classes:/app/lib/*", "com.pickdeal.collector.support.CollectorDiagnostic"]
