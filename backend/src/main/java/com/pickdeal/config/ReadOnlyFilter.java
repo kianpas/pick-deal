@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
 
-/** 공개 조회 서버에서는 경로나 요청 본문에 관계없이 HTTP 쓰기를 거부한다. */
+/** 공개 쓰기는 거부하며, 인증된 수집 전용 POST 두 개만 예외로 둔다. */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 @ConditionalOnProperty(name = "pickdeal.read-only", havingValue = "true")
@@ -30,7 +30,7 @@ public class ReadOnlyFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain chain) throws ServletException, IOException {
-        if (!READ_METHODS.contains(request.getMethod())) {
+        if (!READ_METHODS.contains(request.getMethod()) && !CollectorIngressFilter.isAuthenticated(request)) {
             ErrorCode error = ErrorCode.READ_ONLY;
             response.setStatus(error.getStatus().value());
             response.setContentType("application/json;charset=UTF-8");

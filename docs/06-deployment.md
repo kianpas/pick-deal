@@ -162,13 +162,15 @@ docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -
 
 ### 공개 조회 모드
 
-- `compose` 프로필은 `pickdeal.read-only=true`가 기본이다. HTTP GET·HEAD·OPTIONS 외 요청은 경로와 무관하게 `403 / READ_ONLY`로 거부한다. 키워드·출처 변경 및 내부 Deal 등록도 포함한다. 수집기는 HTTP를 거치지 않으므로 정상 저장할 수 있다.
+- `compose` 프로필은 `pickdeal.read-only=true`가 기본이다. 공개 쓰기는 `403 / READ_ONLY`로 거부한다. 키워드·출처 변경 및 기존 내부 Deal 등록도 포함한다. 명시적으로 활성화하고 토큰 인증된 원격 수집 전용 POST 두 개만 예외다(`docs/03` §8). 앱 내부 수집기의 DB 저장에는 영향이 없다.
 - 기본 로컬 backend 실행에서는 필터가 비활성화되어 기존 설정 기능을 유지한다. 운영에서 `PICKDEAL_READ_ONLY=false`로 해제하지 않는다.
 - frontend는 production 빌드에서 조회 전용이 기본이다. Vercel에는 `NEXT_PUBLIC_READ_ONLY=true`를 명시하고 재배포한다. 키워드 메뉴·데스크톱 출처 설정·모바일 출처 drawer를 숨기고, `/settings/keywords` 직접 접근은 404로 처리한다. 데모 UI는 변경하지 않는다.
 - 로컬 `npm run dev`는 기존 UI를 유지한다. 로컬 production 빌드로 설정 화면을 검증할 때만 `NEXT_PUBLIC_READ_ONLY=false`를 지정한다. UI 숨김은 보안 경계가 아니며 backend 차단이 실제 보호다.
 - 조회 전용 모드만으로 Vercel 연결이 완료되지는 않는다. HTTPS 구성과 아래 운영 CORS·Vercel 환경변수 설정이 필요하다.
 
 ### Vercel CORS 및 API 주소 연결
+
+원격 수집 API를 사용하려면 별도의 아래 설정을 확인한다. 프론트 CORS 허용과 수집기 인증은 독립적이다.
 
 OCI 저장소 루트의 `.env`에 실제 frontend origin을 지정한다. 경로나 끝의 `/`는 붙이지 않는다. 여러 주소는 쉼표로 구분하고 Preview 주소는 필요한 정확한 주소만 추가한다(`*.vercel.app` 전체 허용 금지).
 
@@ -216,6 +218,102 @@ OCI와 호스트 방화벽에서는 필요한 공개 포트만 연다.
 - `80/443`: reverse proxy
 - `22`: 관리용 SSH, 가능한 한 접근 IP 제한
 - backend 내부 포트와 PostgreSQL `5432`: 공개하지 않음
+
+### 원격 수집 수신 설정 (기본 OFF)
+
+수신 API와 로컬 전송 모드가 구현돼 있으며, 운영 연결 검증 전에는 운영에서 켜지 않는다.
+Compose에는 `COLLECTOR_INGRESS_ENABLED=false`, `COLLECTOR_INGRESS_TOKEN=`을 기본값으로 전달한다.
+추후 연결 시 backend `.env`에 활성 여부와 무작위 토큰을 설정하고 backend를 재생성한다.
+토큰은 32~256자의 영문·숫자·`_`·`-`만 허용하며 활성인데 비었거나 짧으면 기동에 실패한다.
+길이 검증은 무작위성 검증이 아니므로 사람이 만든 문구 대신 안전한 난수로 생성한다.
+
+- `COLLECTOR_INGRESS_ENABLED` → `PICKDEAL_COLLECTOR_INGRESS_ENABLED`
+- `COLLECTOR_INGRESS_TOKEN` → `PICKDEAL_COLLECTOR_INGRESS_TOKEN`
+- 로컬 프로필 실행은 `PICKDEAL_COLLECTOR_INGRESS_ENABLED=true`로 명시하며 토큰은 환경변수로 전달한다.
+- 원격 수집기는 HTTPS와 `Authorization: Bearer ...`를 사용한다. 로그·명령 기록·Git에 실제 토큰을 남기지 않는다.
+- 토큰 교체 시 서버와 수집기의 환경변수를 함께 바꾼다. API를 끄려면 ingress enabled만 false로 되돌린다.
+- `PICKDEAL_READ_ONLY=false`로 풀지 않는다. 올바른 수집 토큰도 설정·수동 등록 API를 열지 않는다.
+- Vercel에는 토큰을 설정하지 않는다. DB 포트/권한도 외부에 추가로 열지 않는다.
+- 전송 모드 적용 후 같은 출처는 한 곳에서만 수집한다. OCI 수집을 모두 옮긴다면 `COLLECTOR_ENABLED=false`를 유지한다.
+- 본문 제한은 1MiB이고 한 요청 최대 150건이다. 인증 실패를 반복 재시도하지 않는다.
+- 운영 배포 전에는 테스트용 DB에서 전송/재전송/토큰 오류/공개 쓰기 차단을 확인한다.
+
+### 로컬 수집기 실행 (노트북·홈 서버)
+
+별도 저장소 없이 같은 프로젝트를 사용한다. 서버용 `compose.yml`과 로컬용
+`compose.collector.yml`은 서로 합치지 않고 따로 실행한다. 로컬용에는 DB 서비스·공개 포트·DB 환경변수가 없다.
+수집기 전용 Java 실행점은 Spring을 시작하지 않으며, 파서와 DTO는 backend 코드를 공유한다.
+같은 JAR를 프로필로 전환하는 방식은 아니다. 서버 bootJar와 로컬 배포 디렉터리를 같은 Gradle 빌드에서 만든다.
+
+1. 노트북에서 `.env.collector.example`을 `.env.collector`로 복사한다.
+2. `COLLECTOR_RECEIVER_URL`에는 backend의 HTTPS origin만 설정한다(경로 없이).
+3. `COLLECTOR_INGRESS_TOKEN`에는 수신 서버와 같은 토큰을 넣고 `COLLECTOR_SOURCES`에 명시적으로 출처를 선택한다.
+4. 처음에는 `COLLECTOR_RUN_ONCE=true`, `COLLECTOR_BOOTSTRAP_MAX_PAGES=1`, `COLLECTOR_MAX_DETAIL_REQUESTS=0`으로 검증한다.
+
+```powershell
+# 이미지 빌드만으로는 사이트/API 요청이나 서비스 기동이 일어나지 않는다.
+docker compose --env-file .env.collector -f compose.collector.yml build
+# 아래부터 실제 수집 및 수신 서버 DB 저장이 발생한다. 운영 실행 전 대상 URL을 확인한다.
+docker compose --env-file .env.collector -f compose.collector.yml run --rm collector
+```
+
+한 번 검증한 후 필요할 때만 상세 상한(최대 3)을 늘리고 `COLLECTOR_RUN_ONCE=false`로 20분 주기를 사용한다.
+연속 실행은 같은 Compose에 `up -d`를 사용하고 중지는 `stop`으로 한다.
+설정 오류·인증 실패를 무한 반복하지 않도록 Docker restart는 `no`다. PC/Docker 재시작 후에는 수동으로 다시 시작한다.
+절전/전원 종료 동안 수집은 멈추며, 중단 중 지나간 게시글 및 메모리에 남았던 미전송 배치는 유실될 수 있다.
+성공 응답을 받지 못한 배치는 다음 주기에 먼저 다시 전송하고 서버의 중복 처리로 행 중복을 막는다.
+프로세스를 종료한 뒤 같은 목록을 다시 수집하는 것은 재전송 큐 복구와 다르다.
+
+수신 API는 HTTP 4xx(429 제외)나 redirect에 대해 즉시 종료하며 토큰을 다른 주소로 따라 보내지 않는다.
+수신 URL의 평문 HTTP는 같은 기기 테스트의 `localhost`/`127.0.0.1`/`::1`에만 허용한다.
+컨테이너의 localhost는 컨테이너 자신이므로 호스트 테스트 서버 주소로 착각하지 않는다.
+`host.docker.internal`에 평문 HTTP를 열기 위해 운영 보안 제한을 풀지 않는다.
+
+컨테이너는 비-root·read-only·512MiB/1CPU 제한으로 실행한다. 이는 설정값이며 실제 기기 자원 사용량을 측정한 값은 아니다.
+라즈베리파이/OCI ARM64 등 다른 아키텍처에서의 이미지 실행과 사이트 접근은 별도 확인이 필요하다.
+수집기에는 `impersonator-okhttp:1.10.2`를 포함한다. 상류 GPL/LGPL 조건은 기존 독립 진단과 같이
+재배포 전에 확인한다. 해당 의존성은 서버 bootJar에 추가하지 않는다.
+
+외부 사이트 요청 없는 로컬 테스트:
+
+```powershell
+cd backend
+./gradlew.bat test collectorDist bootJar
+```
+
+`RemoteCollectionHttpTest`는 fixture → 실제 로컬 HTTP 수신 API → 격리된 H2 테스트 DB 저장/재전송을 검증한다.
+운영 PostgreSQL·Docker 종단 간 검증을 대체하지 않는다. 실사이트 테스트는 기본 skip이며,
+별도 승인 아래 `PICKDEAL_LIVE_COLLECTOR_TEST=true`를 설정하고
+`--tests "com.pickdeal.collector.remote.RemoteCollectionHttpTest.singleLivePpomppuListToIsolatedTestReceiver"`만
+선택하면 뽐뿌 목록 1회·상세 0회·격리된 H2 저장으로 확인할 수 있다. 반복 실행하지 않는다.
+
+2026-09-20 검증: 로컬 Java 17의 fixture/HTTP 테스트와 실제 뽐뿌 목록 1회 → 로컬 수신 API →
+격리된 H2 저장이 통과했다(21건, 상세 0회). 서버 bootJar에 전용 실행점/impersonator가 없음을 확인했다.
+이어 같은 날 로컬 Docker Linux/amd64에서 아래 fixture 기반 PostgreSQL 종단 간 검증도 통과했다.
+OCI 전송, 실제 HTTPS 수신 연결, ARM64 실행은 아직 검증하지 않았다.
+
+### 격리된 Docker + PostgreSQL 검증
+
+Docker Desktop을 켠 뒤 저장소 루트에서 PowerShell 7로 실행한다.
+
+```powershell
+pwsh -NoProfile -File scripts/verify-local-collector.ps1
+```
+
+- 매 실행 고유한 `pickdeal-collector-verify-*` 프로젝트와 무작위 테스트 비밀번호/토큰을 생성한다.
+  실제 `.env`·운영 토큰은 수정하거나 출력하지 않는다.
+- `compose.collector-test.yml`의 PostgreSQL 17은 tmpfs만 사용한다. 기존 볼륨을 연결하지 않으며
+  backend는 compose 프로필의 Flyway + Hibernate validate로 기동한다.
+- 호스트에 포트를 공개하지 않고 내부 Docker 네트워크만 사용한다. 수집기 컨테이너는 backend의
+  네트워크 공간을 공유하여 loopback HTTP로 테스트하므로 운영 HTTPS 제한을 완화하지 않는다.
+- 실제 수집기 이미지에서 검증 전용 실행점 `LocalCollectorVerification`을 호출한다.
+  기존 뽐뿌 fixture → RemoteCollectionRunner → API → PostgreSQL을 사용하며 외부 사이트 요청은 0회다.
+  수집기 자체는 DB 연결·Spring 웹 서버를 시작하지 않는다.
+- 확인 항목: 신규 4건 저장, 같은 4건 재전송 후 중복 없음, 기존 종료 상태 보존,
+  토큰 누락/불일치 401, 공개 쓰기 403, 공개 조회 200, Flyway 성공 이력.
+- 성공/실패와 관계없이 해당 실행에서 생성한 테스트 컨테이너·네트워크를 정리한다.
+  tmpfs DB도 사라진다. 빌드한 테스트 이미지와 Docker 빌드 캐시는 남겨 둔다.
+- 2026-09-20 로컬 실행 결과 위 항목 모두 통과했다. 이 검증은 실제 출처 통신과 OCI 연결 검증을 대신하지 않는다.
 
 ## 6. 배포와 검증
 

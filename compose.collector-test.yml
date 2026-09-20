@@ -1,0 +1,60 @@
+# scripts/verify-local-collector.ps1에서만 실행하는 격리 검증 환경.
+# 운영 compose/.env와 합치지 않는다. 모든 DB 데이터는 종료 시 사라진다.
+services:
+  postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: collector_verify
+      POSTGRES_USER: collector_verify
+      POSTGRES_PASSWORD: ${VERIFY_DB_PASSWORD:?Run verification script}
+    tmpfs:
+      - /var/lib/postgresql/data
+    shm_size: 128m
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collector_verify -d collector_verify"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  backend:
+    build:
+      context: ./backend
+    image: pickdeal-backend:${VERIFY_IMAGE_TAG:?Run verification script}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: compose
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/collector_verify
+      DB_USERNAME: collector_verify
+      DB_PASSWORD: ${VERIFY_DB_PASSWORD:?Run verification script}
+      PICKDEAL_COLLECTOR_SCHEDULING_ENABLED: "false"
+      PICKDEAL_COLLECTOR_INGRESS_ENABLED: "true"
+      PICKDEAL_COLLECTOR_INGRESS_TOKEN: ${VERIFY_TOKEN:?Run verification script}
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m -XX:+ExitOnOutOfMemoryError
+    mem_limit: 1g
+  verify:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.collector
+    image: pickdeal-collector:${VERIFY_IMAGE_TAG:?Run verification script}
+    # HTTP 예외를 넓히지 않고 테스트 backend와 loopback 네트워크 공간만 공유한다.
+    network_mode: service:backend
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      COLLECTOR_INGRESS_TOKEN: ${VERIFY_TOKEN:?Run verification script}
+    entrypoint: ["java", "-Xms32m", "-Xmx256m", "-cp", "/app/classes:/app/lib/*", "com.pickdeal.collector.remote.LocalCollectorVerification"]
+    volumes:
+      - ./backend/src/test/resources/fixtures:/fixtures:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=32m
+    mem_limit: 512m
+    cpus: 1
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+networks:
+  default:
+    internal: true

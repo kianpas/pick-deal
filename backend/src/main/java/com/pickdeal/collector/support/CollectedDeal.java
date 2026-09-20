@@ -7,6 +7,7 @@ import java.time.OffsetDateTime;
  * 출처마다 없는 정보가 있어(예: 루리웹은 썸네일 없음) 대부분 필드가 nullable이다.
  *
  * @param postedAt 게시 시각. 해석 불가하면 null — 저장 시 수집 시각으로 대체된다.
+ * @param ended 종료 여부. null이면 미확인으로 기존 상태를 보존하고 신규는 ACTIVE로 시작한다.
  */
 public record CollectedDeal(
         String externalId,
@@ -17,7 +18,7 @@ public record CollectedDeal(
         String category,
         Integer commentCount,
         String thumbnailUrl,
-        boolean ended,
+        Boolean ended,
         OffsetDateTime postedAt,
         String productUrl
 ) {

@@ -113,12 +113,13 @@ public class DealUpsertSupport {
     }
 
     private boolean upsert(Source source, CollectedDeal collected, OffsetDateTime now) {
-        DealStatus status = collected.ended() ? DealStatus.EXPIRED : DealStatus.ACTIVE;
+        DealStatus status = Boolean.TRUE.equals(collected.ended()) ? DealStatus.EXPIRED : DealStatus.ACTIVE;
         return dealRepository.findBySourceIdAndExternalId(source.getId(), collected.externalId())
                 .map(existing -> {
                     existing.updateFromRecollection(
                             collected.price(), collected.category(), collected.storeName(),
-                            collected.productUrl(), collected.commentCount(), status);
+                            collected.productUrl(), collected.commentCount(),
+                            collected.ended() == null ? existing.getStatus() : status);
                     existing.updateTitleNormHash(
                             DealMatchNormalizer.titleHash(existing.getTitle(), existing.getShopName()));
                     dealGroupingService.groupIfMatched(existing);

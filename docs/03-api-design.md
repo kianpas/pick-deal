@@ -13,9 +13,9 @@
 
 - Base URL: `/api/v1`
 - CORS: 운영 Compose는 `CORS_ALLOWED_ORIGINS`에 지정한 정확한 frontend origin만 허용한다(빈 값은 교차 origin 미허용). 쿠키 credentials는 허용하지 않으며, CORS와 별개로 공개 조회 모드의 쓰기 차단을 유지한다. 설정·배포 절차는 `docs/06`을 따른다.
-- 공개 조회용 `compose` 프로필은 `pickdeal.read-only=true`로 GET·HEAD·OPTIONS 외 모든 HTTP 요청을 Controller 실행 전에 `403 / READ_ONLY`로 거부한다. 수집기의 내부 DB 저장은 영향을 받지 않는다. 기본 로컬 실행은 기존 쓰기 API를 유지한다.
+- 공개 조회용 `compose` 프로필은 `pickdeal.read-only=true`로 공개 쓰기를 `403 / READ_ONLY`로 거부한다. 명시적으로 활성화하고 토큰 인증에 성공한 §8의 수집 전용 POST 두 개만 예외다. 수집기의 내부 DB 저장은 영향을 받지 않는다. 기본 로컬 실행은 기존 쓰기 API를 유지한다.
 - 포맷: `application/json; charset=utf-8`
-- 인증: **MVP 없음**(단일 사용자). 내부적으로 고정 `user_id`(예: `1`)를 사용한다. 이 상태의 설정·내부 쓰기 API는 공개 인터넷에 안전하지 않으므로 최초 배포에서 접근을 제한한다(`docs/06`). 향후 멀티유저 인증 도입 시 사용자 스코프로 전환한다.
+- 인증: 사용자 로그인은 **MVP 없음**(단일 사용자). 내부적으로 고정 `user_id`(예: `1`)를 사용한다. 설정·기존 수동 등록 API는 공개 쓰기를 차단한다(`docs/06`). 원격 수집 API만 별도 Bearer 토큰을 사용하며, 사용자 인증이나 다른 쓰기 권한을 부여하지 않는다.
 - 시간 포맷: ISO-8601 문자열. 직렬화 시간대는 **`Asia/Seoul`(KST)**을 사용한다(예: `2026-05-20T20:36:00+09:00`).
 - 통화/금액: 금액은 정수(최소 화폐 단위 또는 원 단위)로 표현하고, `currency` 필드(예: `KRW`)를 함께 둔다.
 
@@ -56,9 +56,12 @@
 | 201 | 생성 성공(키워드 등록 등) |
 | 204 | 삭제 성공(본문 없음) |
 | 400 | 잘못된 요청(검증 실패) |
+| 401 | 수집기 토큰 누락·불일치 (`UNAUTHORIZED`) |
 | 403 | 공개 조회 환경에서 쓰기 요청 (`READ_ONLY`) |
 | 404 | 리소스 없음 |
 | 409 | 충돌(중복 키워드 등) |
+| 405 | 수집 API의 POST 외 메서드 |
+| 413 | 수집 요청 본문 1MiB 초과 |
 | 500 | 서버 오류 |
 
 ### 1.4 페이지네이션 규약
@@ -334,6 +337,8 @@ DELETE /api/v1/keywords/{id}
 | GET | `/api/v1/deals` | 핫딜 목록(필터/정렬/페이지) | MVP |
 | GET | `/api/v1/deals/{id}` | 핫딜 상세 | MVP |
 | POST | `/api/v1/internal/deals` | 딜 수동 등록(내부용, 선택) | MVP(선택) |
+| POST | `/api/v1/internal/collected-deals/known-external-ids` | 출처 내 기존 ID 일괄 확인 | 원격 수집·기본 비활성 |
+| POST | `/api/v1/internal/collected-deals` | 수집 결과 배치 저장/갱신 | 원격 수집·기본 비활성 |
 | GET | `/api/v1/sources` | 출처 목록 + 표시 상태 | MVP |
 | PATCH | `/api/v1/sources/{id}/visibility` | 출처 표시/숨김 | MVP |
 | GET | `/api/v1/keywords` | 키워드 목록 | MVP |
@@ -349,3 +354,78 @@ DELETE /api/v1/keywords/{id}
 - 필드/제약/인덱스: `docs/04-database-design.md`
 - 필터 우선순위 규칙: `docs/01-requirements.md` 3.2
 - 화면-API 매핑: `docs/02-architecture.md` 4장
+
+## 8. 원격 수집 전용 API
+
+수신 서버와 DB 없는 로컬 수집기의 전송 모드가 구현됐다. 실제 운영 연결은 별도 검증 후 적용한다.
+`pickdeal.collector.ingress.enabled=false`가 기본이며 비활성 시 두 경로는 404다.
+활성 시 `Authorization: Bearer <collector-token>`을 매 요청에 전송한다. 토큰 누락·오류는
+본문 파싱 전에 401, 인증 후 POST 외 메서드는 405다. 끝의 `/`를 붙이지 않는다.
+수집기는 서버 간 HTTPS로 호출하며, 토큰은 브라우저/Vercel에 전달하지 않는다.
+
+### 8.1 기존 ID 확인
+
+`POST /api/v1/internal/collected-deals/known-external-ids`
+
+```json
+{"sourceCode":"ppomppu","externalIds":["735731","735730"]}
+```
+
+```json
+{"data":{"knownExternalIds":["735730"],"hasCollectedDeals":true}}
+```
+
+- ID 목록은 1~150개, 각 값은 1~200자리 양의 숫자 문자열이다. 응답은 요청 순서로 중복 제거한다.
+- 해당 출처의 저장된 ID만 반환한다. 신규 판별을 위한 조회일 뿐 예약/저장 잠금은 아니다.
+- `hasCollectedDeals`는 해당 출처에 딜이 하나라도 있는지 나타내므로 향후 bootstrap 판별에 쓸 수 있다.
+- 출처가 아직 DB에 없으면 빈 목록/false이며 조회만으로 출처를 생성하지 않는다.
+
+### 8.2 수집 결과 전송
+
+`POST /api/v1/internal/collected-deals`
+
+```json
+{
+  "sourceCode":"ppomppu",
+  "deals":[{
+    "externalId":"735731",
+    "originalUrl":"https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=735731",
+    "shopName":"판매몰",
+    "title":"상품 이름 (24,800원/무료)",
+    "price":24800,
+    "category":"디지털",
+    "commentCount":null,
+    "thumbnailUrl":null,
+    "ended":false,
+    "postedAt":"2026-09-20T14:07:27+09:00",
+    "productUrl":null
+  }]
+}
+```
+
+```json
+{"data":{"received":1,"created":1,"updated":0}}
+```
+
+- 출처 코드는 `quasarzone`, `ruliweb`, `ppomppu`만 받는다. 표시명·기본 URL은 서버가 정한다.
+  DB에서 비활성인 출처는 400으로 거부한다. 출처별 로컬 수집기 enable 설정과는 별개다.
+- 배치는 1~150건. null 항목·중복 externalId·잘못된 항목이 하나라도 있으면 전체 요청을 거부한다.
+- 필수: `externalId`, `originalUrl`, 판매처 말머리를 뺀 `title`.
+  `ended`는 nullable boolean이다. true는 종료, false는 활성, null/생략은 미확인으로 기존 상태를 유지한다.
+  신규 딜의 종료 여부가 미확인이면 기존 모델의 ACTIVE로 등록하며 판매 가능 여부를 보장하지 않는다.
+  `shopName`을 붙인 실제 저장 제목은 300자 이하, shopName 100자, category 50자 이하다.
+- 가격은 nullable 원화 정수이며 0 이상, 댓글 수도 nullable 정수 0 이상이다.
+- 원문 URL은 출처/게시글 ID가 일치하는 HTTPS 주소만 허용한다.
+  퀘이사존 `/bbs/qb_saleinfo/views/{externalId}`, 루리웹 `/market/board/1020/read/{externalId}`,
+  뽐뿌 `/zboard/view.php?id=ppomppu&no={externalId}`를 사용하고 다른 쿼리/fragment는 제외한다.
+- 원문·썸네일 URL 1,000자, 상품 URL 2,000자 이하. 선택 URL은 HTTP(S), 사용자정보 없는 URL만 받는다.
+  수신 서버가 이 URL에 접속하지는 않는다. 상품 URL과 원문 URL은 별도로 저장한다.
+- postedAt은 nullable ISO-8601 offset 시각이며 없으면 서버 수신 시각을 사용한다.
+  카테고리는 기존 정확 일치 정규화를 적용한다.
+- 기존 `DealUpsertSupport`와 그룹화 로직을 재사용한다. 재전송은 `(source, externalId)`로 갱신하고
+  상세 상품 URL·판매처가 빠졌다고 기존 값을 지우지 않는다. `updated`는 값이 실제 바뀐 수가 아니라
+  기존 행 처리 수다. 동일 배치 재전송은 새 행을 만들지 않지만 오래된 서로 다른 배치의 순서 역전은 방지하지 않는다.
+- 단일 서버의 수신 배치는 트랜잭션 커밋까지 직렬화하며 DB 유니크 제약도 유지한다.
+  같은 출처의 OCI 스케줄러와 로컬 수집기를 동시에 실행하지 않는다. 저장 충돌은 전체 롤백 후 409다.
+- 인증 후 본문은 Content-Length 유무와 관계없이 최대 1MiB, 초과 시 413이다.
+  메모리 큐·영속 재전송 큐·자동 재시도는 이 API에 포함하지 않는다.

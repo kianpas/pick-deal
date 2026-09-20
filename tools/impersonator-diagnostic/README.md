@@ -43,6 +43,42 @@ Java 17 컴파일/실행 여부와 OCI ARM64 실접속 결과는 구분해서 �
 상류 저장소에는 GPL/LGPL 라이선스 파일이 있으므로 제품 통합/배포 전 적용 조건을 검토한다.
 뽐뿌 접근 성공이 자동 수집 및 공개 재사용 허락을 의미하지 않는다.
 
+## 목록 파서 개발 (2026-09-20)
+
+`PpomppuListSnapshot`은 명시적으로 실행할 때만 고정 주소에 1회 요청하고, 2MiB 이하의
+목록 후보 응답을 이 프로젝트의 `build/ppomppu-list.raw.html`에 저장한다. 기존 진단의
+기본 실행은 바뀌지 않는다. 원본에는 작성자 등 불필요한 정보가 있으므로 커밋하지 않는다.
+robots.txt와 접근 정책을 확인한 로컬 개발 환경에서만 실행하고, 실패하면 중단한다.
+
+```powershell
+# 저장소 루트에서 빌드 (대상 사이트에 요청하지 않음)
+backend/gradlew.bat -p tools/impersonator-diagnostic test installDist
+cd tools/impersonator-diagnostic
+# 아래 명령만 실제 목록 요청 1회. 이미 확보한 HTML이 있다면 재실행하지 않는다.
+java -Xmx128m -cp "build/install/pickdeal-impersonator-diagnostic/lib/*" com.pickdeal.diagnostic.PpomppuListSnapshot
+cd ../..
+
+# 이후는 확보된 파일만 사용: 네트워크/Spring/DB/상세 조회 없음
+backend/gradlew.bat -p backend test diagnosticDist
+java "-Dfile.encoding=UTF-8" -cp "backend/build/diagnostic/classes;backend/build/diagnostic/lib/*" com.pickdeal.collector.ppomppu.PpomppuListDiagnostic tools/impersonator-diagnostic/build/ppomppu-list.raw.html
+```
+
+Linux/macOS에서는 Java classpath의 `;`를 `:`로 바꾼다. HTML의 EUC-KR 인코딩은
+오프라인 진단에서 meta charset으로 감지한다. Parser 자체는 `String → 목록` 순수 함수다.
+테스트 fixture는 실제 목록의 일부 행에서 작성자·스크립트·이벤트 속성을 제거한 UTF-8 발췌본이다.
+별도 경계조건 테스트의 합성 HTML과 실제 발췌 fixture를 구분한다.
+
+게시판 ID가 `ppomppu`이고 표시 번호가 일치하는 행만 받으며, 인기글 중복은 외부 ID로 제거한다.
+공지·다른 게시판·쇼핑뽐뿌 영역은 제외한다. 일반 게시글 자체의 상업성까지 판별하는 것은 아니다.
+가격은 `(금액원/배송비)`만 인정하며 조건부 가격·외화·단위 생략은 null이다.
+댓글 표시가 없으면 0으로 추측하지 않는다. 판매처는 구조화된 말머리를 그대로 가져온다.
+카테고리와 게시 시각은 원문이며 상품 URL·종료 상태·DB 저장·자동 수집은 이번 범위가 아니다.
+
+2026-09-20 로컬 Java 17 목록 요청 1회: HTTP 200, 71,546 bytes.
+그 응답을 오프라인 파싱한 결과 고유 딜 21건, 가격 19건, 판매처·썸네일 각각 21건,
+댓글 수 표시 6건을 확보했다. 원본은 build 경로에만 보관하며, 저장소에는 최소 발췌 fixture만 추가했다.
+이 단계의 실요청은 Windows Java에서 수행했으며 Docker 재실행·OCI 접근·운영 저장 검증은 하지 않았다.
+
 ## 검증 기록 (2026-09-19)
 
 - 로컬 Windows Java 17: `clean test installDist` 통과.
