@@ -25,7 +25,36 @@ java {
     }
 }
 
+// 같은 코드/빌드에서 독립 실행점을 만든다. 운영 bootJar에는 수집기 전용 의존성을 넣지 않는다.
+sourceSets {
+    collector {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+    test {
+        compileClasspath += sourceSets.collector.output
+        runtimeClasspath += sourceSets.collector.output
+    }
+}
+configurations {
+    collectorImplementation.extendsFrom implementation
+    collectorRuntimeOnly.extendsFrom runtimeOnly
+    testImplementation.extendsFrom collectorImplementation
+    testRuntimeOnly.extendsFrom collectorRuntimeOnly
+}
+tasks.named('compileCollectorJava') { dependsOn tasks.named('classes') }
+tasks.named('compileTestJava') { dependsOn tasks.named('collectorClasses') }
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.register('collectorDist', Sync) {
+    dependsOn tasks.named('collectorClasses')
+    into layout.buildDirectory.dir('collector')
+    from(sourceSets.main.output) { into 'classes' }
+    from(sourceSets.collector.output) { into 'classes' }
+    from(configurations.collectorRuntimeClasspath) { into 'lib' }
+}
+
 dependencies {
+    collectorImplementation 'com.github.zhkl0228:impersonator-okhttp:1.10.2'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'

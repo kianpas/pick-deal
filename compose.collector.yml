@@ -1,0 +1,28 @@
+name: pickdeal-local-collector
+services:
+  collector:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.collector
+    image: pickdeal-collector:local
+    # 설정/인증 실패 시 재시작을 반복하지 않는다. 상시 실행은 앱 내부 20분 주기다.
+    restart: "no"
+    environment:
+      COLLECTOR_RECEIVER_URL: ${COLLECTOR_RECEIVER_URL:?Set receiver HTTPS origin}
+      COLLECTOR_INGRESS_TOKEN: ${COLLECTOR_INGRESS_TOKEN:?Set collector token}
+      COLLECTOR_SOURCES: ${COLLECTOR_SOURCES:?Choose sources explicitly}
+      COLLECTOR_RUN_ONCE: ${COLLECTOR_RUN_ONCE:-true}
+      COLLECTOR_BOOTSTRAP_MAX_PAGES: ${COLLECTOR_BOOTSTRAP_MAX_PAGES:-1}
+      COLLECTOR_MAX_DETAIL_REQUESTS: ${COLLECTOR_MAX_DETAIL_REQUESTS:-3}
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=32m
+    mem_limit: 512m
+    cpus: 1
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

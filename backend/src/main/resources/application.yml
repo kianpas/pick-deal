@@ -26,6 +26,9 @@ logging:
 
 pickdeal:
   collector:
+    ingress:
+      enabled: false
+      token: ${COLLECTOR_INGRESS_TOKEN:}
     scheduling:
       enabled: true
     sources:

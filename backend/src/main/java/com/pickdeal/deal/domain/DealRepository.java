@@ -8,6 +8,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface DealRepository extends JpaRepository<Deal, Long> {
 
+    @Query("select d.externalId from Deal d where d.source.id = :sourceId and d.externalId in :externalIds")
+    List<String> findKnownExternalIds(@Param("sourceId") Long sourceId,
+            @Param("externalIds") List<String> externalIds);
+
     /**
      * 사용자가 숨기지 않은 활성 출처의 딜을 조회한다(docs/01 §3.2의 출처 숨김 규칙).
      * 종료/품절 딜도 포함한다 — 목록에서 상태 뱃지로 구분해 보여주는 게 관례라 조용히 숨기지 않는다.
