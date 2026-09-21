@@ -28,6 +28,7 @@
 | --- | --- | --- | --- |
 | `quasarzone` | 퀘이사존 | `collector/quasarzone/` | 활성 |
 | `ruliweb` | 루리웹 | `collector/ruliweb/` | 활성 |
+| `dogdrip` | 개드립 | `collector/dogdrip/` | OCI 서버 수집기, 기본 비활성. 기존 20분 fixed-delay에 참여하며 최초·일반 모두 목록 1페이지/최대 50건, 상세 0회. 2026-09-21 robots.txt에서 `/hotdeal` 금지 없음과 Crawl-delay 10초 확인. 요청 종료 후 최소 10초 간격, redirect·즉시 재시도 없음. 403/429 시 24시간 대기(더 긴 Retry-After 우선). 대기는 프로세스 메모리이므로 재시작으로 초기화되며 차단 중 재시작 반복 금지. 목록의 판매몰 말머리·제목 끝 원화 가격·댓글·썸네일·상대 시각·취소선 종료 표시만 사용, 확인 불가는 null. productUrl 미수집, 종료 표식 없으면 ended=null로 기존 상태 보존. 정상 목록이 아니면 저장하지 않음 |
 | `ppomppu` | 뽐뿌 | `collector/ppomppu/` | 로컬 전용 실행점에서 목록 수집·원격 전송 지원(서버 스케줄러에는 미등록). 2026-09-20 robots.txt의 `/zboard/` 허용 확인. 가격은 제목 끝 `(금액원/배송비)`만 추출하며 조건부·외화·단위 없는 값은 null. 상세·상품 URL·종료 판별은 미구현. ended=null로 기존 상태 보존 |
 
 기존 공통 계약 안에서 출처만 추가할 때는 **이 표, 해당 `collector/{source}/` 코드, 실제 응답 HTML 테스트 fixture**만 갱신한다. API·DB·공통 수집 구조·운영 정책이 함께 바뀌는 경우에만 관련 설계문서를 추가로 갱신한다.

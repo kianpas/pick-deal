@@ -32,6 +32,9 @@ pickdeal:
     scheduling:
       enabled: true
     sources:
+      dogdrip:
+        enabled: false
+        timeout: 10s
       quasarzone:
         enabled: true
         timeout: 10s
