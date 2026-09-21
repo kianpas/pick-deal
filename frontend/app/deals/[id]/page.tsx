@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { DealThumbnail } from "@/components/deal/DealThumbnail";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, Flame, MessageCircle } from "lucide-react";
@@ -117,14 +117,11 @@ export default async function DealDetailPage({
           {/* 썸네일 — 시각 앵커라 제목 바로 아래에 둔다 */}
           {deal.thumbnailUrl && (
             <div className="relative overflow-hidden rounded-xl border border-border bg-surface-2">
-              <Image
+              <DealThumbnail
                 src={deal.thumbnailUrl}
                 alt={title}
-                width={768}
-                height={432}
-                sizes="(max-width: 768px) 100vw, 768px"
-                className={`h-auto w-full object-contain ${ended ? "opacity-60" : ""}`}
-                unoptimized
+                detail
+                ended={ended}
               />
             </div>
           )}
