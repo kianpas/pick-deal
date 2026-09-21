@@ -27,8 +27,8 @@ class DealServiceTest {
 
     @Test
     void largePageReturnsEmptyPageWithoutOverflow() {
-        assertThat(dealService.findDeals(107374183, 20, "latest", null, null, null).items()).isEmpty();
-        var result = dealService.findDeals(Integer.MAX_VALUE, 100, "latest", null, null, null);
+        assertThat(dealService.findDeals(107374183, 20, "latest", null, null, null, null).items()).isEmpty();
+        var result = dealService.findDeals(Integer.MAX_VALUE, 100, "latest", null, null, null, null);
         assertThat(result.items()).isEmpty();
         assertThat(result.meta().hasNext()).isFalse();
     }
@@ -88,7 +88,7 @@ class DealServiceTest {
         saveDeal(source, "ended-3", "기타", DealStatus.SOLD_OUT);
 
         List<DealSummaryResponse> items =
-                dealService.findDeals(0, 50, "latest", List.of(source.getId()), null, null).items();
+                dealService.findDeals(0, 50, "latest", List.of(source.getId()), null, null, null).items();
 
         assertThat(items).hasSize(3);
         assertThat(items).extracting(DealSummaryResponse::status)
@@ -103,7 +103,7 @@ class DealServiceTest {
         Deal saved = saveDeal(source, "comments-1", "기타", DealStatus.ACTIVE, 7);
 
         DealSummaryResponse summary = dealService
-                .findDeals(0, 20, "latest", List.of(source.getId()), null, null)
+                .findDeals(0, 20, "latest", List.of(source.getId()), null, null, null)
                 .items().get(0);
 
         assertThat(summary.commentCount()).isEqualTo(7);
@@ -125,7 +125,7 @@ class DealServiceTest {
         ));
 
         DealSummaryResponse summary = dealService
-                .findDeals(0, 20, "latest", List.of(source.getId()), null, null)
+                .findDeals(0, 20, "latest", List.of(source.getId()), null, null, null)
                 .items().get(0);
 
         assertThat(summary.shopName()).isEqualTo("테스트몰");
@@ -150,7 +150,7 @@ class DealServiceTest {
         joinGroup(first, second);
 
         var response = dealService.findDeals(
-                0, 1, "latest", List.of(firstSource.getId(), secondSource.getId()), null, null);
+                0, 1, "latest", List.of(firstSource.getId(), secondSource.getId()), null, null, null);
 
         assertThat(response.items()).singleElement().satisfies(summary -> {
             assertThat(summary.id()).isEqualTo(first.getId());
@@ -177,7 +177,7 @@ class DealServiceTest {
         joinGroup(first, second);
 
         DealSummaryResponse summary = dealService
-                .findDeals(0, 20, "latest", List.of(secondSource.getId()), null, null)
+                .findDeals(0, 20, "latest", List.of(secondSource.getId()), null, null, null)
                 .items().get(0);
 
         assertThat(summary.id()).isEqualTo(second.getId());

@@ -80,4 +80,13 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
             @Param("sourceId") Long sourceId,
             @Param("titleNormHash") String titleNormHash
     );
+
+    /** 과거 해시와 무관하게 같은 가격의 교차 출처 후보를 현재 제목 규칙으로 재검증한다. */
+    @Query("""
+            select d from Deal d
+            join fetch d.source
+            left join fetch d.dealGroup
+            where d.source.id <> :sourceId and d.price = :price
+            """)
+    List<Deal> findCrossSourceCandidatesByPrice(@Param("sourceId") Long sourceId, @Param("price") Long price);
 }

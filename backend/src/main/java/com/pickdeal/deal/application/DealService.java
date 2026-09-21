@@ -44,12 +44,14 @@ public class DealService {
     // 키워드 필터가 제목·본문 부분일치라 DB로 내리기 애매한 점을 감안한 소규모 시드 전용 구현.
     // 데이터가 커지면 DB 쿼리/키셋 페이지네이션으로 전환한다(docs/03 §5).
     @Transactional(readOnly = true)
-    public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String category, String query) {
+    public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String category, String query, List<String> shopNames) {
         List<Keyword> excludeKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.EXCLUDE);
         List<Keyword> interestKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.INTEREST);
 
         List<Deal> sourceEligibleDeals = dealRepository.findVisibleDeals(DEFAULT_USER_ID).stream()
                 .filter(deal -> sourceIds == null || sourceIds.isEmpty() || sourceIds.contains(deal.getSource().getId()))
+                .filter(deal -> shopNames == null || shopNames.isEmpty()
+                        || (deal.getShopName() != null && shopNames.contains(deal.getShopName())))
                 .toList();
 
         List<DealGroupView> filteredGroups = groupDeals(sourceEligibleDeals).stream()
@@ -82,6 +84,16 @@ public class DealService {
     public List<String> findCategories() {
         return dealRepository.findVisibleDeals(DEFAULT_USER_ID).stream()
                 .map(Deal::getCategory)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> findShops() {
+        return dealRepository.findVisibleDeals(DEFAULT_USER_ID).stream()
+                .map(Deal::getShopName)
                 .filter(StringUtils::hasText)
                 .distinct()
                 .sorted()
@@ -127,7 +139,7 @@ public class DealService {
                 request.originalUrl().trim(),
                 normalizeNullable(request.productUrl()),
                 externalId,
-                DealMatchNormalizer.titleHash(title, shopName),
+                DealMatchNormalizer.titleHash(title, shopName, request.price()),
                 DealStatus.ACTIVE,
                 request.postedAt(),
                 now

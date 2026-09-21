@@ -64,6 +64,7 @@ export interface DealListParams {
   size?: number;
   sort?: "latest" | "discount";
   sourceId?: number[];
+  shopName?: string[];
   category?: string;
   q?: string;
 }
@@ -82,6 +83,7 @@ export async function getDeals(params: DealListParams = {}): Promise<DealListRes
   if (params.category) search.set("category", params.category);
   if (params.q) search.set("q", params.q);
   params.sourceId?.forEach((id) => search.append("sourceId", String(id)));
+  params.shopName?.forEach((name) => search.append("shopName", name));
 
   const query = search.toString();
   const envelope = await request<DealSummary[]>(`/api/v1/deals${query ? `?${query}` : ""}`);
@@ -91,6 +93,12 @@ export async function getDeals(params: DealListParams = {}): Promise<DealListRes
 /** GET /api/v1/deals/categories — 노출 중인 딜의 카테고리 목록(중복 없음, 정렬). */
 export async function getDealCategories(): Promise<string[]> {
   const envelope = await request<string[]>("/api/v1/deals/categories");
+  return envelope.data ?? [];
+}
+
+/** DB에 저장된 표시 출처의 판매처 이름. 별칭 통합 없이 원문을 사용한다. */
+export async function getDealShops(): Promise<string[]> {
+  const envelope = await request<string[]>("/api/v1/deals/shops");
   return envelope.data ?? [];
 }
 

@@ -101,6 +101,10 @@ public class DealGroupingService {
             dealRepository.findCrossSourceCandidates(sourceId, deal.getTitleNormHash())
                     .forEach(candidate -> candidates.put(candidate.getId(), candidate));
         }
+        if (deal.getPrice() != null) {
+            dealRepository.findCrossSourceCandidatesByPrice(sourceId, deal.getPrice())
+                    .forEach(candidate -> candidates.put(candidate.getId(), candidate));
+        }
         return List.copyOf(candidates.values());
     }
 
@@ -109,9 +113,9 @@ public class DealGroupingService {
                 && hasText(candidate.getProductUrl())
                 && Objects.equals(deal.getProductUrl().trim(), candidate.getProductUrl().trim());
         // 과거 규칙으로 저장된 해시는 후보 탐색에만 사용하고 실제 제목을 다시 검증한다.
-        String titleHash = DealMatchNormalizer.titleHash(deal.getTitle(), deal.getShopName());
+        String titleHash = DealMatchNormalizer.titleHash(deal.getTitle(), deal.getShopName(), deal.getPrice());
         boolean sameTitleHash = titleHash != null
-                && titleHash.equals(DealMatchNormalizer.titleHash(candidate.getTitle(), candidate.getShopName()));
+                && titleHash.equals(DealMatchNormalizer.titleHash(candidate.getTitle(), candidate.getShopName(), candidate.getPrice()));
 
         String shopKey = DealMatchNormalizer.normalizeShopName(deal.getShopName());
         String candidateShopKey = DealMatchNormalizer.normalizeShopName(candidate.getShopName());
