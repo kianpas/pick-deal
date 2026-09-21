@@ -2,20 +2,14 @@
 
 import {
   Bell,
-  ChevronDown,
   Home,
-  Plus,
   Tag,
   UserCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ShopIcon } from "@/components/common/ShopIcon";
-import { useFilters } from "@/components/filter/FilterProvider";
 import { SourceVisibilityList } from "@/components/source/SourceVisibilityList";
-import { SHOP_COUNTS } from "@/lib/mock-data";
-import type { ShopId } from "@/lib/types";
 import { READ_ONLY } from "@/lib/runtime-config";
 
 const NAV: { icon: LucideIcon; label: string; href: string }[] = [
@@ -30,15 +24,10 @@ function isNavActive(pathname: string, href: string): boolean {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-const VISIBLE_SHOP_LIMIT = 8;
-
 export function LeftSidebar() {
-  const { selectedShops, toggleShop, clearShops } = useFilters();
   const pathname = usePathname();
-  const [expanded, setExpanded] = useState(false);
   const [notifyEnabled, setNotifyEnabled] = useState(true);
 
-  const visible = expanded ? SHOP_COUNTS : SHOP_COUNTS.slice(0, VISIBLE_SHOP_LIMIT);
 
   return (
     <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-60 shrink-0 flex-col border-r border-border bg-bg md:flex">
@@ -66,7 +55,7 @@ export function LeftSidebar() {
         {!READ_ONLY && <div>
           <div className="flex items-center justify-between px-3 pb-2">
             <span className="text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
-              출처
+              출처 표시 설정
             </span>
             <span className="text-[11px] text-fg-subtle">표시/숨김</span>
           </div>
@@ -76,76 +65,6 @@ export function LeftSidebar() {
           </div>
         </div>}
 
-        {/* Shops (쇼핑몰 다중 선택 필터) — 데모(판매처 개념은 수집기 단계로 보류) */}
-        <div>
-          <div className="flex items-center justify-between px-3 pb-2">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
-              쇼핑몰
-            </span>
-            {selectedShops.size > 0 ? (
-              <button
-                type="button"
-                onClick={clearShops}
-                className="text-[11px] text-brand hover:underline"
-              >
-                전체 해제
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="text-fg-subtle hover:text-fg transition"
-                aria-label="쇼핑몰 추가"
-              >
-                <Plus className="size-3.5" />
-              </button>
-            )}
-          </div>
-
-          <ul className="space-y-0.5">
-            {visible.map((s) => {
-              if (s.id === "all") return null;
-              const shopId = s.id as ShopId;
-              const isSelected = selectedShops.has(shopId);
-              return (
-                <li key={s.id}>
-                  <button
-                    type="button"
-                    onClick={() => toggleShop(shopId)}
-                    aria-pressed={isSelected}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition ${
-                      isSelected
-                        ? "bg-brand-soft text-brand"
-                        : "text-fg-muted hover:bg-surface hover:text-fg"
-                    }`}
-                  >
-                    <ShopIcon id={s.id} size={24} />
-                    <span className="flex-1 truncate text-left">{s.name}</span>
-                    <span
-                      className={`text-xs tabular-nums ${
-                        isSelected ? "text-brand" : "text-fg-subtle"
-                      }`}
-                    >
-                      {s.count}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-
-          {SHOP_COUNTS.length > VISIBLE_SHOP_LIMIT && (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="mt-1 flex w-full items-center justify-center gap-1 px-3 py-1.5 text-xs text-fg-subtle hover:text-fg transition"
-            >
-              {expanded ? "접기" : "더보기"}
-              <ChevronDown
-                className={`size-3 transition ${expanded ? "rotate-180" : ""}`}
-              />
-            </button>
-          )}
-        </div>
       </nav>
 
       {/* Notify toggle */}

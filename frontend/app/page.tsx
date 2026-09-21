@@ -1,6 +1,7 @@
 import { DealFeed } from "@/components/deal/DealFeed";
 import { AppShell } from "@/components/layout/AppShell";
-import { getDealCategories, getDeals, type DealListParams } from "@/lib/api";
+import { getDealCategories, getDeals, getSources, type DealListParams } from "@/lib/api";
+import { CommunityFilter } from "@/components/source/CommunityFilter";
 import type { DealSummary, PageMeta } from "@/lib/api-types";
 
 const PAGE_SIZE = 20;
@@ -14,10 +15,15 @@ const PAGE_SIZE = 20;
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; sourceId?: string | string[] }>;
 }) {
-  const { q, category } = await searchParams;
-  const listParams: DealListParams = { size: PAGE_SIZE, q, category };
+  const { q, category, sourceId: sourceParam } = await searchParams;
+  const values = sourceParam === undefined ? [] : Array.isArray(sourceParam) ? sourceParam : [sourceParam];
+  const sourceId = [...new Set(values.filter((value) => /^[1-9]\d*$/.test(value))
+    .map(Number).filter(Number.isSafeInteger))].sort((a, b) => a - b);
+  const listParams: DealListParams = { size: PAGE_SIZE, q, category, sourceId };
+  const sourceResult = await getSources().then((sources) => ({ sources, failed: false }))
+    .catch(() => ({ sources: [], failed: true }));
 
   let deals: DealSummary[] = [];
   let meta: PageMeta | null = null;
@@ -39,9 +45,12 @@ export default async function Home({
 
   return (
     <AppShell>
+      <div className="mb-4">
+        <CommunityFilter sources={sourceResult.sources} selected={sourceId} failed={sourceResult.failed} />
+      </div>
       <DealFeed
         // 필터가 바뀌면 "더 보기"로 쌓인 상태를 버리고 새로 시작한다
-        key={`${q ?? ""}|${category ?? ""}`}
+        key={JSON.stringify([q, category, sourceId])}
         deals={deals}
         meta={meta}
         loadFailed={loadFailed}

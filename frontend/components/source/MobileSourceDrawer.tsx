@@ -34,14 +34,14 @@ export function MobileSourceDrawer() {
       <button
         ref={triggerRef}
         type="button"
-        aria-label="출처 설정"
+        aria-label="출처 표시 설정"
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
         className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-surface px-4 text-sm font-medium text-fg transition hover:bg-surface-hover"
       >
         <SlidersHorizontal className="size-4" />
-        출처 설정
+        출처 표시 설정
       </button>
 
       <dialog ref={dialogRef} aria-labelledby="mobile-source-title"
@@ -52,7 +52,7 @@ export function MobileSourceDrawer() {
             <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4">
               <div>
                 <h2 id="mobile-source-title" className="text-sm font-semibold text-fg">
-                  출처 설정
+                  출처 표시 설정
                 </h2>
                 <p className="text-xs text-fg-subtle">목록에 표시할 출처를 선택하세요.</p>
               </div>
