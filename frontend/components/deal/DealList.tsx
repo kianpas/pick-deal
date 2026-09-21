@@ -8,7 +8,7 @@ interface Props {
 
 export function DealList({ deals, showThumbnail = true }: Props) {
   return (
-    <ul className={showThumbnail ? "space-y-3" : "space-y-1"}>
+    <ul className={showThumbnail ? "space-y-2" : "space-y-1"}>
       {deals.map((deal) => (
         <li key={deal.id}>
           <DealCard deal={deal} showThumbnail={showThumbnail} />
