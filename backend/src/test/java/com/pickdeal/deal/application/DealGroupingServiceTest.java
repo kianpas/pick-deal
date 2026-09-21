@@ -203,6 +203,50 @@ class DealGroupingServiceTest {
     }
 
     @Test
+    void groupsObservedAirFreshenerEvenWhenBothHashesAreLegacy() {
+        Source a = saveSource("observed-qz");
+        Source b = saveSource("observed-pp");
+        Deal first = saveDeal(a, "157", "[네이버] 명품 차량용 방향제 고급 블랙체리 100ml 1개",
+                "네이버", 3900L, null, null);
+        Deal second = saveDeal(b, "172", "[네이버] 명품 차량용 방향제 고급 블랙체리 100ml 1개 (3,900원/무료)",
+                "네이버", 3900L, null, null);
+        assertThat(first.getTitleNormHash()).isNotEqualTo(second.getTitleNormHash());
+        groupingService.groupIfMatched(first);
+        assertThat(first.getDealGroup()).isNotNull().isSameAs(second.getDealGroup());
+        assertThat(second.getTitle()).endsWith("(3,900원/무료)"); // 표시용 원문은 보존
+    }
+
+    @Test
+    void groupsExplicitShopAliasAndVerifiedSuffix() {
+        Deal a = saveDeal(saveSource("alias-a"), "a", "[지마켓] SSD 1TB 1개", "지마켓", 99000L, null, null);
+        Deal b = saveDeal(saveSource("alias-b"), "b", "[G마켓] SSD 1TB 1개 99,000원 (무료)", "G마켓", 99000L, null, null);
+        groupingService.groupIfMatched(b);
+        assertThat(a.getDealGroup()).isNotNull().isSameAs(b.getDealGroup());
+        assertThat(b.getShopName()).isEqualTo("G마켓");
+    }
+
+    @Test
+    void observedAmbiguousOrDifferentOffersRemainSeparate() {
+        Source a = saveSource("observed-other-a");
+        Source b = saveSource("observed-other-b");
+        String[][] titles = {
+                {"맥심 모카골드 커피믹스 400개입(네이버페이), 1개", "맥심 모카골드 커피믹스 400개입 49,500원 (무료)"},
+                {"닌자샤크 에어프라이어 크리스피 FN100KR+블렌드보스", "샤크닌자 블렌드보스+닌자 크리스피 399,840원 (무료)"},
+                {"배스킨라빈스 패밀리 아이스크림", "베스킨라빈스 패밀리 사이즈 20,800원"},
+                {"보먹돼 삼겹살(H) 1kg", "보먹돼 삼겹살(H) 100G 990원 (조건부)"}
+        };
+        String[][] shops = {{"네이버", "네이버쇼핑"}, {"기타", "자사몰"}, {"네이버", "네이버쇼핑"}, {"기타", "홈플러스"}};
+        long[][] prices = {{49500, 49500}, {399840, 399840}, {18720, 20800}, {9900, 990}};
+        for (int i = 0; i < titles.length; i++) {
+            Deal first = saveDeal(a, "a" + i, titles[i][0], shops[i][0], prices[i][0], null, null);
+            Deal second = saveDeal(b, "b" + i, titles[i][1], shops[i][1], prices[i][1], null, null);
+            groupingService.groupIfMatched(second);
+            assertThat(first.getDealGroup()).isNull();
+            assertThat(second.getDealGroup()).isNull();
+        }
+    }
+
+    @Test
     void skipsRepostWhenExistingGroupAlreadyHasSource() {
         Source a = saveSource("repost-a");
         Source b = saveSource("repost-b");

@@ -1,6 +1,7 @@
 import { DealFeed } from "@/components/deal/DealFeed";
 import { AppShell } from "@/components/layout/AppShell";
-import { getDealCategories, getDeals, getSources, type DealListParams } from "@/lib/api";
+import { getDealCategories, getDealShops, getDeals, getSources, type DealListParams } from "@/lib/api";
+import { ShopFilter } from "@/components/filter/ShopFilter";
 import { CommunityFilter } from "@/components/source/CommunityFilter";
 import type { DealSummary, PageMeta } from "@/lib/api-types";
 
@@ -15,15 +16,18 @@ const PAGE_SIZE = 20;
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; sourceId?: string | string[] }>;
+  searchParams: Promise<{ q?: string; category?: string; sourceId?: string | string[]; shopName?: string | string[] }>;
 }) {
-  const { q, category, sourceId: sourceParam } = await searchParams;
+  const { q, category, sourceId: sourceParam, shopName: shopParam } = await searchParams;
   const values = sourceParam === undefined ? [] : Array.isArray(sourceParam) ? sourceParam : [sourceParam];
   const sourceId = [...new Set(values.filter((value) => /^[1-9]\d*$/.test(value))
     .map(Number).filter(Number.isSafeInteger))].sort((a, b) => a - b);
-  const listParams: DealListParams = { size: PAGE_SIZE, q, category, sourceId };
-  const sourceResult = await getSources().then((sources) => ({ sources, failed: false }))
-    .catch(() => ({ sources: [], failed: true }));
+  const shopName = [...new Set(shopParam === undefined ? [] : Array.isArray(shopParam) ? shopParam : [shopParam])].sort();
+  const listParams: DealListParams = { size: PAGE_SIZE, q, category, sourceId, shopName };
+  const [sourceResult, shopResult] = await Promise.all([
+    getSources().then((sources) => ({ sources, failed: false })).catch(() => ({ sources: [], failed: true })),
+    getDealShops().then((shops) => ({ shops, failed: false })).catch(() => ({ shops: [], failed: true })),
+  ]);
 
   let deals: DealSummary[] = [];
   let meta: PageMeta | null = null;
@@ -44,13 +48,22 @@ export default async function Home({
   }
 
   return (
-    <AppShell>
+    <AppShell filters={<ShopFilter shops={shopResult.shops} selected={shopName} failed={shopResult.failed} />}>
+      <details className="mb-4 rounded-xl border border-border bg-surface px-3 md:hidden">
+        <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">
+          쇼핑몰 · {shopName.length ? `${shopName.length}개 선택` : "전체"}
+        </summary>
+        {shopName.length > 0 && <p className="break-words pb-2 text-xs text-fg-muted">{shopName.join(" · ")}</p>}
+        <div className="max-h-80 overflow-y-auto pb-3">
+          <ShopFilter shops={shopResult.shops} selected={shopName} failed={shopResult.failed} />
+        </div>
+      </details>
       <div className="mb-4">
         <CommunityFilter sources={sourceResult.sources} selected={sourceId} failed={sourceResult.failed} />
       </div>
       <DealFeed
         // 필터가 바뀌면 "더 보기"로 쌓인 상태를 버리고 새로 시작한다
-        key={JSON.stringify([q, category, sourceId])}
+        key={JSON.stringify([q, category, sourceId, shopName])}
         deals={deals}
         meta={meta}
         loadFailed={loadFailed}

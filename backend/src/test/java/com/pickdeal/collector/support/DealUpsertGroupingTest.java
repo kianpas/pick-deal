@@ -74,7 +74,7 @@ class DealUpsertGroupingTest {
     }
 
     @Test
-    @DisplayName("기존 null 제목 해시는 재수집 때 채우고 두 출처가 모두 관측되면 그룹화한다")
+    @DisplayName("한쪽만 재수집해도 같은 가격의 기존 글을 현재 규칙으로 검증해 그룹화한다")
     void backfillsMatchKeyOnRecollection() {
         Source firstSource = upsertSupport.findOrRegisterSource(
                 "backfill-group-a", "Backfill 그룹 A", "https://backfill-a.example.com");
@@ -86,7 +86,7 @@ class DealUpsertGroupingTest {
 
         upsertSupport.upsertAll(firstSource, List.of(collected("legacy-a")), now.plusMinutes(1));
         assertThat(first.getTitleNormHash()).isNotNull();
-        assertThat(first.getDealGroup()).isNull();
+        assertThat(first.getDealGroup()).isNotNull().isSameAs(second.getDealGroup());
 
         upsertSupport.upsertAll(secondSource, List.of(collected("legacy-b")), now.plusMinutes(1));
         assertThat(second.getTitleNormHash()).isNotNull();

@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { SourceVisibilityList } from "@/components/source/SourceVisibilityList";
 import { READ_ONLY } from "@/lib/runtime-config";
 
@@ -24,7 +24,7 @@ function isNavActive(pathname: string, href: string): boolean {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-export function LeftSidebar() {
+export function LeftSidebar({ filters }: { filters?: ReactNode }) {
   const pathname = usePathname();
   const [notifyEnabled, setNotifyEnabled] = useState(true);
 
@@ -50,6 +50,8 @@ export function LeftSidebar() {
             </li>
           ))}
         </ul>
+
+        {filters}
 
         {/* Sources (출처 표시/숨김) — 백엔드 실데이터 */}
         {!READ_ONLY && <div>

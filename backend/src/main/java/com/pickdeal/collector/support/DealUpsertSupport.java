@@ -121,7 +121,7 @@ public class DealUpsertSupport {
                             collected.productUrl(), collected.commentCount(),
                             collected.ended() == null ? existing.getStatus() : status);
                     existing.updateTitleNormHash(
-                            DealMatchNormalizer.titleHash(existing.getTitle(), existing.getShopName()));
+                            DealMatchNormalizer.titleHash(existing.getTitle(), existing.getShopName(), existing.getPrice()));
                     dealGroupingService.groupIfMatched(existing);
                     return false;
                 })
@@ -148,7 +148,7 @@ public class DealUpsertSupport {
                 collected.url(),
                 collected.productUrl(),
                 collected.externalId(),
-                DealMatchNormalizer.titleHash(collected.rawTitle(), collected.storeName()),
+                DealMatchNormalizer.titleHash(collected.rawTitle(), collected.storeName(), collected.price()),
                 status,
                 // 게시 시각을 해석하지 못했으면 수집 시각으로 둔다
                 collected.postedAt() != null ? collected.postedAt() : now,

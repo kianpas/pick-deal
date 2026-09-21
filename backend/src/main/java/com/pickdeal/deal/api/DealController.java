@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Min;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,15 +32,22 @@ public class DealController {
             @RequestParam(defaultValue = "latest") String sort,
             @RequestParam(required = false) List<Long> sourceId,
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String q
+            @RequestParam(required = false) String q,
+            @RequestParam MultiValueMap<String, String> queryParams
     ) {
-        DealListResponse response = dealService.findDeals(page, size, sort, sourceId, category, q);
+        // 판매처 이름에 쉼표가 있어도 분리하지 않고 반복 파라미터만 읽는다.
+        DealListResponse response = dealService.findDeals(page, size, sort, sourceId, category, q, queryParams.get("shopName"));
         return ApiResponse.success(response.items(), response.meta());
     }
 
     @GetMapping("/categories")
     public ApiResponse<List<String>> findCategories() {
         return ApiResponse.success(dealService.findCategories());
+    }
+
+    @GetMapping("/shops")
+    public ApiResponse<List<String>> findShops() {
+        return ApiResponse.success(dealService.findShops());
     }
 
     @GetMapping("/{dealId}")
