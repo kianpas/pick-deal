@@ -111,7 +111,7 @@ export function DealFeed({ deals, meta, loadFailed, listParams, categories, acti
   }
 
   const allDeals = extraDeals.length > 0 ? [...firstPageDeals, ...extraDeals] : firstPageDeals;
-  const filtered = Boolean(listParams.q || listParams.category);
+  const filtered = Boolean(listParams.q || listParams.category || listParams.sourceId?.length);
   const registeredAt = latestRegisteredAt(allDeals);
 
   return (
