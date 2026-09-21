@@ -1,5 +1,5 @@
 import { Flame, MessageCircle } from "lucide-react";
-import Image from "next/image";
+import { DealThumbnail } from "@/components/deal/DealThumbnail";
 import Link from "next/link";
 import { formatPrice, formatRelativeTime, splitStoreFromTitle } from "@/lib/format";
 import type { DealSummary } from "@/lib/api-types";
@@ -121,18 +121,7 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
         aria-label={`${title} 상세 보기`}
         className="relative size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-2 sm:size-28"
       >
-        {deal.thumbnailUrl ? (
-          <Image
-            src={deal.thumbnailUrl}
-            alt={title}
-            fill
-            sizes="(max-width: 640px) 80px, 112px"
-            className="object-cover"
-            unoptimized
-          />
-        ) : (
-          <span className="grid size-full place-items-center text-xs text-fg-subtle">이미지 없음</span>
-        )}
+        <DealThumbnail src={deal.thumbnailUrl} alt={title} />
       </Link>
 
       {/* Body */}
