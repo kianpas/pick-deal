@@ -111,7 +111,7 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
 
   return (
     <article
-      className={`flex gap-3 rounded-xl border border-border bg-surface/40 p-3 transition hover:border-border-strong sm:p-4 ${
+      className={`flex gap-2.5 rounded-xl border border-border bg-surface/40 px-3 py-2.5 transition hover:border-border-strong sm:gap-3 sm:py-3 ${
         ended ? "opacity-60" : ""
       }`}
     >
@@ -119,14 +119,35 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
       <Link
         href={detailHref}
         aria-label={`${title} 상세 보기`}
-        className="relative size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-2 sm:size-28"
+        className="relative size-16 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-2 sm:size-20"
       >
         <DealThumbnail src={deal.thumbnailUrl} alt={title} />
       </Link>
 
       {/* Body */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-muted wrap-anywhere">
+        <Link
+          href={detailHref}
+          className={`min-h-11 content-center wrap-anywhere text-[15px] leading-snug font-medium hover:text-brand transition sm:min-h-10 sm:text-base ${
+            ended ? "text-fg-muted line-through" : "text-fg"
+          }`}
+        >
+          {title}
+        </Link>
+
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <PriceText deal={deal} />
+          {deal.originalPrice !== null && (
+            <span className="font-mono text-xs text-fg-subtle line-through tabular-nums">
+              {formatPrice(deal.originalPrice, deal.currency)}
+            </span>
+          )}
+          {deal.discountRate !== null && (
+            <span className="text-sm font-semibold text-danger">-{deal.discountRate}%</span>
+          )}
+        </div>
+
+        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-fg-muted wrap-anywhere">
           {deal.isHot && (
             <span className="inline-flex items-center gap-1 rounded-md bg-warning-soft px-1.5 py-0.5 text-xs font-semibold text-warning">
               <Flame className="size-3" />
@@ -158,40 +179,13 @@ export function DealCard({ deal, showThumbnail = true }: Props) {
               </span>
             </>
           )}
-          {deal.category && (
-            <>
-              <span className="text-fg-subtle">·</span>
-              <span>{deal.category}</span>
-            </>
-          )}
-          <span className="ml-auto text-fg-subtle" suppressHydrationWarning>
+          <span className="text-fg-subtle" suppressHydrationWarning>
             {formatRelativeTime(deal.postedAt)}
           </span>
         </div>
 
-        <Link
-          href={detailHref}
-          className={`mt-1.5 min-h-11 content-center wrap-anywhere text-[15px] font-medium hover:text-brand transition sm:text-base ${
-            ended ? "text-fg-muted line-through" : "text-fg"
-          }`}
-        >
-          {title}
-        </Link>
-
-        <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <PriceText deal={deal} />
-          {deal.originalPrice !== null && (
-            <span className="font-mono text-xs text-fg-subtle line-through tabular-nums">
-              {formatPrice(deal.originalPrice, deal.currency)}
-            </span>
-          )}
-          {deal.discountRate !== null && (
-            <span className="text-sm font-semibold text-danger">-{deal.discountRate}%</span>
-          )}
-        </div>
-
         {(deal.freeShipping || deal.shippingNote) && (
-          <div className="mt-1.5 flex items-center gap-2 text-xs text-fg-muted">
+          <div className="mt-1 flex items-center gap-2 text-xs text-fg-muted">
             {deal.freeShipping && <span>무료배송</span>}
             {deal.shippingNote && <span>{deal.shippingNote}</span>}
           </div>
