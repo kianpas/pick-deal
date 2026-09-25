@@ -4,7 +4,6 @@ import {
   Bell,
   Home,
   Tag,
-  UserCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -16,7 +15,6 @@ const NAV: { icon: LucideIcon; label: string; href: string }[] = [
   { icon: Home, label: "홈", href: "/" },
   { icon: Tag, label: "키워드 관리", href: "/settings/keywords" },
   { icon: Bell, label: "알림", href: "/notifications" },
-  { icon: UserCircle, label: "마이페이지", href: "/me" },
 ];
 
 /** 현재 경로 기준 활성 여부. 홈("/")만 정확히 일치로 판정한다. */

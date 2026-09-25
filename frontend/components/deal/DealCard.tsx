@@ -1,4 +1,4 @@
-import { Flame, MessageCircle } from "lucide-react";
+import { Flame, Layers2, MessageCircle } from "lucide-react";
 import { DealThumbnail } from "@/components/deal/DealThumbnail";
 import Link from "next/link";
 import { formatPrice, formatRelativeTime, splitStoreFromTitle } from "@/lib/format";
@@ -10,187 +10,85 @@ interface Props {
   listHref?: string;
 }
 
-/** 종료/품절 뱃지. ACTIVE는 평상시라 null. */
-function statusBadge(status: DealSummary["status"]): { label: string; className: string } | null {
-  switch (status) {
-    case "SOLD_OUT":
-      return { label: "품절", className: "bg-surface-2 text-fg-muted" };
-    case "EXPIRED":
-      return { label: "종료", className: "bg-danger-soft text-danger" };
-    default:
-      return null;
-  }
-}
-
-/** 가격 표기: 0원은 "무료" 뱃지, null은 자리 유지용 안내 문구. */
-function PriceText({ deal, compact = false }: { deal: DealSummary; compact?: boolean }) {
-  if (deal.price === 0) {
-    return (
-      <span className="inline-flex items-center rounded-md bg-positive-soft px-1.5 py-0.5 text-xs font-semibold text-positive">
-        무료
-      </span>
-    );
-  }
+function PriceText({ deal, ended }: { deal: DealSummary; ended: boolean }) {
   if (deal.price === null) {
-    return <span className="text-xs text-fg-subtle">가격 정보 없음</span>;
+    return <span className="text-xs text-fg-muted">가격 정보 없음</span>;
   }
   return (
-    <span className={`font-mono font-bold tabular-nums text-price ${compact ? "text-sm" : "text-lg"}`}>
-      {formatPrice(deal.price, deal.currency)}
+    <span className={`text-lg font-bold ${deal.price === 0 ? "font-sans" : "font-mono tabular-nums"} ${ended ? "text-fg-muted" : "text-price"}`}>
+      {deal.price === 0 ? "무료" : formatPrice(deal.price, deal.currency)}
     </span>
   );
 }
 
-/**
- * 딜 카드(목록 항목). 백엔드 DealSummary 기준 display-only.
- * 제목의 "[판매처]" 접두사는 칩으로 분리하고, 시각은 상대 표기(근사값 정밀도에 맞춤).
- * 데모 단계 필드(isHot 등)는 값이 있을 때만 렌더한다 — 현재 백엔드는 미제공.
- */
+/** 제목 → 가격 → 판매처·반응 순서로 읽는 목록 행. 그룹은 현재 필터 기준 출처 수를 표시한다. */
 export function DealCard({ deal, showThumbnail = true, listHref = "/" }: Props) {
   const detailHref = `/deals/${deal.id}?returnTo=${encodeURIComponent(listHref)}`;
   const { store: titleStore, title } = splitStoreFromTitle(deal.title);
   const shopName = deal.shopName ?? titleStore;
-  const badge = statusBadge(deal.status);
-  // 종료/품절 딜은 남겨두되 취소선 + 흐림으로 한눈에 구분한다
-  const ended = badge !== null;
-  const sourceLabel = deal.sourceNames.join(" · ");
-
-  if (!showThumbnail) {
-    return (
-      <article
-        className={`flex flex-col gap-2 rounded-lg border border-border bg-surface/40 px-3 py-2 transition hover:border-border-strong ${
-          ended ? "opacity-60" : ""
-        }`}
-      >
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {badge && (
-            <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold ${badge.className}`}>
-              {badge.label}
-            </span>
-          )}
-          {shopName && (
-            <span className="max-w-full wrap-anywhere rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-muted">
-              {shopName}
-            </span>
-          )}
-          <Link
-            href={detailHref}
-            className={`order-first min-h-11 w-full content-center wrap-anywhere text-sm font-medium hover:text-brand transition ${
-              ended ? "text-fg-muted line-through" : "text-fg"
-            }`}
-          >
-            {title}
-          </Link>
-          <PriceText deal={deal} compact />
-          {deal.discountRate !== null && (
-            <span className="shrink-0 text-xs font-semibold text-danger">-{deal.discountRate}%</span>
-          )}
-        </div>
-
-        <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-fg-muted wrap-anywhere">
-          <span>{sourceLabel}</span>
-          {deal.sourceCount > 1 && (
-            <span className="rounded-md bg-brand-soft px-1.5 py-0.5 font-medium text-brand">
-              출처 {deal.sourceCount}곳
-            </span>
-          )}
-          {deal.commentCount !== null && (
-            <>
-              <span className="text-fg-subtle">·</span>
-              <span className="inline-flex items-center gap-1" aria-label={`댓글 ${deal.commentCount}개`}>
-                <MessageCircle className="size-3" aria-hidden="true" />
-                {deal.commentCount}
-              </span>
-            </>
-          )}
-          <span className="text-fg-subtle">·</span>
-          <span suppressHydrationWarning>{formatRelativeTime(deal.postedAt)}</span>
-        </div>
-      </article>
-    );
-  }
+  const ended = deal.status !== "ACTIVE";
+  const statusLabel = deal.status === "SOLD_OUT" ? "품절" : deal.status === "EXPIRED" ? "종료" : null;
+  const grouped = deal.sourceCount > 1;
 
   return (
-    <article
-      className={`flex gap-2.5 rounded-xl border border-border bg-surface/40 px-3 py-2.5 transition hover:border-border-strong sm:gap-3 sm:py-3 ${
-        ended ? "opacity-60" : ""
-      }`}
-    >
-      {/* Thumbnail */}
-      <Link
-        href={detailHref}
-        aria-label={`${title} 상세 보기`}
-        className="relative size-16 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-2 sm:size-20"
-      >
-        <DealThumbnail src={deal.thumbnailUrl} alt={title} />
-      </Link>
-
-      {/* Body */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Link
-          href={detailHref}
-          className={`min-h-11 content-center wrap-anywhere text-[15px] leading-snug font-medium hover:text-brand transition sm:min-h-10 sm:text-base ${
-            ended ? "text-fg-muted line-through" : "text-fg"
-          }`}
-        >
-          {title}
-        </Link>
-
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <PriceText deal={deal} />
-          {deal.originalPrice !== null && (
-            <span className="font-mono text-xs text-fg-subtle line-through tabular-nums">
-              {formatPrice(deal.originalPrice, deal.currency)}
-            </span>
-          )}
-          {deal.discountRate !== null && (
-            <span className="text-sm font-semibold text-danger">-{deal.discountRate}%</span>
-          )}
-        </div>
-
-        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-fg-muted wrap-anywhere">
-          {deal.isHot && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-warning-soft px-1.5 py-0.5 text-xs font-semibold text-warning">
-              <Flame className="size-3" />
-              핫딜
-            </span>
-          )}
-          {badge && (
-            <span className={`rounded-md px-1.5 py-0.5 text-xs font-semibold ${badge.className}`}>
-              {badge.label}
-            </span>
-          )}
-          {shopName && (
-            <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-muted">
-              {shopName}
-            </span>
-          )}
-          <span>{sourceLabel}</span>
-          {deal.sourceCount > 1 && (
-            <span className="rounded-md bg-brand-soft px-1.5 py-0.5 font-medium text-brand">
-              출처 {deal.sourceCount}곳
-            </span>
-          )}
-          {deal.commentCount !== null && (
-            <>
-              <span className="text-fg-subtle">·</span>
-              <span className="inline-flex items-center gap-1" aria-label={`댓글 ${deal.commentCount}개`}>
-                <MessageCircle className="size-3" aria-hidden="true" />
-                {deal.commentCount}
-              </span>
-            </>
-          )}
-          <span className="text-fg-subtle" suppressHydrationWarning>
-            {formatRelativeTime(deal.postedAt)}
-          </span>
-        </div>
-
-        {(deal.freeShipping || deal.shippingNote) && (
-          <div className="mt-1 flex items-center gap-2 text-xs text-fg-muted">
-            {deal.freeShipping && <span>무료배송</span>}
-            {deal.shippingNote && <span>{deal.shippingNote}</span>}
-          </div>
+    <article className="@container px-3 py-4 transition-colors hover:bg-surface/60 sm:px-4">
+      <div className="flex items-start gap-3 sm:gap-4">
+        {showThumbnail && (
+          <Link href={detailHref} aria-label={`${title} 상세 보기`}
+            className="relative mt-1 size-16 shrink-0 overflow-hidden rounded-lg bg-surface-2 @min-[36rem]:size-20">
+            <DealThumbnail src={deal.thumbnailUrl} alt={title} />
+          </Link>
         )}
+
+        <div className="min-w-0 flex-1">
+          <div className="grid min-w-0 gap-x-5 gap-y-1 @min-[36rem]:grid-cols-[minmax(0,1fr)_auto]">
+            <Link href={detailHref}
+              className={`min-h-11 content-center wrap-anywhere text-[15px] font-medium leading-relaxed transition-colors hover:text-brand @min-[36rem]:text-base ${ended ? "text-fg-muted line-through" : "text-fg"}`}>
+              {title}
+            </Link>
+
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 @min-[36rem]:max-w-52 @min-[36rem]:justify-end @min-[36rem]:self-start @min-[36rem]:pt-2 @min-[36rem]:text-end">
+              <PriceText deal={deal} ended={ended} />
+              {deal.discountRate !== null && (
+                <span className="text-xs font-semibold text-danger">-{deal.discountRate}%</span>
+              )}
+              {deal.originalPrice !== null && (
+                <span className="font-mono text-xs text-fg-muted line-through tabular-nums @min-[36rem]:w-full">
+                  {formatPrice(deal.originalPrice, deal.currency)}
+                </span>
+              )}
+            </div>
+
+            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted wrap-anywhere @min-[36rem]:col-span-2">
+              {statusLabel && <span className="font-semibold">{statusLabel}</span>}
+              {deal.isHot && (
+                <span className="inline-flex items-center gap-1 font-medium text-warning">
+                  <Flame className="size-3" aria-hidden="true" />핫딜
+                </span>
+              )}
+              {shopName && <span className="font-medium">{shopName}</span>}
+              {!grouped && <span>{deal.sourceNames.join(" · ")}</span>}
+              {deal.commentCount !== null && (
+                <span className="inline-flex items-center gap-1" aria-label={`댓글 ${deal.commentCount}개`}>
+                  <MessageCircle className="size-3" aria-hidden="true" />{deal.commentCount}
+                </span>
+              )}
+              <span suppressHydrationWarning>{formatRelativeTime(deal.postedAt)}</span>
+              {deal.freeShipping && <span>무료배송</span>}
+              {deal.shippingNote && <span>{deal.shippingNote}</span>}
+            </div>
+          </div>
+
+          {grouped && (
+            <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 border-s-2 border-brand ps-2 text-xs wrap-anywhere">
+              <span className="inline-flex items-center gap-1.5 font-medium text-brand">
+                <Layers2 className="size-3.5 shrink-0" aria-hidden="true" />
+                출처 {deal.sourceCount}곳
+              </span>
+              <span className="text-fg-muted">{deal.sourceNames.join(" · ")}</span>
+            </div>
+          )}
+        </div>
       </div>
     </article>
   );
