@@ -147,4 +147,4 @@ Dockerfile·Compose·운영 프로필·Flyway는 제품 기능이 아니라 다�
 - `docs/04-database-design.md` — DB 테이블 초안, PostgreSQL/MySQL 선택 기준
 - `docs/05-collector-design.md` — 현재 수집 출처·정책·교차 출처 그룹 규칙
 - `docs/06-deployment.md` — 최초 상시 배포 계약
-- `docs/roadmap.md` — 현재 상태와 다음 작업
+- `docs/roadmap.md` — 남은 작업과 보류 항목
