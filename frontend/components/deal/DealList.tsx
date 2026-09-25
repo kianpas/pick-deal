@@ -9,7 +9,7 @@ interface Props {
 
 export function DealList({ deals, showThumbnail = true, listHref }: Props) {
   return (
-    <ul className={showThumbnail ? "space-y-2" : "space-y-1"}>
+    <ul className="divide-y divide-border rounded-xl border border-border bg-surface/20">
       {deals.map((deal) => (
         <li key={deal.id}>
           <DealCard deal={deal} showThumbnail={showThumbnail} listHref={listHref} />
