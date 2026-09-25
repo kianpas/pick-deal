@@ -107,17 +107,18 @@ class ShopFilterTest {
         save(first, "4", "네이버");
         save(first, "5", "네이버페이");
         save(first, "6", "카카오선물하기");
+        save(first, "7", "카카오 톡딜");
         assertThat(service.findShops()).contains("카카오쇼핑", "네이버", "네이버페이", "카카오선물하기")
-                .doesNotContain("카카오톡딜", "네이버쇼핑");
-        for (String alias : List.of("카카오쇼핑", "카카오톡딜")) {
+                .doesNotContain("카카오톡딜", "카카오 톡딜", "네이버쇼핑");
+        for (String alias : List.of("카카오쇼핑", "카카오톡딜", "카카오 톡딜")) {
             mvc.perform(get("/api/v1/deals").param("shopName", alias)
                             .param("sourceId", first.getId().toString()))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.meta.totalElements").value(2));
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.meta.totalElements").value(3));
         }
         var result = service.findDeals(0, 20, "latest", List.of(first.getId()), null, null,
                 List.of("카카오쇼핑", "카카오톡딜", "네이버"));
         assertThat(result.items()).extracting(item -> item.shopName())
-                .containsExactlyInAnyOrder("카카오쇼핑", "카카오톡딜", "네이버쇼핑", "네이버");
+                .containsExactlyInAnyOrder("카카오쇼핑", "카카오톡딜", "카카오 톡딜", "네이버쇼핑", "네이버");
         visibility.save(new SourceVisibility(1L, first, false));
         assertThat(service.findShops()).doesNotContain("카카오쇼핑");
     }

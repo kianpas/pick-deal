@@ -39,11 +39,24 @@ function latestRegisteredAt(deals: DealSummary[]): string | null {
 /**
  * 딜 목록 영역. 첫 페이지는 서버(page.tsx)가 내려주고,
  * "더 보기"는 같은 필터 조건으로 다음 페이지를 클라이언트에서 이어 붙인다.
- * 필터 변경 시에는 page.tsx가 key를 바꿔 이 컴포넌트를 새로 마운트한다.
+ * 보기 설정은 유지하고 필터 변경 시 목록·페이지 상태만 새로 마운트한다.
  * 출처/키워드/카테고리 필터는 백엔드가 서버에서 적용하므로(docs/01 §3.2) 여기서 다시 거르지 않는다.
  */
-export function DealFeed({ deals, meta, loadFailed, listParams, categories, activeCategory }: Props) {
+export function DealFeed(props: Props) {
   const [showThumbnail, setShowThumbnail] = useState(true);
+  return (
+    <FilteredDealFeed
+      key={JSON.stringify(props.listParams)}
+      {...props}
+      showThumbnail={showThumbnail}
+      onToggleThumbnail={() => setShowThumbnail((value) => !value)}
+    />
+  );
+}
+
+function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, activeCategory,
+  showThumbnail, onToggleThumbnail,
+}: Props & { showThumbnail: boolean; onToggleThumbnail: () => void }) {
   const [firstPageDeals, setFirstPageDeals] = useState(deals);
   const [currentCategories, setCurrentCategories] = useState(categories);
   const [currentLoadFailed, setCurrentLoadFailed] = useState(loadFailed);
@@ -119,7 +132,7 @@ export function DealFeed({ deals, meta, loadFailed, listParams, categories, acti
       <h1 className="sr-only">핫딜 목록</h1>
       <SortBar
         showThumbnail={showThumbnail}
-        onToggleThumbnail={() => setShowThumbnail((v) => !v)}
+        onToggleThumbnail={onToggleThumbnail}
       />
       {currentCategories.length > 0 && (
         <CategoryGrid categories={currentCategories} active={activeCategory} />

@@ -62,8 +62,6 @@ export default async function Home({
         <CommunityFilter sources={sourceResult.sources} selected={sourceId} failed={sourceResult.failed} />
       </div>
       <DealFeed
-        // 필터가 바뀌면 "더 보기"로 쌓인 상태를 버리고 새로 시작한다
-        key={JSON.stringify([q, category, sourceId, shopName])}
         deals={deals}
         meta={meta}
         loadFailed={loadFailed}
