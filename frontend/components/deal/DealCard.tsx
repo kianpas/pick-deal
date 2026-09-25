@@ -41,25 +41,25 @@ export function DealCard({ deal, showThumbnail = true, listHref = "/" }: Props) 
         )}
 
         <div className="min-w-0 flex-1">
-          <div className="grid min-w-0 gap-x-5 gap-y-1 @min-[36rem]:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="min-w-0 space-y-1">
             <Link href={detailHref}
               className={`min-h-11 content-center wrap-anywhere text-[15px] font-medium leading-relaxed transition-colors hover:text-brand @min-[36rem]:text-base ${ended ? "text-fg-muted line-through" : "text-fg"}`}>
               {title}
             </Link>
 
-            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 @min-[36rem]:max-w-52 @min-[36rem]:justify-end @min-[36rem]:self-start @min-[36rem]:pt-2 @min-[36rem]:text-end">
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
               <PriceText deal={deal} ended={ended} />
               {deal.discountRate !== null && (
                 <span className="text-xs font-semibold text-danger">-{deal.discountRate}%</span>
               )}
               {deal.originalPrice !== null && (
-                <span className="font-mono text-xs text-fg-muted line-through tabular-nums @min-[36rem]:w-full">
+                <span className="font-mono text-xs text-fg-muted line-through tabular-nums">
                   {formatPrice(deal.originalPrice, deal.currency)}
                 </span>
               )}
             </div>
 
-            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted wrap-anywhere @min-[36rem]:col-span-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted wrap-anywhere">
               {statusLabel && <span className="font-semibold">{statusLabel}</span>}
               {deal.isHot && (
                 <span className="inline-flex items-center gap-1 font-medium text-warning">
