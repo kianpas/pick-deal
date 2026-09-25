@@ -50,22 +50,22 @@
   --color-focus: #6d28d9;
 }
 
-/* Dark mode overrides */
+/* Dark mode — 중립 차콜 표면과 절제된 파란색 인터랙션 */
 .dark {
-  --color-bg: #0a0a0f;
-  --color-surface: #11111a;
-  --color-surface-2: #161621;
-  --color-surface-hover: #1c1c2a;
-  --color-border: #23232f;
-  --color-border-strong: #2e2e3d;
+  --color-bg: #181818;
+  --color-surface: #202020;
+  --color-surface-2: #282828;
+  --color-surface-hover: #303030;
+  --color-border: #353535;
+  --color-border-strong: #505050;
 
-  --color-fg: #e6e6ed;
-  --color-fg-muted: #9a9aac;
-  --color-fg-subtle: #6b6b7d;
+  --color-fg: #ededed;
+  --color-fg-muted: #b5b5b5;
+  --color-fg-subtle: #999999;
 
-  --color-brand: #a78bfa;
-  --color-brand-strong: #8b5cf6;
-  --color-brand-soft: rgba(167, 139, 250, 0.12);
+  --color-brand: #8ab4e0;
+  --color-brand-strong: #365f8c;
+  --color-brand-soft: rgba(138, 180, 224, 0.12);
 
   --color-positive: #34d399;
   --color-positive-soft: rgba(52, 211, 153, 0.12);
@@ -78,7 +78,7 @@
 
   --color-price: #fbbf24;
 
-  --color-focus: #a78bfa;
+  --color-focus: #8ab4e0;
 }
 
 /*
