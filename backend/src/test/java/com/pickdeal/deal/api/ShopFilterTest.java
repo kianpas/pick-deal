@@ -108,17 +108,25 @@ class ShopFilterTest {
         save(first, "5", "네이버페이");
         save(first, "6", "카카오선물하기");
         save(first, "7", "카카오 톡딜");
+        save(first, "8", "카카오");
+        save(first, "9", "카카오 쇼핑");
+        save(first, "10", "🥤네이버페이");
         assertThat(service.findShops()).contains("카카오쇼핑", "네이버", "네이버페이", "카카오선물하기")
-                .doesNotContain("카카오톡딜", "카카오 톡딜", "네이버쇼핑");
-        for (String alias : List.of("카카오쇼핑", "카카오톡딜", "카카오 톡딜")) {
+                .doesNotContain("카카오톡딜", "카카오 톡딜", "카카오", "카카오 쇼핑", "🥤네이버페이", "네이버쇼핑");
+        for (String alias : List.of("카카오쇼핑", "카카오톡딜", "카카오 톡딜", "카카오", "카카오 쇼핑")) {
             mvc.perform(get("/api/v1/deals").param("shopName", alias)
                             .param("sourceId", first.getId().toString()))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.meta.totalElements").value(3));
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.meta.totalElements").value(5));
+        }
+        for (String alias : List.of("네이버페이", "🥤네이버페이")) {
+            mvc.perform(get("/api/v1/deals").param("shopName", alias)
+                            .param("sourceId", first.getId().toString()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.meta.totalElements").value(2));
         }
         var result = service.findDeals(0, 20, "latest", List.of(first.getId()), null, null,
                 List.of("카카오쇼핑", "카카오톡딜", "네이버"));
         assertThat(result.items()).extracting(item -> item.shopName())
-                .containsExactlyInAnyOrder("카카오쇼핑", "카카오톡딜", "카카오 톡딜", "네이버쇼핑", "네이버");
+                .containsExactlyInAnyOrder("카카오쇼핑", "카카오톡딜", "카카오 톡딜", "카카오", "카카오 쇼핑", "네이버쇼핑", "네이버");
         visibility.save(new SourceVisibility(1L, first, false));
         assertThat(service.findShops()).doesNotContain("카카오쇼핑");
     }
