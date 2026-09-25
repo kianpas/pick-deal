@@ -96,7 +96,7 @@ export async function getDealCategories(): Promise<string[]> {
   return envelope.data ?? [];
 }
 
-/** DB에 저장된 표시 출처의 판매처 이름. 별칭 통합 없이 원문을 사용한다. */
+/** 표시 출처의 판매처 목록. 등록된 별칭은 백엔드에서 대표 이름으로 통합한다. */
 export async function getDealShops(): Promise<string[]> {
   const envelope = await request<string[]>("/api/v1/deals/shops");
   return envelope.data ?? [];

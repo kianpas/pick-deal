@@ -1,7 +1,13 @@
 # 06. 배포 설계 (Deployment)
 
-> PickDeal의 현재 로컬 환경과 최초 상시 배포 계약을 관리한다. 작업 순서와 상태는 `docs/roadmap.md`에서만 관리한다.
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-09-05
+> 로컬·Compose 구성과 배포·검증 절차를 관리한다. 남은 작업은 `docs/roadmap.md`를 따른다.
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-09-25
+
+## 확인된 배포 상태 (2026-09-25)
+
+- 공개 frontend: https://pick-deal.vercel.app/ — 사용자 제공 주소이며 브라우저에서 실데이터 목록과 개드립 상세 조회를 확인했다.
+- 저장소에는 backend/PostgreSQL Compose, Flyway, 조회 전용 쓰기 차단, 운영 CORS 및 토큰 인증 원격 수집 API가 구현돼 있다. 구현 여부와 운영 서버의 실제 적용 여부는 구분한다.
+- OCI 서버의 실행 커밋·환경변수·DB 위치·백업·복구·스케줄러 인스턴스 수는 이번 확인에서 직접 검증하지 않았다. 아래 설정과 명령은 운영 현황 확인 결과가 아니라 구성 계약과 실행 절차다.
 
 ## 1. 기본 배포 구성
 
@@ -28,7 +34,7 @@ OCI Compute
 
 ## 2. PostgreSQL 선택
 
-최초 배포 전에 다음 중 하나를 선택한다. 애플리케이션의 JPA 모델과 Flyway 스키마는 어느 쪽이든 동일하게 유지한다.
+저장소의 `compose.yml`은 backend와 PostgreSQL 컨테이너 구성을 사용한다. 실제 운영 DB 위치는 서버에서 확인한다. 아래는 현재 Compose 구성과 관리형 DB로 변경할 때의 대안이다.
 
 ### OCI 같은 서버의 PostgreSQL 컨테이너
 
@@ -46,17 +52,17 @@ OCI Compute
 - Free 플랜을 쓰면 용량·egress·비활성 정지와 자동 백업 부재를 확인하고 수동 백업을 둔다.
 - 운영 데이터가 중요해지면 비활성 정지와 자동 백업 정책을 기준으로 유료 전환을 판단한다.
 
-DB 위치는 아직 확정하지 않았다. 비용을 최소화하고 DB 운영도 경험하려면 OCI 컨테이너, backend 운영에 집중하려면 Supabase가 적합하다.
+관리형 DB로 변경하려면 JDBC 연결·네트워크·백업 및 기존 데이터 이전 절차를 별도로 검증한다.
 
 ## 3. 현재 로컬 환경
 
 - backend는 로컬 PostgreSQL `pickdeal` DB를 사용한다.
-- 단일 `application.yml`과 JPA `ddl-auto: update`로 기동한다.
+- 기본 로컬 실행은 `application.yml`과 JPA `ddl-auto: update`로 기동하고, Compose는 `application-compose.yml`과 `ddl-auto: validate`를 사용한다.
 - `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`로 로컬 접속 정보를 바꿀 수 있다.
 - frontend는 `next dev`로 실행하고 `NEXT_PUBLIC_API_BASE_URL`로 backend 주소를 받는다.
 - 테스트는 H2 in-memory와 `ddl-auto: create-drop`을 사용하며 수집 scheduler를 끈다.
 - 기본 로컬 실행은 빈 DB에 샘플 데이터를 넣지만 `compose` 프로필에서는 Seed를 끈다.
-- backend Dockerfile, backend/PostgreSQL Compose, Compose 전용 Flyway 초기화가 구현되어 있다. reverse proxy와 CI/CD는 아직 없다.
+- backend Dockerfile, backend/PostgreSQL Compose, Compose 전용 Flyway 초기화가 구현되어 있다. 저장소에 reverse proxy 설정과 CI/CD workflow는 없으며, 호스트에서 별도로 구성한 설정은 직접 확인해야 한다.
 
 ### Backend Docker 이미지
 
@@ -75,7 +81,7 @@ Temurin 이미지는 호스트 아키텍처를 따르므로 OCI A1에서는 ARM6
 Compose는 `SPRING_PROFILES_ACTIVE=compose`로 Flyway·`validate`·Seed 비활성화를 적용한다.
 프로필 없이 이미지만 실행하면 기존 로컬 설정을 사용한다. 쓰기 API 접근 제어와 HTTPS를 완료한 뒤 공개 배포한다.
 
-### Docker Compose 실행 (공개 전 준비 환경)
+### Docker Compose 초기 구성
 
 루트 `compose.yml`은 backend와 PostgreSQL 17을 함께 실행한다. 기존 DB 볼륨이 다른 PostgreSQL
 메이저 버전이면 그대로 연결하지 말고 논리 백업·복구 또는 정식 업그레이드 절차를 사용한다.
@@ -99,7 +105,7 @@ DB 계정 환경변수는 PostgreSQL의 최초 초기화 때만 적용된다. �
 `.env` 비밀번호만 변경하면 DB 비밀번호는 바뀌지 않아 backend 연결이 실패한다.
 
 - PostgreSQL은 포트를 호스트에 공개하지 않는다. backend는 Docker 서비스명 `postgres`로 접속한다.
-- backend의 `8080`은 호스트 `127.0.0.1`에만 연결한다. OCI 외부/Vercel에서는 아직 접근할 수 없다.
+- backend의 `8080`은 호스트 `127.0.0.1`에만 연결한다. 외부 접근은 별도 HTTPS reverse proxy를 통해 제공한다.
 - DB가 `pg_isready` healthcheck를 통과한 뒤 backend를 시작한다. 이는 DB 준비 확인이며
   backend 준비 완료는 로그와 API 응답으로 별도 확인한다.
 - 메모리 상한은 backend 1.5GiB(힙 768MiB), PostgreSQL 1GiB다. 로그는 서비스당 10MB × 3개로 제한한다.
@@ -139,12 +145,12 @@ docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -
 
 ## 4. 운영 설정 계약
 
-배포 구현에서 다음 설정을 환경변수로 주입한다. 실제 이름은 코드와 함께 확정하며 비밀값은 저장소에 커밋하지 않는다.
+배포 시 다음 설정을 환경변수로 주입한다. 실제 변수명은 아래 절차와 `compose.yml`을 따르며 비밀값은 저장소에 커밋하지 않는다.
 
 | 영역 | 설정 | 목적 |
 | --- | --- | --- |
 | frontend | backend API base URL | 브라우저와 SSR 요청 대상 |
-| backend | active profile | local/prod 설정 분리 |
+| backend | active profile | 기본 로컬/compose 설정 분리 |
 | backend | JDBC URL·계정·비밀번호 | PostgreSQL 연결 |
 | backend | 허용 frontend origin | 실제 Vercel·운영 도메인 CORS |
 | backend | collector enabled·출처별 limit | 수집 활성화와 요청 상한 |
@@ -324,13 +330,13 @@ pwsh -NoProfile -File scripts/verify-local-collector.ps1
 3. 재기동 후 데이터 유지 여부를 확인한다.
 4. health check와 API를 호출한다.
 
-### OCI 최초 배포
+### OCI 배포 검증
 
 1. 네트워크와 HTTPS 진입점을 구성한다.
 2. backend 이미지와 운영 환경변수를 배포한다.
 3. 선택한 PostgreSQL 연결과 백업을 확인한다.
 4. Vercel production·preview 환경에 맞는 API 주소와 CORS를 설정한다.
-5. 브라우저에서 목록·상세·키워드·출처 설정을 확인한다.
+5. 브라우저에서 목록·상세·쇼핑몰 및 커뮤니티 조회 필터·더 보기를 확인한다. 공개 조회 모드에서는 키워드·출처 설정 UI가 숨겨지고 쓰기 API가 차단되는지 확인한다.
 6. OCI 네트워크에서 출처별 수집을 한 번 실행해 파싱·upsert와 요청 상한을 확인한다.
 
 SSR 성공만으로 통합 검증을 끝내지 않는다. 출처 토글과 더 보기처럼 브라우저가 직접 수행하는 요청도 실제 도메인에서 확인한다.
@@ -373,7 +379,7 @@ OCI 양쪽에서 실행하지 않는다. 루리웹의 기존 Compose 비활성 �
 
 ## 9. 관련 문서
 
-- 다음 작업과 완료 조건: `docs/roadmap.md`
+- 남은 작업과 보류 항목: `docs/roadmap.md`
 - DB 스키마와 Flyway 방향: `docs/04-database-design.md`
 - 수집 설정과 실수집 확인: `docs/05-collector-design.md`
 - 검토 근거: `docs/notes/2026-09-05-pickdeal-review.md`

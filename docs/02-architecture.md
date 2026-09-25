@@ -1,7 +1,7 @@
 # 02. 아키텍처 설계 (Architecture)
 
 > PickDeal — 전체 아키텍처 / 프론트엔드 화면 구조 / 백엔드 패키지 구조 / 확장 방향
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-09-05
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-09-25
 
 ---
 
@@ -30,12 +30,12 @@
 - **표준 DBMS는 PostgreSQL**(개발·운영 공통). MySQL 선택 시 장단점은 `docs/04-database-design.md` 참고.
 - **현재 애플리케이션은 로컬 PostgreSQL `pickdeal` DB로 기동**한다. 접속 정보는 `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`로 바꿀 수 있고 JPA는 현재 `ddl-auto: update`를 사용한다.
 - **H2 in-memory(PostgreSQL 호환 모드)는 테스트 전용**이다. 테스트 설정에서 `ddl-auto: create-drop`을 사용하므로 별도 DB 없이 테스트할 수 있다.
-- Docker Compose와 Flyway는 아직 도입하지 않았다. 도입 시점과 기준은 `docs/04`, `docs/06`에 구분해 둔다.
+- backend/PostgreSQL Docker Compose와 Flyway가 구현돼 있다. `compose` 프로필은 Flyway + `ddl-auto: validate`를 사용하고 기본 로컬 실행은 기존 `update` 설정을 유지한다(`docs/04`, `docs/06`).
 
 ### 1.4 도입하지 않는 것 (MVP)
 
-- Redis: MVP 필수 아님. 2차 구성으로 도입(`docs/05`).
-- 메시지 큐, 별도 collector worker: 확장 단계에서 분리.
+- Redis·메시지 큐·서버 worker 분리는 실제 부하가 확인될 때 재검토하며 도입을 확정하지 않는다.
+- 로컬 전용 수집 실행점과 토큰 인증 전송 API는 이미 구현돼 있다. 서버 worker 분리와는 별개이며 실행 구성은 `docs/06`을 따른다.
 
 ---
 
@@ -64,11 +64,11 @@
         └───────┬────────────────────────┘
                 │ JDBC
         ┌───────▼────────┐
-        │  PostgreSQL     │   현재 로컬 설치, 향후 Compose
+        │  PostgreSQL     │   기본 로컬 설치 또는 Compose
         └────────────────┘
 ```
 
-- 현재 **backend와 scheduler는 하나의 Spring Boot 애플리케이션**에서 실행된다. 등록된 출처의 수집 작업은 기본 활성화돼 있으며, 테스트에서는 `pickdeal.collector.scheduling.enabled=false`로 끈다.
+- 서버의 **backend와 scheduler는 하나의 Spring Boot 애플리케이션**에서 실행된다. 기본 로컬 설정에서는 수집이 활성화되고, Compose는 명시적으로 켜야 한다. 테스트에서는 `pickdeal.collector.scheduling.enabled=false`로 끈다. 로컬 전송 모드는 별도 Java 실행점에서 서버 수신 API를 호출하며 동일 출처를 중복 실행하지 않는다.
 - frontend는 backend REST API(`/api/v1/*`)만 호출한다.
 
 ### 2.2 확장 아키텍처 (2차: collector worker 분리)
@@ -251,4 +251,4 @@ backend/
 - 테이블/인덱스/제약: `docs/04-database-design.md`
 - 현재 수집 출처·정책·그룹 규칙: `docs/05-collector-design.md`
 - 배포·로컬 환경 계약: `docs/06-deployment.md`
-- 현재 상태와 다음 작업: `docs/roadmap.md`
+- 남은 작업과 보류 항목: `docs/roadmap.md`

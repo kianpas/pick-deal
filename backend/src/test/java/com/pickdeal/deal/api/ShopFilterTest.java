@@ -84,7 +84,7 @@ class ShopFilterTest {
                 .andExpect(jsonPath("$.meta.totalElements").value(0));
     }
 
-    @Test void representativeAndCountUseMatchingMembersWithoutAliasMerging() {
+    @Test void representativeAndCountIncludeAllAliasMembers() {
         Deal a = save(first, "1", "G마켓");
         Deal b = save(second, "2", "g마켓");
         DealGroup group = groups.save(new DealGroup(a));
@@ -93,11 +93,33 @@ class ShopFilterTest {
         deals.flush();
         var result = service.findDeals(0, 20, "latest", null, null, null, List.of("g마켓"));
         assertThat(result.items()).singleElement().satisfies(item -> {
-            assertThat(item.id()).isEqualTo(b.getId());
-            assertThat(item.shopName()).isEqualTo("g마켓");
-            assertThat(item.sourceCount()).isEqualTo(1);
+            assertThat(item.id()).isEqualTo(a.getId());
+            assertThat(item.shopName()).isEqualTo("G마켓");
+            assertThat(item.sourceCount()).isEqualTo(2);
         });
-        assertThat(service.findDeals(0, 20, "latest", null, null, null, List.of("지마켓")).items()).isEmpty();
+        assertThat(service.findDeals(0, 20, "latest", null, null, null, List.of("지마켓")).items()).hasSize(1);
+    }
+
+    @Test void aliasesShareOptionsAndFilterWhilePreservingOriginalNames() throws Exception {
+        save(first, "1", "카카오쇼핑");
+        save(first, "2", "카카오톡딜");
+        save(first, "3", "네이버쇼핑");
+        save(first, "4", "네이버");
+        save(first, "5", "네이버페이");
+        save(first, "6", "카카오선물하기");
+        assertThat(service.findShops()).contains("카카오쇼핑", "네이버", "네이버페이", "카카오선물하기")
+                .doesNotContain("카카오톡딜", "네이버쇼핑");
+        for (String alias : List.of("카카오쇼핑", "카카오톡딜")) {
+            mvc.perform(get("/api/v1/deals").param("shopName", alias)
+                            .param("sourceId", first.getId().toString()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.meta.totalElements").value(2));
+        }
+        var result = service.findDeals(0, 20, "latest", List.of(first.getId()), null, null,
+                List.of("카카오쇼핑", "카카오톡딜", "네이버"));
+        assertThat(result.items()).extracting(item -> item.shopName())
+                .containsExactlyInAnyOrder("카카오쇼핑", "카카오톡딜", "네이버쇼핑", "네이버");
+        visibility.save(new SourceVisibility(1L, first, false));
+        assertThat(service.findShops()).doesNotContain("카카오쇼핑");
     }
 
     private Deal save(Source source, String id, String shop) {
