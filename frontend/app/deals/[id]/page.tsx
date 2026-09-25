@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ApiError, getDeal } from "@/lib/api";
 import type { DealDetail, DealStatus } from "@/lib/api-types";
 import { formatFullDateTime, formatPrice, splitStoreFromTitle } from "@/lib/format";
+import { listLocation } from "@/lib/list-location";
 
 /** 상태 → 배지 라벨·색. ACTIVE는 평상시라 배지를 숨긴다(null). */
 function statusBadge(status: DealStatus): { label: string; className: string } | null {
@@ -33,9 +34,13 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 
 export default async function DealDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string | string[] }>;
 }) {
+  const { returnTo } = await searchParams;
+  const listHref = listLocation(typeof returnTo === "string" ? returnTo : undefined);
   const { id } = await params;
   const dealId = Number(id);
   if (!Number.isInteger(dealId) || dealId <= 0) notFound();
@@ -60,7 +65,7 @@ export default async function DealDetailPage({
       <div className="mx-auto w-full max-w-3xl">
         {/* 뒤로 */}
         <Link
-          href="/"
+          href={listHref}
           className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-sm text-fg-muted transition hover:text-fg"
         >
           <ArrowLeft className="size-4" />
@@ -214,7 +219,7 @@ export default async function DealDetailPage({
                           href={post.originalUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-strong"
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-brand-strong px-3 py-2 text-xs font-semibold text-white transition hover:brightness-110"
                         >
                           원문
                           <ExternalLink className="size-3.5" />
@@ -236,7 +241,7 @@ export default async function DealDetailPage({
                   href={deal.productUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-11 min-w-0 w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-strong sm:w-auto"
+                  className="inline-flex min-h-11 min-w-0 w-full items-center justify-center gap-2 rounded-lg bg-brand-strong px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 sm:w-auto"
                 >
                   <span className="min-w-0 wrap-anywhere">{shopName ? `${shopName}에서 보기` : "구매처에서 보기"}</span>
                   <ExternalLink className="size-4 shrink-0" />
@@ -250,7 +255,7 @@ export default async function DealDetailPage({
                   className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition sm:w-auto ${
                     deal.productUrl
                       ? "border border-border bg-surface text-fg hover:border-border-strong"
-                      : "bg-brand text-white hover:bg-brand-strong"
+                      : "bg-brand-strong text-white hover:brightness-110"
                   }`}
                 >
                   원문에서 보기

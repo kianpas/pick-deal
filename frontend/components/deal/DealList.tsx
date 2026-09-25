@@ -4,14 +4,15 @@ import { DealCard } from "./DealCard";
 interface Props {
   deals: DealSummary[];
   showThumbnail?: boolean;
+  listHref?: string;
 }
 
-export function DealList({ deals, showThumbnail = true }: Props) {
+export function DealList({ deals, showThumbnail = true, listHref }: Props) {
   return (
     <ul className={showThumbnail ? "space-y-2" : "space-y-1"}>
       {deals.map((deal) => (
         <li key={deal.id}>
-          <DealCard deal={deal} showThumbnail={showThumbnail} />
+          <DealCard deal={deal} showThumbnail={showThumbnail} listHref={listHref} />
         </li>
       ))}
     </ul>

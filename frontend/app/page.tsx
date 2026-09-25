@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { getDealCategories, getDealShops, getDeals, getSources, type DealListParams } from "@/lib/api";
 import { ShopFilter } from "@/components/filter/ShopFilter";
 import { CommunityFilter } from "@/components/source/CommunityFilter";
+import { ActiveFilters } from "@/components/filter/ActiveFilters";
 import type { DealSummary, PageMeta } from "@/lib/api-types";
 
 const PAGE_SIZE = 20;
@@ -58,10 +59,11 @@ export default async function Home({
           <ShopFilter shops={shopResult.shops} selected={shopName} failed={shopResult.failed} />
         </div>
       </details>
-      <div className="mb-4">
-        <CommunityFilter sources={sourceResult.sources} selected={sourceId} failed={sourceResult.failed} />
-      </div>
       <DealFeed
+        filters={<>
+          <CommunityFilter sources={sourceResult.sources} selected={sourceId} failed={sourceResult.failed} />
+          <ActiveFilters sources={sourceResult.sources} />
+        </>}
         deals={deals}
         meta={meta}
         loadFailed={loadFailed}

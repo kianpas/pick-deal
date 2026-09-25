@@ -7,6 +7,7 @@ import type { DealSummary } from "@/lib/api-types";
 interface Props {
   deal: DealSummary;
   showThumbnail?: boolean;
+  listHref?: string;
 }
 
 /** 종료/품절 뱃지. ACTIVE는 평상시라 null. */
@@ -45,8 +46,8 @@ function PriceText({ deal, compact = false }: { deal: DealSummary; compact?: boo
  * 제목의 "[판매처]" 접두사는 칩으로 분리하고, 시각은 상대 표기(근사값 정밀도에 맞춤).
  * 데모 단계 필드(isHot 등)는 값이 있을 때만 렌더한다 — 현재 백엔드는 미제공.
  */
-export function DealCard({ deal, showThumbnail = true }: Props) {
-  const detailHref = `/deals/${deal.id}`;
+export function DealCard({ deal, showThumbnail = true, listHref = "/" }: Props) {
+  const detailHref = `/deals/${deal.id}?returnTo=${encodeURIComponent(listHref)}`;
   const { store: titleStore, title } = splitStoreFromTitle(deal.title);
   const shopName = deal.shopName ?? titleStore;
   const badge = statusBadge(deal.status);
