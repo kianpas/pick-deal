@@ -25,11 +25,8 @@ export function CommunityFilter({ sources, selected, failed }: {
 
   return (
     <section aria-label="커뮤니티 필터" aria-busy={pending} className="space-y-2">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h2 className="text-sm font-semibold text-fg">커뮤니티</h2>
-        <span className="text-xs text-fg-muted">여러 곳 선택 가능</span>
-      </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="me-1 text-sm font-semibold text-fg">커뮤니티<span className="sr-only"> · 여러 곳 선택 가능</span></h2>
         {[{ id: undefined, name: "전체" }, ...sources.filter((source) => source.visible)].map((source) => {
           const active = source.id === undefined ? selected.length === 0 : selected.includes(source.id);
           return (

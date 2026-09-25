@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import type { ReactNode } from "react";
+import { listLocation } from "@/lib/list-location";
 import { CategoryGrid } from "./CategoryGrid";
 import { DealList } from "./DealList";
 import { SortBar } from "./SortBar";
@@ -23,6 +26,7 @@ interface Props {
   categories: string[];
   /** 현재 선택된 카테고리(URL ?category=). */
   activeCategory?: string;
+  filters?: ReactNode;
 }
 
 /** 목록에서 가장 최근에 처음 등록된 딜의 시각. 딜이 없으면 null. */
@@ -54,9 +58,11 @@ export function DealFeed(props: Props) {
   );
 }
 
-function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, activeCategory,
+function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, activeCategory, filters,
   showThumbnail, onToggleThumbnail,
 }: Props & { showThumbnail: boolean; onToggleThumbnail: () => void }) {
+  const searchParams = useSearchParams();
+  const listHref = listLocation(`/?${searchParams}`);
   const [firstPageDeals, setFirstPageDeals] = useState(deals);
   const [currentCategories, setCurrentCategories] = useState(categories);
   const [currentLoadFailed, setCurrentLoadFailed] = useState(loadFailed);
@@ -130,13 +136,13 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
   return (
     <div className="space-y-4">
       <h1 className="sr-only">핫딜 목록</h1>
-      <SortBar
-        showThumbnail={showThumbnail}
-        onToggleThumbnail={onToggleThumbnail}
-      />
-      {currentCategories.length > 0 && (
-        <CategoryGrid categories={currentCategories} active={activeCategory} />
-      )}
+      <div className="space-y-3">
+        {filters}
+        {currentCategories.length > 0 && (
+          <CategoryGrid categories={currentCategories} active={activeCategory} />
+        )}
+      </div>
+      <SortBar showThumbnail={showThumbnail} onToggleThumbnail={onToggleThumbnail} />
 
       {refreshing ? (
         <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-fg-muted">
@@ -167,7 +173,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
         </div>
       ) : allDeals.length > 0 ? (
         <>
-          <DealList deals={allDeals} showThumbnail={showThumbnail} />
+          <DealList deals={allDeals} showThumbnail={showThumbnail} listHref={listHref} />
           {hasNext && (
             <div className="flex flex-col items-center gap-2 pt-1">
               {loadError && (

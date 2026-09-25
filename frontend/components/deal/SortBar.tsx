@@ -19,15 +19,16 @@ export function SortBar({ showThumbnail, onToggleThumbnail }: Props) {
       <button
         type="button"
         onClick={onToggleThumbnail}
-        aria-label={showThumbnail ? "썸네일 숨기기" : "썸네일 보이기"}
+        aria-label="썸네일 표시"
         aria-pressed={showThumbnail}
-        className={`grid size-11 shrink-0 place-items-center rounded-lg border transition ${
+        className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm transition ${
           showThumbnail
             ? "border-brand-soft bg-brand-soft text-brand"
             : "border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg"
         }`}
       >
-        {showThumbnail ? <ImageIcon className="size-4" /> : <ImageOff className="size-4" />}
+        {showThumbnail ? <ImageIcon className="size-4" aria-hidden="true" /> : <ImageOff className="size-4" aria-hidden="true" />}
+        <span>썸네일 표시</span>
       </button>
     </div>
   );
