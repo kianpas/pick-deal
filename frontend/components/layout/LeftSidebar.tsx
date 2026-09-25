@@ -30,7 +30,7 @@ export function LeftSidebar({ filters }: { filters?: ReactNode }) {
 
 
   return (
-    <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-60 shrink-0 flex-col border-r border-border bg-bg md:flex">
+    <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-55 shrink-0 flex-col border-e border-border bg-bg md:flex">
       <nav className="flex-1 overflow-y-auto scrollbar-thin px-3 pb-4 pt-4 space-y-5">
         {/* Primary nav */}
         <ul className="space-y-0.5">
