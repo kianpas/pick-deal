@@ -7,6 +7,7 @@ import com.pickdeal.deal.domain.Deal;
 import com.pickdeal.deal.domain.DealRepository;
 import com.pickdeal.deal.domain.DealMatchNormalizer;
 import com.pickdeal.deal.domain.DealStatus;
+import com.pickdeal.deal.domain.ShopFilterNames;
 import com.pickdeal.deal.dto.CreateDealRequest;
 import com.pickdeal.deal.dto.DealDetailResponse;
 import com.pickdeal.deal.dto.DealListResponse;
@@ -45,13 +46,16 @@ public class DealService {
     // 데이터가 커지면 DB 쿼리/키셋 페이지네이션으로 전환한다(docs/03 §5).
     @Transactional(readOnly = true)
     public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String category, String query, List<String> shopNames) {
+        var selectedShops = shopNames == null ? java.util.Set.<String>of() : shopNames.stream()
+                .map(ShopFilterNames::canonical).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
         List<Keyword> excludeKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.EXCLUDE);
         List<Keyword> interestKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.INTEREST);
 
         List<Deal> sourceEligibleDeals = dealRepository.findVisibleDeals(DEFAULT_USER_ID).stream()
                 .filter(deal -> sourceIds == null || sourceIds.isEmpty() || sourceIds.contains(deal.getSource().getId()))
                 .filter(deal -> shopNames == null || shopNames.isEmpty()
-                        || (deal.getShopName() != null && shopNames.contains(deal.getShopName())))
+                        || (deal.getShopName() != null && selectedShops.contains(ShopFilterNames.canonical(deal.getShopName()))))
                 .toList();
 
         List<DealGroupView> filteredGroups = groupDeals(sourceEligibleDeals).stream()
@@ -94,6 +98,7 @@ public class DealService {
     public List<String> findShops() {
         return dealRepository.findVisibleDeals(DEFAULT_USER_ID).stream()
                 .map(Deal::getShopName)
+                .map(ShopFilterNames::canonical)
                 .filter(StringUtils::hasText)
                 .distinct()
                 .sorted()
