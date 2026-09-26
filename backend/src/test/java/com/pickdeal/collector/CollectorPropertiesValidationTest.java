@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.pickdeal.collector.quasarzone.QuasarzoneCollectorProperties;
 import com.pickdeal.collector.ruliweb.RuliwebCollectorProperties;
+import com.pickdeal.collector.dogdrip.DogdripCollectorProperties;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import java.time.Duration;
@@ -13,6 +14,16 @@ import org.junit.jupiter.api.Test;
 class CollectorPropertiesValidationTest {
 
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+
+    @Test
+    void dogdripDetailsCanBeDisabledButNeverExceedThree() {
+        assertThat(validator.validate(new DogdripCollectorProperties(false, Duration.ofSeconds(10), 0))).isEmpty();
+        assertThat(validator.validate(new DogdripCollectorProperties(true, Duration.ofSeconds(10), 3))).isEmpty();
+        for (int limit : new int[]{-1, 4}) {
+            assertThat(validator.validate(new DogdripCollectorProperties(true, Duration.ofSeconds(10), limit)))
+                    .extracting(violation -> violation.getPropertyPath().toString()).containsExactly("maxDetailRequests");
+        }
+    }
 
     @Test
     @DisplayName("페이지와 항목 한도는 1 이상이어야 한다")

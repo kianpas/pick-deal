@@ -20,14 +20,26 @@ class DogdripCollectServiceTest {
 
     @Test void savesAndDeduplicates() throws Exception {
         when(client.fetchListHtml()).thenReturn(DogdripCollectorTest.fixture());
+        when(client.fetchDetailHtml(anyString())).thenReturn(DogdripDetailParserTest.fixture());
         assertThat(service.collect()).isEqualTo(3);
         assertThat(service.collect()).isZero();
         var source = sources.findByCode("dogdrip").orElseThrow();
         var deal = deals.findBySourceIdAndExternalId(source.getId(), "725757041").orElseThrow();
         assertThat(deal.getStatus().name()).isEqualTo("EXPIRED");
-        assertThat(deal.getProductUrl()).isNull();
+        assertThat(deal.getProductUrl()).startsWith("https://sharkninja.co.kr/");
         assertThat(deal.getPrice()).isEqualTo(20800L);
         verify(client, times(2)).fetchListHtml();
+        verify(client, times(3)).fetchDetailHtml(anyString());
+    }
+
+    @Test void failedDetailsStillSaveAndAreNotRetriedOnRecollection() throws Exception {
+        when(client.fetchListHtml()).thenReturn(DogdripCollectorTest.fixture());
+        when(client.fetchDetailHtml(anyString())).thenThrow(new IllegalStateException("HTTP 403"));
+        assertThat(service.collect()).isEqualTo(3);
+        assertThat(service.collect()).isZero();
+        verify(client, times(3)).fetchDetailHtml(anyString());
+        var source = sources.findByCode("dogdrip").orElseThrow();
+        assertThat(deals.findBySourceIdAndExternalId(source.getId(), "725854470").orElseThrow().getProductUrl()).isNull();
     }
 
     @Test void rejectionDoesNotRegisterOrSave() {

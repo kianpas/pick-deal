@@ -47,7 +47,10 @@ public class QuasarzoneDetailParser {
         return doc.select("tr").stream()
                 .filter(row -> {
                     Element header = row.selectFirst("th");
-                    return header != null && label.equals(header.text().trim());
+                    if (header == null) return false;
+                    Element labelOnly = header.clone();
+                    labelOnly.select(".common-tooltip").remove();
+                    return label.equals(labelOnly.text().trim());
                 })
                 .map(row -> row.selectFirst("td"))
                 .filter(value -> value != null)
