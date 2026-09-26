@@ -15,7 +15,7 @@ function PriceText({ deal, ended }: { deal: DealSummary; ended: boolean }) {
     return <span className="text-xs text-fg-muted">가격 정보 없음</span>;
   }
   return (
-    <span className={`text-lg font-bold ${deal.price === 0 ? "font-sans" : "font-mono tabular-nums"} ${ended ? "text-fg-muted" : "text-price"}`}>
+    <span className={`font-sans text-lg font-bold tabular-nums ${ended ? "text-fg-muted" : "text-price"}`}>
       {deal.price === 0 ? "무료" : formatPrice(deal.price, deal.currency)}
     </span>
   );
@@ -42,9 +42,9 @@ export function DealCard({ deal, showThumbnail = true, listHref = "/" }: Props) 
 
         <div className="min-w-0 flex-1">
           <div className="min-w-0 space-y-1">
-            <Link href={detailHref}
-              className={`min-h-11 content-center wrap-anywhere text-[15px] font-medium leading-relaxed transition-colors hover:text-brand @min-[36rem]:text-base ${ended ? "text-fg-muted line-through" : "text-fg"}`}>
-              {title}
+            <Link href={detailHref} title={title}
+              className={`flex min-h-11 items-center text-[15px] font-medium leading-relaxed transition-colors hover:text-brand @min-[36rem]:text-base ${ended ? "text-fg-muted line-through" : "text-fg"}`}>
+              <span className="line-clamp-2 wrap-anywhere">{title}</span>
             </Link>
 
             <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -53,7 +53,7 @@ export function DealCard({ deal, showThumbnail = true, listHref = "/" }: Props) 
                 <span className="text-xs font-semibold text-danger">-{deal.discountRate}%</span>
               )}
               {deal.originalPrice !== null && (
-                <span className="font-mono text-xs text-fg-muted line-through tabular-nums">
+                <span className="font-sans text-xs text-fg-muted line-through tabular-nums">
                   {formatPrice(deal.originalPrice, deal.currency)}
                 </span>
               )}

@@ -3,12 +3,12 @@
 /*
  * Typography — 폰트는 layout.tsx가 Google Fonts CDN에서 받는다.
  * - sans: 본문·UI(한글 포함). CDN 실패 시 OS 한글 UI 폰트로 폴백.
- * - mono: 가격 등 자릿수 비교가 필요한 숫자.
+ * - 가격도 sans를 사용하고 tabular-nums로 숫자 폭을 맞춘다.
  */
 @theme {
-  --font-sans: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+  --font-sans: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
     "Malgun Gothic", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-mono: ui-monospace, monospace;
 }
 
 /* Light tokens (default) */
