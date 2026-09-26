@@ -35,6 +35,7 @@ pickdeal:
       dogdrip:
         enabled: false
         timeout: 10s
+        max-detail-requests: 3
       quasarzone:
         enabled: true
         timeout: 10s

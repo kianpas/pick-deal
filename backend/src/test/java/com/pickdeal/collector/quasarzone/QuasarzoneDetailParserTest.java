@@ -15,6 +15,16 @@ class QuasarzoneDetailParserTest {
     private final QuasarzoneDetailParser parser = new QuasarzoneDetailParser();
 
     @Test
+    @DisplayName("실제 링크 항목의 안내 툴팁은 항목명 비교에서 제외한다")
+    void ignoresAffiliateTooltip() {
+        var result = parser.parse(readFixture("saleinfo-detail-tooltip.html"));
+        assertThat(result.productUrl()).isEqualTo("https://item.gmarket.co.kr/Item?goodscode=1164625471");
+        assertThat(result.shopName()).isEqualTo("지마켓");
+        assertThat(parser.parse(readFixture("saleinfo-detail-tooltip.html").replace(";\">링크", ";\">관련 링크"))
+                .productUrl()).isNull();
+    }
+
+    @Test
     @DisplayName("전용 상세 정보 표에서 판매처와 표시 상품 URL을 추출한다")
     void parsesProductInfoTable() {
         CollectedProductInfo result = parser.parse(readFixture());

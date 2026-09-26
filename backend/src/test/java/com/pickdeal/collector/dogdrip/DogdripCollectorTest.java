@@ -49,14 +49,14 @@ class DogdripCollectorTest {
         Instant start = now.toInstant();
         when(clock.instant()).thenReturn(start);
         DogdripClient.Fetch fetch = mock(DogdripClient.Fetch.class);
-        when(fetch.get()).thenReturn(new DogdripClient.Response(200, "ok", null));
+        when(fetch.get(anyString())).thenReturn(new DogdripClient.Response(200, "ok", null));
         var client = new DogdripClient(clock, fetch);
         assertThat(client.fetchListHtml()).isEqualTo("ok");
         assertThatThrownBy(client::fetchListHtml).isInstanceOf(IllegalStateException.class);
-        verify(fetch, times(1)).get();
+        verify(fetch, times(1)).get(anyString());
         when(clock.instant()).thenReturn(start.plusSeconds(10));
         client.fetchListHtml();
-        verify(fetch, times(2)).get();
+        verify(fetch, times(2)).get(anyString());
     }
 
     @Test void blockCooldownAndRetryAfter() throws Exception {
@@ -65,19 +65,51 @@ class DogdripCollectorTest {
             Instant start = now.toInstant();
             when(clock.instant()).thenReturn(start);
             DogdripClient.Fetch fetch = mock(DogdripClient.Fetch.class);
-            when(fetch.get()).thenReturn(new DogdripClient.Response(status, "", "172800"));
+            when(fetch.get(anyString())).thenReturn(new DogdripClient.Response(status, "", "172800"));
             var client = new DogdripClient(clock, fetch);
             assertThatThrownBy(client::fetchListHtml).isInstanceOf(IllegalStateException.class);
             when(clock.instant()).thenReturn(start.plusSeconds(86400));
             assertThatThrownBy(client::fetchListHtml).isInstanceOf(IllegalStateException.class);
-            verify(fetch, times(1)).get();
+            verify(fetch, times(1)).get(anyString());
         }
     }
 
     @Test void noImmediateRetryOnRedirect() throws Exception {
         DogdripClient.Fetch fetch = mock(DogdripClient.Fetch.class);
-        when(fetch.get()).thenReturn(new DogdripClient.Response(302, "", null));
+        when(fetch.get(anyString())).thenReturn(new DogdripClient.Response(302, "", null));
         assertThatThrownBy(new DogdripClient(Clock.systemUTC(), fetch)::fetchListHtml).isInstanceOf(IllegalStateException.class);
-        verify(fetch, times(1)).get();
+        verify(fetch, times(1)).get(anyString());
+    }
+
+    @Test void detailSharesIntervalAndBlockCooldownWithList() throws Exception {
+        Clock clock = mock(Clock.class);
+        var time = new java.util.concurrent.atomic.AtomicReference<>(now.toInstant());
+        when(clock.instant()).thenAnswer(call -> time.get());
+        DogdripClient.Fetch fetch = mock(DogdripClient.Fetch.class);
+        when(fetch.get(anyString())).thenReturn(new DogdripClient.Response(200, "list", null),
+                new DogdripClient.Response(429, "", "172800"));
+        DogdripClient.Sleeper sleeper = mock(DogdripClient.Sleeper.class);
+        doAnswer(call -> { time.updateAndGet(t -> t.plusMillis(call.getArgument(0, Long.class))); return null; })
+                .when(sleeper).sleep(anyLong());
+        var client = new DogdripClient(clock, fetch, sleeper);
+        client.fetchListHtml();
+        assertThatThrownBy(() -> client.fetchDetailHtml("https://www.dogdrip.net/725854470"))
+                .isInstanceOf(IllegalStateException.class);
+        verify(sleeper).sleep(10000L);
+        assertThatThrownBy(() -> client.fetchDetailHtml("https://www.dogdrip.net/725757041"))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(client::fetchListHtml).isInstanceOf(IllegalStateException.class);
+        verify(fetch, times(2)).get(anyString());
+        verifyNoMoreInteractions(sleeper);
+    }
+
+    @Test void invalidDetailUrlsNeverSendRequests() {
+        DogdripClient.Fetch fetch = mock(DogdripClient.Fetch.class);
+        var client = new DogdripClient(Clock.systemUTC(), fetch);
+        for (String url : new String[]{"https://evil.test/123", "https://www.dogdrip.net/link.php",
+                "https://www.dogdrip.net/123?act=IS", "https://www.dogdrip.net/123#link", "http://www.dogdrip.net/123"}) {
+            assertThatThrownBy(() -> client.fetchDetailHtml(url)).isInstanceOf(IllegalArgumentException.class);
+        }
+        verifyNoInteractions(fetch);
     }
 }
