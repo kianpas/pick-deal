@@ -2,6 +2,9 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useId, useState, useTransition } from "react";
+import { ChevronDown } from "lucide-react";
+
+const COLLAPSED_SHOP_LIMIT = 6;
 
 export function ShopFilter({ shops, selected, failed = false }: {
   shops: string[];
@@ -13,10 +16,16 @@ export function ShopFilter({ shops, selected, failed = false }: {
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
+  const [expanded, setExpanded] = useState(false);
   const searchId = useId();
+  const listId = useId();
   // 목록에서 사라진 선택값도 해제할 수 있도록 남긴다.
   const options = [...new Set([...shops, ...selected])];
   const matching = options.filter((name) => name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  const searching = query.trim().length > 0;
+  const collapsed = options.filter((name, index) => index < COLLAPSED_SHOP_LIMIT || selected.includes(name));
+  const hiddenCount = options.length - collapsed.length;
+  const visible = searching ? matching : expanded ? options : collapsed;
 
   function update(next: string[]) {
     const params = new URLSearchParams(searchParams.toString());
@@ -41,17 +50,27 @@ export function ShopFilter({ shops, selected, failed = false }: {
         className="min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-surface disabled:opacity-50">
         {selected.length === 0 ? "✓ 전체 쇼핑몰" : "전체 쇼핑몰 · 선택 해제"}
       </button>
-      {matching.map((name) => (
-        <label key={name} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-surface">
-          <input type="checkbox" checked={selected.includes(name)}
-            onChange={() => update(selected.includes(name) ? selected.filter((value) => value !== name) : [...selected, name])}
-            className="size-4 shrink-0 accent-brand" />
-          <span className="min-w-0 break-words">{name}</span>
-        </label>
-      ))}
+      <div id={listId}>
+        {visible.map((name) => (
+          <label key={name} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-surface">
+            <input type="checkbox" checked={selected.includes(name)}
+              onChange={() => update(selected.includes(name) ? selected.filter((value) => value !== name) : [...selected, name])}
+              className="size-4 shrink-0 accent-brand" />
+            <span className="min-w-0 break-words">{name}</span>
+          </label>
+        ))}
+      </div>
+      {!searching && hiddenCount > 0 && (
+        <button type="button" aria-expanded={expanded} aria-controls={listId}
+          onClick={() => setExpanded((value) => !value)}
+          className="flex min-h-11 w-full items-center justify-center gap-1 rounded-lg border border-border px-3 text-sm text-fg-muted hover:bg-surface disabled:opacity-50">
+          <ChevronDown aria-hidden="true" className={`size-4 ${expanded ? "rotate-180" : ""}`} />
+          {expanded ? "접기" : `${hiddenCount}곳 더 보기`}
+        </button>
+      )}
       {query.trim() && matching.length === 0 && <p role="status" className="py-2 text-xs text-fg-muted">검색한 쇼핑몰이 없어요.</p>}
       {!failed && options.length === 0 && <p className="py-2 text-xs text-fg-muted">수집된 쇼핑몰이 아직 없습니다.</p>}
-      <span role="status" className="sr-only">{pending ? "필터 적용 중" : `${selected.length}개 쇼핑몰 선택`}</span>
+      <span role="status" className="sr-only">{pending ? "필터 적용 중" : selected.length ? `${selected.length}개 쇼핑몰 선택` : "전체 쇼핑몰"}</span>
     </fieldset>
   );
 }
