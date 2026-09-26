@@ -36,6 +36,8 @@ function ThumbnailImage({ src, alt, detail = false, ended = false }: Props) {
       sizes={detail ? "(max-width: 768px) 100vw, 768px" : "(max-width: 640px) 80px, 112px"}
       className={detail ? `h-auto w-full object-contain ${ended ? "opacity-60" : ""}` : "object-cover"}
       unoptimized
+      // 개드립은 외부 Referer가 포함된 이미지 요청을 거부한다.
+      referrerPolicy={/^https:\/\/(?:www\.)?dogdrip\.net\//i.test(src) ? "no-referrer" : undefined}
       onError={() => setFailed(true)}
     />
   );
