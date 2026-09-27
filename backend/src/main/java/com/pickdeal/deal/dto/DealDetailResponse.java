@@ -1,6 +1,7 @@
 package com.pickdeal.deal.dto;
 
 import com.pickdeal.deal.domain.Deal;
+import com.pickdeal.deal.domain.DealCategory;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -14,6 +15,8 @@ public record DealDetailResponse(
         Integer discountRate,
         String currency,
         String category,
+        String categoryCode,
+        String categoryName,
         String shopName,
         Integer commentCount,
         String thumbnailUrl,
@@ -45,6 +48,8 @@ public record DealDetailResponse(
                 deal.getDiscountRate(),
                 deal.getCurrency(),
                 deal.getCategory(),
+                DealCategory.from(deal).name(),
+                DealCategory.from(deal).label(),
                 deal.getShopName(),
                 deal.getCommentCount(),
                 deal.getThumbnailUrl(),

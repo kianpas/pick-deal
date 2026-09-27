@@ -24,10 +24,10 @@ function statusBadge(status: DealStatus): { label: string; className: string } |
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex border-b border-border last:border-b-0">
-      <div className="w-24 shrink-0 bg-surface-2/60 px-3 py-2.5 text-xs font-medium text-fg-muted sm:w-28 sm:text-sm">
+      <dt className="w-24 shrink-0 px-3 py-2.5 text-xs font-medium text-fg-muted sm:w-28 sm:text-sm">
         {label}
-      </div>
-      <div className="min-w-0 flex-1 wrap-anywhere px-3 py-2.5 text-sm text-fg">{children}</div>
+      </dt>
+      <dd className="min-w-0 flex-1 wrap-anywhere px-3 py-2.5 text-sm text-fg">{children}</dd>
     </div>
   );
 }
@@ -72,7 +72,7 @@ export default async function DealDetailPage({
           목록으로
         </Link>
 
-        <article className="space-y-5">
+        <article className="space-y-5 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {/* 헤더: 배지 + 제목 */}
           <header className="space-y-3">
             <div className="flex flex-wrap items-center gap-2 wrap-anywhere text-xs">
@@ -92,9 +92,9 @@ export default async function DealDetailPage({
                   {shopName}
                 </span>
               )}
-              {deal.category && (
+              {deal.categoryName && (
                 <span className="rounded-md bg-surface-2 px-2 py-0.5 text-xs font-medium text-fg-muted">
-                  {deal.category}
+                  {deal.categoryName}
                 </span>
               )}
             </div>
@@ -119,30 +119,21 @@ export default async function DealDetailPage({
             </div>
           </header>
 
-          {/* 썸네일 — 시각 앵커라 제목 바로 아래에 둔다 */}
-          {deal.thumbnailUrl && (
-            <div className="relative overflow-hidden rounded-xl border border-border bg-surface-2">
-              <DealThumbnail
-                src={deal.thumbnailUrl}
-                alt={title}
-                detail
-                ended={ended}
-              />
-            </div>
-          )}
-
-          {/* 정보 테이블 — 원문 URL은 노출하지 않는다(하단 CTA와 중복) */}
-          <div className="overflow-hidden rounded-xl border border-border bg-surface/40">
-            {shopName && <InfoRow label="판매처">{shopName}</InfoRow>}
-
-            <InfoRow label="가격">
+          <div className="flex items-center gap-4 border-y border-border py-4">
+            {deal.thumbnailUrl && (
+              <div className="size-24 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-2">
+                <DealThumbnail src={deal.thumbnailUrl} alt={title} detail ended={ended} />
+              </div>
+            )}
+            <div className="min-w-0 space-y-1">
+              <p className="text-xs text-fg-muted">가격</p>
               {deal.price === 0 ? (
                 <span className="inline-flex items-center rounded-md bg-positive-soft px-2 py-0.5 text-sm font-semibold text-positive">
                   무료
                 </span>
               ) : deal.price !== null ? (
                 <span className="flex flex-wrap items-baseline gap-2">
-                  <span className="font-sans text-lg font-bold tabular-nums text-price">
+                  <span className="wrap-anywhere font-sans text-2xl font-bold tabular-nums text-price">
                     {formatPrice(deal.price, deal.currency)}
                   </span>
                   {deal.originalPrice !== null && (
@@ -157,20 +148,62 @@ export default async function DealDetailPage({
               ) : (
                 <span className="text-fg-muted">가격 정보 없음</span>
               )}
-            </InfoRow>
+            </div>
+          </div>
 
+          {/* 단일 Deal은 원문 CTA를 유지하고, 그룹 원문은 출처별 영역에서 제공한다. */}
+          {(deal.productUrl || !grouped) && (
+            <div className="pb-1">
+              <div className="flex flex-col gap-2 sm:flex-row">
+              {deal.productUrl && (
+                <a
+                  href={deal.productUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-11 min-w-0 w-full items-center justify-center gap-2 rounded-lg bg-brand-strong px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 sm:w-auto"
+                >
+                  <span className="min-w-0 wrap-anywhere">{shopName ? `${shopName}에서 보기` : "구매처에서 보기"}</span>
+                  <ExternalLink className="size-4 shrink-0" />
+                </a>
+              )}
+              {!grouped && (
+                <a
+                  href={deal.originalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition sm:w-auto ${
+                    deal.productUrl
+                      ? "border border-border bg-surface text-fg hover:border-border-strong"
+                      : "bg-brand-strong text-white hover:brightness-110"
+                  }`}
+                >
+                  원문에서 보기
+                  <ExternalLink className="size-4" />
+                </a>
+              )}
+              </div>
+            </div>
+          )}
+
+          {/* 저장된 부가 정보 */}
+          <dl className="rounded-lg border border-border">
+            {shopName && <InfoRow label="판매처">{shopName}</InfoRow>}
+            <InfoRow label="수집 시각">{formatFullDateTime(deal.collectedAt)}</InfoRow>
+            {!grouped && deal.commentCount !== null && <InfoRow label="댓글">{deal.commentCount}개 <span className="text-xs text-fg-muted">(수집 시점)</span></InfoRow>}
+            {deal.category && <InfoRow label="출처 분류"><span className="text-xs text-fg-muted">{deal.category}</span></InfoRow>}
             {(deal.freeShipping || deal.shippingNote) && (
               <InfoRow label="배송비/직배">
                 {deal.freeShipping ? "무료배송" : (deal.shippingNote ?? "-")}
               </InfoRow>
             )}
-          </div>
+          </dl>
 
           {/* 본문 */}
           {deal.description && (
-            <div className="whitespace-pre-wrap break-words text-sm leading-relaxed text-fg-muted">
-              {deal.description}
-            </div>
+            <section className="space-y-2" aria-labelledby="description-heading">
+              <h2 id="description-heading" className="text-base font-semibold">상품 설명</h2>
+              <p className="whitespace-pre-wrap wrap-anywhere text-sm leading-relaxed text-fg-muted">{deal.description}</p>
+            </section>
           )}
 
           {grouped && (
@@ -232,39 +265,6 @@ export default async function DealDetailPage({
             </section>
           )}
 
-          {/* 단일 Deal은 원문 CTA를 유지하고, 그룹 원문은 출처별 영역에서 제공한다. */}
-          {(deal.productUrl || !grouped) && (
-            <div className="pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              <div className="flex flex-col gap-2 sm:flex-row">
-              {deal.productUrl && (
-                <a
-                  href={deal.productUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-11 min-w-0 w-full items-center justify-center gap-2 rounded-lg bg-brand-strong px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 sm:w-auto"
-                >
-                  <span className="min-w-0 wrap-anywhere">{shopName ? `${shopName}에서 보기` : "구매처에서 보기"}</span>
-                  <ExternalLink className="size-4 shrink-0" />
-                </a>
-              )}
-              {!grouped && (
-                <a
-                  href={deal.originalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition sm:w-auto ${
-                    deal.productUrl
-                      ? "border border-border bg-surface text-fg hover:border-border-strong"
-                      : "bg-brand-strong text-white hover:brightness-110"
-                  }`}
-                >
-                  원문에서 보기
-                  <ExternalLink className="size-4" />
-                </a>
-              )}
-              </div>
-            </div>
-          )}
         </article>
       </div>
     </AppShell>

@@ -3,6 +3,7 @@ package com.pickdeal.deal.api;
 import com.pickdeal.common.response.ApiResponse;
 import com.pickdeal.deal.application.DealService;
 import com.pickdeal.deal.dto.DealDetailResponse;
+import com.pickdeal.deal.dto.DealCategoryResponse;
 import com.pickdeal.deal.dto.DealListResponse;
 import com.pickdeal.deal.dto.DealSummaryResponse;
 import jakarta.validation.constraints.Max;
@@ -41,7 +42,7 @@ public class DealController {
     }
 
     @GetMapping("/categories")
-    public ApiResponse<List<String>> findCategories() {
+    public ApiResponse<List<DealCategoryResponse>> findCategories() {
         return ApiResponse.success(dealService.findCategories());
     }
 

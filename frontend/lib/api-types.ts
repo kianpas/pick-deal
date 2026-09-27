@@ -36,6 +36,11 @@ export interface ApiEnvelope<T> {
 
 // ---- 딜 (Deal) ----
 
+export interface DealCategory {
+  code: string;
+  name: string;
+}
+
 /** 딜 상태 (백엔드 DealStatus). */
 export type DealStatus = "ACTIVE" | "SOLD_OUT" | "EXPIRED";
 
@@ -50,7 +55,10 @@ export interface DealSummary {
   originalPrice: number | null;
   discountRate: number | null;
   currency: string;
+  /** 저장된 출처 분류(기존 최소 별칭 정규화 포함). */
   category: string | null;
+  categoryCode: string;
+  categoryName: string;
   /** 출처 게시글이 표시한 판매몰 이름 원문. 표준화하지 않은 nullable 문자열. */
   shopName: string | null;
   /** 해당 출처 원문 게시글에서 마지막으로 확인한 댓글 수. 미제공/확인 불가는 null. */

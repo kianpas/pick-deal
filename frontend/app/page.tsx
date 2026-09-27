@@ -4,7 +4,7 @@ import { getDealCategories, getDealShops, getDeals, getSources, type DealListPar
 import { ShopFilter } from "@/components/filter/ShopFilter";
 import { CommunityFilter } from "@/components/source/CommunityFilter";
 import { ActiveFilters } from "@/components/filter/ActiveFilters";
-import type { DealSummary, PageMeta } from "@/lib/api-types";
+import type { DealCategory, DealSummary, PageMeta } from "@/lib/api-types";
 
 const PAGE_SIZE = 20;
 
@@ -32,7 +32,7 @@ export default async function Home({
 
   let deals: DealSummary[] = [];
   let meta: PageMeta | null = null;
-  let categories: string[] = [];
+  let categories: DealCategory[] = [];
   let loadFailed = false;
   try {
     const [dealsResult, categoriesResult] = await Promise.all([
@@ -62,7 +62,7 @@ export default async function Home({
       <DealFeed
         filters={<>
           <CommunityFilter sources={sourceResult.sources} selected={sourceId} failed={sourceResult.failed} />
-          <ActiveFilters sources={sourceResult.sources} />
+          <ActiveFilters sources={sourceResult.sources} categories={categories} />
         </>}
         deals={deals}
         meta={meta}
