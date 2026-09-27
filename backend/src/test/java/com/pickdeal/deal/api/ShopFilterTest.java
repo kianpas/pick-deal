@@ -38,18 +38,41 @@ class ShopFilterTest {
         second = sources.save(new Source("필터 B", "https://b.example", "shop-test-b", true));
     }
 
-    @Test void optionsAreSortedDistinctNonblankAndExcludeHiddenSources() throws Exception {
+    @Test void optionsAreOrderedByCountThenNameAndExcludeHiddenSources() throws Exception {
         save(first, "1", "테스트몰B");
         save(first, "2", "테스트몰A");
         save(first, "3", "테스트몰B");
         save(first, "4", null);
         save(first, "5", " ");
+        save(first, "7", "테스트몰C");
         save(second, "6", "숨긴테스트몰");
         visibility.save(new SourceVisibility(1L, second, false));
         assertThat(service.findShops()).contains("테스트몰A", "테스트몰B")
-                .doesNotContain("숨긴테스트몰", " ").doesNotContainNull().doesNotHaveDuplicates().isSorted();
+                .doesNotContain("숨긴테스트몰", " ").doesNotContainNull().doesNotHaveDuplicates();
+        assertThat(service.findShops().stream().filter(name -> name.startsWith("테스트몰")).toList())
+                .containsExactly("테스트몰B", "테스트몰A", "테스트몰C");
         mvc.perform(get("/api/v1/deals/shops")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").isArray());
+                .andExpect(jsonPath("$.data", org.hamcrest.Matchers.contains(service.findShops().toArray())));
+    }
+
+    @Test void countsCombineAliasesAndCountPostsRatherThanGroups() {
+        Deal a = save(first, "1", "카카오톡딜");
+        Deal b = save(second, "2", "카카오쇼핑");
+        DealGroup group = groups.save(new DealGroup(a));
+        a.joinGroup(group);
+        b.joinGroup(group);
+        save(first, "3", "카카오 쇼핑");
+        save(first, "4", "네이버");
+        save(first, "5", "네이버쇼핑");
+        // 숨긴 출처의 게시글은 순위 집계에서도 제외한다.
+        Source hidden = sources.save(new Source("숨김", "https://hidden.example", "shop-hidden", true));
+        visibility.save(new SourceVisibility(1L, hidden, false));
+        save(hidden, "6", "네이버");
+        save(hidden, "7", "네이버");
+        deals.flush();
+        assertThat(service.findShops().stream()
+                .filter(name -> List.of("카카오쇼핑", "네이버").contains(name)).toList())
+                .containsExactly("카카오쇼핑", "네이버");
     }
 
     @Test void multipleShopsCombineWithFiltersBeforePagination() throws Exception {
