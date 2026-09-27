@@ -77,7 +77,7 @@ export function CategoryGrid({ categories, active }: Props) {
                 : "text-fg-muted hover:bg-surface hover:text-fg"
             }`}
           >
-            {isActive && <span aria-hidden="true" className="me-1">✓</span>}{c.name}
+            {c.name}
           </button>
         );
       })}
