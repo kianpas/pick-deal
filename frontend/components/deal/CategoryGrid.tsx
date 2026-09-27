@@ -2,11 +2,12 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
+import type { DealCategory } from "@/lib/api-types";
 import { ChevronDown } from "lucide-react";
 
 interface Props {
   /** 백엔드가 내려준 실데이터 카테고리 목록. */
-  categories: string[];
+  categories: DealCategory[];
   /** 현재 선택된 카테고리(URL ?category=). 없으면 전체. */
   active?: string;
 }
@@ -45,7 +46,7 @@ export function CategoryGrid({ categories, active }: Props) {
 
   const items: { name: string; value?: string }[] = [
     { name: "전체", value: undefined },
-    ...categories.map((c) => ({ name: c, value: c })),
+    ...categories.map((c) => ({ name: c.name, value: c.code })),
   ];
 
   return (

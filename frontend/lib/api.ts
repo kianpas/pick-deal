@@ -9,6 +9,7 @@ import type {
   ApiEnvelope,
   CreateKeywordRequest,
   DealDetail,
+  DealCategory,
   DealSummary,
   KeywordItem,
   KeywordType,
@@ -91,8 +92,8 @@ export async function getDeals(params: DealListParams = {}): Promise<DealListRes
 }
 
 /** GET /api/v1/deals/categories — 노출 중인 딜의 카테고리 목록(중복 없음, 정렬). */
-export async function getDealCategories(): Promise<string[]> {
-  const envelope = await request<string[]>("/api/v1/deals/categories");
+export async function getDealCategories(): Promise<DealCategory[]> {
+  const envelope = await request<DealCategory[]>("/api/v1/deals/categories");
   return envelope.data ?? [];
 }
 

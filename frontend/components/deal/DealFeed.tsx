@@ -10,7 +10,7 @@ import { DealList } from "./DealList";
 import { SortBar } from "./SortBar";
 import { getDealCategories, getDeals, type DealListParams } from "@/lib/api";
 import { formatRelativeTime } from "@/lib/format";
-import type { DealSummary, PageMeta } from "@/lib/api-types";
+import type { DealCategory, DealSummary, PageMeta } from "@/lib/api-types";
 import { SOURCE_VISIBILITY_CHANGED_EVENT } from "@/lib/ui-events";
 
 interface Props {
@@ -23,7 +23,7 @@ interface Props {
   /** "더 보기"가 다음 페이지를 요청할 때 쓰는 목록 파라미터(page 제외). */
   listParams: DealListParams;
   /** 백엔드 실데이터 카테고리 목록(빈 배열이면 카테고리 바를 숨긴다). */
-  categories: string[];
+  categories: DealCategory[];
   /** 현재 선택된 카테고리(URL ?category=). */
   activeCategory?: string;
   filters?: ReactNode;

@@ -4,6 +4,10 @@ import com.pickdeal.common.error.DuplicateResourceException;
 import com.pickdeal.common.error.ResourceNotFoundException;
 import com.pickdeal.common.response.PageMetaResponse;
 import com.pickdeal.deal.domain.Deal;
+import com.pickdeal.deal.domain.DealCategory;
+import com.pickdeal.deal.dto.DealCategoryResponse;
+import com.pickdeal.common.error.BusinessException;
+import com.pickdeal.common.error.ErrorCode;
 import com.pickdeal.deal.domain.DealRepository;
 import com.pickdeal.deal.domain.DealMatchNormalizer;
 import com.pickdeal.deal.domain.DealStatus;
@@ -46,6 +50,7 @@ public class DealService {
     // 데이터가 커지면 DB 쿼리/키셋 페이지네이션으로 전환한다(docs/03 §5).
     @Transactional(readOnly = true)
     public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String category, String query, List<String> shopNames) {
+        DealCategory selectedCategory = parseCategory(category);
         var selectedShops = shopNames == null ? java.util.Set.<String>of() : shopNames.stream()
                 .map(ShopFilterNames::canonical).filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toSet());
@@ -59,7 +64,7 @@ public class DealService {
                 .toList();
 
         List<DealGroupView> filteredGroups = groupDeals(sourceEligibleDeals).stream()
-                .filter(group -> group.members().stream().anyMatch(deal -> matchesCategory(deal, category)))
+                .filter(group -> group.members().stream().anyMatch(deal -> (selectedCategory == null || DealCategory.from(deal) == selectedCategory)))
                 .filter(group -> group.members().stream().anyMatch(deal -> matchesQuery(deal, query)))
                 .filter(group -> group.members().stream().noneMatch(deal -> containsAnyKeyword(deal, excludeKeywords)))
                 .filter(group -> interestKeywords.isEmpty()
@@ -80,18 +85,12 @@ public class DealService {
         return new DealListResponse(items, new PageMetaResponse(page, size, filteredGroups.size(), totalPages, hasNext));
     }
 
-    /**
-     * 노출 중인(출처 표시, 종료 포함) 딜의 카테고리 목록. 중복 제거 후 정렬.
-     * 카테고리는 출처가 준 자유 문자열이라(docs/03 §2.1) 실데이터에서 목록을 만든다.
-     */
+    /** 표시 출처의 종료 딜도 포함하며, 분류 선언 순서로 반환한다. */
     @Transactional(readOnly = true)
-    public List<String> findCategories() {
+    public List<DealCategoryResponse> findCategories() {
         return dealRepository.findVisibleDeals(DEFAULT_USER_ID).stream()
-                .map(Deal::getCategory)
-                .filter(StringUtils::hasText)
-                .distinct()
-                .sorted()
-                .toList();
+                .map(DealCategory::from).distinct().sorted()
+                .map(DealCategoryResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
@@ -154,11 +153,13 @@ public class DealService {
         return DealDetailResponse.from(deal);
     }
 
-    private boolean matchesCategory(Deal deal, String category) {
-        if (!StringUtils.hasText(category)) {
-            return true;
+    private DealCategory parseCategory(String category) {
+        if (!StringUtils.hasText(category)) return null;
+        try {
+            return DealCategory.valueOf(category);
+        } catch (IllegalArgumentException exception) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Unknown category code: " + category);
         }
-        return deal.getCategory() != null && deal.getCategory().equalsIgnoreCase(category.trim());
     }
 
     private boolean matchesQuery(Deal deal, String query) {

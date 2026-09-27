@@ -102,12 +102,12 @@ GET /api/v1/deals
 | `sort` | enum | N | `latest` | `latest`(게시 최신순) \| `discount`(할인율 높은순) |
 | `sourceId` | long[] | N | - | 특정 출처만 필터(미지정 시 표시 상태 출처 전체) |
 | `shopName` | string[] | N | - | 반복 파라미터로 판매처 복수 선택(OR). 등록된 별칭은 대표 이름으로 비교하며 미등록 이름은 대소문자 포함 정확히 일치. 미지정은 전체 |
-| `category` | string | N | - | 카테고리 필터(선택) |
+| `category` | string | N | - | 픽딜 분류 코드: PC, DIGITAL, FOOD, LIVING, FASHION, GAME, BENEFIT, ETC |
 | `q` | string | N | - | 추가 검색어(제목 포함 검색, 선택) |
 
 API는 `latest`와 `discount`를 모두 지원한다. 현재 홈 UI는 수집 데이터의 정가·할인율 확보율이 낮아 `latest`만 사용하며 할인율 정렬 선택 UI는 제공하지 않는다.
 
-> `category`는 딜에 저장된 카테고리 문자열에 대한 단순 옵션 필터다. 수집 normalize 단계에서 정확히 등록된 별칭만 PickDeal 대표 문자열로 통일하며, 미등록 카테고리는 출처 원문을 유지한다. 부분 문자열·유사도 기반 통합은 하지 않는다(`docs/05`).
+> 요청 `category`는 위 코드만 허용하며 미지정·빈 값은 전체다. 기존 분류명 URL과 알 수 없는 코드는 400 / BAD_REQUEST로 처리하며 호환 변환하지 않는다. 응답 `category`는 기존 저장값을 유지하고, `categoryCode`·`categoryName`으로 조회용 분류를 제공한다. 목록 응답은 대표 Deal, 상세 응답은 요청한 Deal 기준이다.
 
 서버 측 자동 적용 규칙(쿼리 파라미터와 무관, `docs/01` 3.2 준수):
 
@@ -134,6 +134,8 @@ API는 `latest`와 `discount`를 모두 지원한다. 현재 홈 UI는 수집 �
       "discountRate": 31,
       "currency": "KRW",
       "category": "전자제품",
+      "categoryCode": "DIGITAL",
+      "categoryName": "디지털/가전",
       "shopName": "샘플몰",
       "commentCount": 18,
       "thumbnailUrl": "https://.../thumb.jpg",
@@ -162,11 +164,28 @@ API는 `latest`와 `discount`를 모두 지원한다. 현재 홈 UI는 수집 �
 GET /api/v1/deals/categories
 ```
 
-노출 중인(표시 출처, 종료/품절 포함) 딜의 카테고리 문자열 목록. 중복 없이 정렬해 반환하며, 프론트 카테고리 필터 바의 데이터 소스다. 카테고리는 확실한 별칭만 최소 정규화하고 나머지는 출처 원문을 유지하므로(2.1 참고) 수집 데이터에 따라 목록이 달라진다.
+표시 출처의 딜(종료/품절 포함)을 조회 시 분류하여 존재하는 분류만 중복 없이 반환한다. 검색·키워드·조회 출처·쇼핑몰 조건에 종속되지 않는다. null·공백·미등록 원본도 ETC에 포함한다. 정렬은 PC → DIGITAL → FOOD → LIVING → FASHION → GAME → BENEFIT → ETC 순서다.
 
 ```json
-{ "data": ["PC/하드웨어", "게임/SW", "생활/식품"] }
+{ "data": [{"code":"PC","name":"PC/하드웨어"}, {"code":"GAME","name":"게임/SW"}, {"code":"ETC","name":"기타"}] }
 ```
+
+분류는 `DealCategory`에서 출처 코드별 정확 일치를 우선 적용하고 공통 정확 일치 규칙으로 보완한다. 제목 추측·부분 일치는 하지 않는다. 저장·수집 로직, DB 컬럼, 과거 데이터는 변경하지 않는다.
+
+| 코드 | 표시 이름 | 원본 분류 |
+|---|---|---|
+| PC | PC/하드웨어 | PC/하드웨어, PC |
+| DIGITAL | 디지털/가전 | 가전/TV, 가전/가구, 노트북/모바일, 디지털, 전자, 전자제품 |
+| FOOD | 식품/건강 | 식품, 식품/건강; 퀘이사존의 생활/식품 |
+| LIVING | 생활/가구 | 생활용품, 생활, 가구 |
+| FASHION | 패션/잡화 | 의류, 의류/잡화, 패션/의류 |
+| GAME | 게임/SW | 게임/SW, 게임S/W, 게임H/W |
+| BENEFIT | 상품권/혜택 | 모바일/상품권, 상품권/쿠폰, 포인트/래플 |
+| ETC | 기타 | 기타, 미등록, null·공백 |
+
+복합 분류는 개별 상품의 정확한 분류를 보장하지 않는다. 퀘이사존 fixture의 생활/식품에서 크래미·커피 표본을 확인해 FOOD로 배치했다. 가전/가구는 DIGITAL에 묶으며 가구가 섞일 수 있다. 원본 분류는 상세에서 함께 표시한다. 저장값에는 기존 최소 별칭 정규화가 포함될 수 있다.
+
+프런트·백엔드를 동일 계약으로 함께 배포해야 한다. 구버전 프런트의 분류명 요청은 지원하지 않는다.
 
 ### 2.2.1 쇼핑몰 목록 조회
 
@@ -206,6 +225,8 @@ GET /api/v1/deals/{id}
     "discountRate": 31,
     "currency": "KRW",
     "category": "전자제품",
+    "categoryCode": "DIGITAL",
+    "categoryName": "디지털/가전",
     "shopName": "샘플몰",
     "commentCount": 18,
     "thumbnailUrl": "https://.../thumb.jpg",

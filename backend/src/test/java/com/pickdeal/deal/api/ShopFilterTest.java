@@ -59,7 +59,7 @@ class ShopFilterTest {
         save(second, "4", "필터몰A");
         mvc.perform(get("/api/v1/deals").param("shopName", "필터몰A", "필터몰B")
                         .param("sourceId", first.getId().toString()).param("q", "상품")
-                        .param("category", "기타").param("size", "1"))
+                        .param("category", "ETC").param("size", "1"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1))
                 .andExpect(jsonPath("$.meta.totalElements").value(2)).andExpect(jsonPath("$.meta.hasNext").value(true));
         mvc.perform(get("/api/v1/deals").param("shopName", "필터몰A", "필터몰B")

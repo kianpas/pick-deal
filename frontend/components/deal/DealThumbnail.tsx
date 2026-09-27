@@ -21,7 +21,7 @@ function ThumbnailImage({ src, alt, detail = false, ended = false }: Props) {
 
   if (!src || failed) {
     return (
-      <span className={`flex w-full flex-col items-center justify-center gap-1 bg-surface-2 text-xs text-fg-muted ${detail ? "aspect-video" : "h-full"}`}>
+      <span className="flex h-full w-full flex-col items-center justify-center gap-1 bg-surface-2 text-xs text-fg-muted">
         <ImageOff className="size-5" aria-hidden="true" />
         <span>이미지 없음</span>
       </span>
@@ -32,9 +32,9 @@ function ThumbnailImage({ src, alt, detail = false, ended = false }: Props) {
     <Image
       src={src}
       alt={alt}
-      {...(detail ? { width: 768, height: 432 } : { fill: true })}
-      sizes={detail ? "(max-width: 768px) 100vw, 768px" : "(max-width: 640px) 80px, 112px"}
-      className={detail ? `h-auto w-full object-contain ${ended ? "opacity-60" : ""}` : "object-cover"}
+      {...(detail ? { width: 96, height: 96 } : { fill: true })}
+      sizes={detail ? "96px" : "(max-width: 640px) 80px, 112px"}
+      className={detail ? `h-full w-full object-scale-down ${ended ? "opacity-60" : ""}` : "object-cover"}
       unoptimized
       // 개드립은 외부 Referer가 포함된 이미지 요청을 거부한다.
       referrerPolicy={/^https:\/\/(?:www\.)?dogdrip\.net\//i.test(src) ? "no-referrer" : undefined}

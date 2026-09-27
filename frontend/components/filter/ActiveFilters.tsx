@@ -2,9 +2,9 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
-import type { SourceItem } from "@/lib/api-types";
+import type { DealCategory, SourceItem } from "@/lib/api-types";
 
-export function ActiveFilters({ sources }: { sources: SourceItem[] }) {
+export function ActiveFilters({ sources, categories }: { sources: SourceItem[]; categories: DealCategory[] }) {
   const params = useSearchParams();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -12,7 +12,7 @@ export function ActiveFilters({ sources }: { sources: SourceItem[] }) {
     [...new Set(params.getAll(key))].filter(Boolean).map((value) => ({
       key, value,
       label: key === "sourceId" ? `커뮤니티: ${sources.find((s) => String(s.id) === value)?.name ?? value}`
-        : `${key === "q" ? "검색" : key === "category" ? "카테고리" : "쇼핑몰"}: ${value}`,
+        : `${key === "q" ? "검색" : key === "category" ? "카테고리" : "쇼핑몰"}: ${key === "category" ? categories.find((c) => c.code === value)?.name ?? value : value}`,
     })),
   );
   if (!items.length) return null;

@@ -54,27 +54,37 @@ class DealServiceTest {
     private KeywordRepository keywordRepository;
 
     @Test
-    @DisplayName("카테고리 목록은 노출 중인 딜(종료 포함)의 카테고리를 중복 없이 정렬해 반환한다")
-    void findCategoriesReturnsDistinctSortedVisibleCategories() {
-        Source visibleSource = sourceRepository.save(new Source("카테고리테스트출처", "https://cat.example.com", "cat-test", true));
-        saveDeal(visibleSource, "cat-1", "테스트카테고리B", DealStatus.ACTIVE);
-        saveDeal(visibleSource, "cat-2", "테스트카테고리A", DealStatus.ACTIVE);
-        saveDeal(visibleSource, "cat-3", "테스트카테고리B", DealStatus.ACTIVE); // 중복
-        saveDeal(visibleSource, "cat-4", null, DealStatus.ACTIVE);              // 카테고리 없음
-        saveDeal(visibleSource, "cat-5", "테스트만료카테고리", DealStatus.EXPIRED); // 만료 딜도 목록에 노출된다
+    void categoriesUseCodesAndIncludeEndedButExcludeHidden() {
+        keywordRepository.deleteAll();
+        dealRepository.deleteAll();
+        Source source = sourceRepository.save(new Source("분류출처", "https://cat.example", "cat-test", true));
+        saveDeal(source, "cat-1", "PC/하드웨어", DealStatus.ACTIVE);
+        saveDeal(source, "cat-2", "식품/건강", DealStatus.EXPIRED);
+        saveDeal(source, "cat-3", null, DealStatus.ACTIVE);
+        saveDeal(source, "cat-4", "식품", DealStatus.ACTIVE);
+        Source hidden = sourceRepository.save(new Source("숨김분류", "https://hidden.example", "cat-hidden", true));
+        sourceVisibilityRepository.save(new SourceVisibility(1L, hidden, false));
+        saveDeal(hidden, "cat-5", "의류", DealStatus.ACTIVE);
+        assertThat(dealService.findCategories()).extracting(c -> c.code()).containsExactly("PC", "FOOD", "ETC");
+        assertThat(dealService.findDeals(0, 20, "latest", null, "FOOD", null, null).items()).hasSize(2);
+    }
 
-        Source hiddenSource = sourceRepository.save(new Source("숨김테스트출처", "https://hidden-cat.example.com", "cat-hidden", true));
-        sourceVisibilityRepository.save(new SourceVisibility(DEFAULT_USER_ID, hiddenSource, false));
-        saveDeal(hiddenSource, "cat-6", "테스트숨김카테고리", DealStatus.ACTIVE);
-
-        List<String> categories = dealService.findCategories();
-
-        assertThat(categories)
-                .contains("테스트카테고리A", "테스트카테고리B", "테스트만료카테고리")
-                .doesNotContain("테스트숨김카테고리")
-                .doesNotContainNull()
-                .doesNotHaveDuplicates()
-                .isSorted();
+    @Test
+    void categoryFilterMatchesGroupMemberAndPreservesStoredCategory() {
+        keywordRepository.deleteAll();
+        Source source = sourceRepository.save(new Source("분류그룹", "https://group-cat.example", "category-group", true));
+        Source other = sourceRepository.save(new Source("분류그룹B", "https://group-cat-b.example", "category-group-b", true));
+        Deal first = saveDeal(source, "category-group-1", "PC/하드웨어", DealStatus.ACTIVE);
+        Deal second = saveDeal(other, "category-group-2", "식품/건강", DealStatus.ACTIVE);
+        joinGroup(first, second);
+        var result = dealService.findDeals(0, 20, "latest", List.of(source.getId(), other.getId()), "FOOD", null, null);
+        assertThat(result.meta().totalElements()).isEqualTo(1);
+        assertThat(result.items().get(0).categoryCode()).isEqualTo("PC");
+        var detail = dealService.findDeal(second.getId());
+        assertThat(detail.category()).isEqualTo("식품/건강");
+        assertThat(detail.categoryCode()).isEqualTo("FOOD");
+        assertThat(detail.categoryName()).isEqualTo("식품/건강");
+        assertThat(second.getCategory()).isEqualTo("식품/건강");
     }
 
     @Test
