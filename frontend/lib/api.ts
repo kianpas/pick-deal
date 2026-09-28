@@ -68,6 +68,7 @@ export interface DealListParams {
   shopName?: string[];
   category?: string;
   q?: string;
+  hideEnded?: boolean;
 }
 
 export interface DealListResult {
@@ -83,6 +84,7 @@ export async function getDeals(params: DealListParams = {}): Promise<DealListRes
   if (params.sort) search.set("sort", params.sort);
   if (params.category) search.set("category", params.category);
   if (params.q) search.set("q", params.q);
+  if (params.hideEnded) search.set("hideEnded", "true");
   params.sourceId?.forEach((id) => search.append("sourceId", String(id)));
   params.shopName?.forEach((name) => search.append("shopName", name));
 

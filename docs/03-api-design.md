@@ -102,6 +102,7 @@ GET /api/v1/deals
 | `sort` | enum | N | `latest` | `latest`(게시 최신순) \| `discount`(할인율 높은순) |
 | `sourceId` | long[] | N | - | 특정 출처만 필터(미지정 시 표시 상태 출처 전체) |
 | `shopName` | string[] | N | - | 반복 파라미터로 판매처 복수 선택(OR). 등록된 별칭은 대표 이름으로 비교하며 미등록 이름은 대소문자 포함 정확히 일치. 미지정은 전체 |
+| `hideEnded` | boolean | N | `false` | `true`이면 표시/조회 조건을 통과한 그룹에 ACTIVE 구성원이 없는 카드를 제외. 페이지네이션 전에 적용 |
 | `category` | string | N | - | 픽딜 분류 코드: PC, DIGITAL, FOOD, LIVING, FASHION, GAME, BENEFIT, ETC |
 | `q` | string | N | - | 추가 검색어(제목 포함 검색, 선택) |
 
@@ -119,7 +120,7 @@ API는 `latest`와 `discount`를 모두 지원한다. 현재 홈 UI는 수집 �
 
 현재 MVP 구현은 노출 가능한 Deal을 DB에서 조회한 뒤 위 그룹·필터·정렬·페이지 처리를 `DealService` 메모리에서 수행한다. API 계약은 유지하되 운영 데이터에서 병목이 확인되면 DB 쿼리로 이동한다.
 
-> 종료(EXPIRED)/품절(SOLD_OUT) 딜도 목록에 **포함**한다 — 화면이 `status`로 구분해(취소선 등) 표시한다. 조용히 숨기지 않는 것이 핫딜 목록 관례다.
+> 기본은 종료(EXPIRED)/품절(SOLD_OUT) 딜도 목록에 **포함**하며 `status`로 구분한다. `hideEnded=true`일 때만 그룹 집계 상태가 ACTIVE인 카드를 반환한다. 구성원 개별 삭제가 아니므로 활성 글과 종료 글이 섞인 그룹의 출처 수·링크는 보존한다. 검색·카테고리·키워드와 AND로 적용하고 `meta`도 제외 후 기준이다. DB에 저장된 상태만 사용하며 추가 수집 요청은 하지 않는다. 카테고리·쇼핑몰 선택지 API에는 영향을 주지 않는다.
 
 응답 예시:
 

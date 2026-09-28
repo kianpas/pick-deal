@@ -50,7 +50,7 @@ public class DealService {
     // 키워드 필터가 제목·본문 부분일치라 DB로 내리기 애매한 점을 감안한 소규모 시드 전용 구현.
     // 데이터가 커지면 DB 쿼리/키셋 페이지네이션으로 전환한다(docs/03 §5).
     @Transactional(readOnly = true)
-    public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String category, String query, List<String> shopNames) {
+    public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String category, String query, List<String> shopNames, boolean hideEnded) {
         DealCategory selectedCategory = parseCategory(category);
         var selectedShops = shopNames == null ? java.util.Set.<String>of() : shopNames.stream()
                 .map(ShopFilterNames::canonical).filter(java.util.Objects::nonNull)
@@ -65,6 +65,7 @@ public class DealService {
                 .toList();
 
         List<DealGroupView> filteredGroups = groupDeals(sourceEligibleDeals).stream()
+                .filter(group -> !hideEnded || aggregateStatus(group.members()) == DealStatus.ACTIVE)
                 .filter(group -> group.members().stream().anyMatch(deal -> (selectedCategory == null || DealCategory.from(deal) == selectedCategory)))
                 .filter(group -> group.members().stream().anyMatch(deal -> matchesQuery(deal, query)))
                 .filter(group -> group.members().stream().noneMatch(deal -> containsAnyKeyword(deal, excludeKeywords)))

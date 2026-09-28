@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import type { ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { ReactNode, RefObject } from "react";
 import { listLocation } from "@/lib/list-location";
 import { CategoryGrid } from "./CategoryGrid";
 import { DealList } from "./DealList";
@@ -48,19 +48,44 @@ function latestRegisteredAt(deals: DealSummary[]): string | null {
  */
 export function DealFeed(props: Props) {
   const [showThumbnail, setShowThumbnail] = useState(true);
+  const [filterPending, startTransition] = useTransition();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const endedToggleRef = useRef<HTMLInputElement>(null);
+  const restoreToggleFocus = useRef(false);
+  useEffect(() => {
+    if (!filterPending && restoreToggleFocus.current) {
+      endedToggleRef.current?.focus({ preventScroll: true });
+      restoreToggleFocus.current = false;
+    }
+  }, [filterPending]);
+
+  function toggleHideEnded() {
+    if (filterPending) return;
+    restoreToggleFocus.current = true;
+    const next = new URLSearchParams(searchParams);
+    if (props.listParams.hideEnded) next.delete("hideEnded");
+    else next.set("hideEnded", "true");
+    next.delete("page");
+    startTransition(() => router.push(next.size ? `/?${next}` : "/", { scroll: false }));
+  }
   return (
     <FilteredDealFeed
       key={JSON.stringify(props.listParams)}
       {...props}
       showThumbnail={showThumbnail}
       onToggleThumbnail={() => setShowThumbnail((value) => !value)}
+      filterPending={filterPending}
+      onToggleHideEnded={toggleHideEnded}
+      endedToggleRef={endedToggleRef}
     />
   );
 }
 
 function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, activeCategory, filters,
   showThumbnail, onToggleThumbnail,
-}: Props & { showThumbnail: boolean; onToggleThumbnail: () => void }) {
+  filterPending, onToggleHideEnded, endedToggleRef,
+}: Props & { showThumbnail: boolean; onToggleThumbnail: () => void; filterPending: boolean; onToggleHideEnded: () => void; endedToggleRef: RefObject<HTMLInputElement | null> }) {
   const searchParams = useSearchParams();
   const listHref = listLocation(`/?${searchParams}`);
   const [firstPageDeals, setFirstPageDeals] = useState(deals);
@@ -130,7 +155,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
   }
 
   const allDeals = extraDeals.length > 0 ? [...firstPageDeals, ...extraDeals] : firstPageDeals;
-  const filtered = Boolean(listParams.q || listParams.category || listParams.sourceId?.length || listParams.shopName?.length);
+  const filtered = Boolean(listParams.q || listParams.category || listParams.sourceId?.length || listParams.shopName?.length || listParams.hideEnded);
   const registeredAt = latestRegisteredAt(allDeals);
 
   return (
@@ -142,7 +167,10 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
           <CategoryGrid categories={currentCategories} active={activeCategory} />
         )}
       </div>
-      <SortBar showThumbnail={showThumbnail} onToggleThumbnail={onToggleThumbnail} />
+      <SortBar showThumbnail={showThumbnail} onToggleThumbnail={onToggleThumbnail}
+        hideEnded={Boolean(listParams.hideEnded)} onToggleHideEnded={onToggleHideEnded} pending={filterPending} endedToggleRef={endedToggleRef} />
+      <p role="status" className={filterPending ? "text-xs text-fg-muted" : "sr-only"}>{filterPending ? "종료·품절 조건을 적용하고 있어요…" : ""}</p>
+      <div aria-busy={filterPending} className={filterPending ? "opacity-60" : ""}>
 
       {refreshing ? (
         <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-fg-muted">
@@ -184,7 +212,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
               <button
                 type="button"
                 onClick={loadMore}
-                disabled={loadingMore || refreshing}
+                disabled={loadingMore || refreshing || filterPending}
                 className="w-full rounded-xl border border-border bg-surface py-2.5 text-sm font-medium text-fg-muted transition hover:bg-surface-hover hover:text-fg disabled:opacity-50 sm:max-w-xs"
               >
                 {loadingMore ? "불러오는 중…" : refreshing ? "목록 갱신 중…" : "더 보기"}
@@ -212,6 +240,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
           아직 수집된 핫딜이 없어요. 수집기가 곧 채워줄 거예요.
         </div>
       )}
+      </div>
     </div>
   );
 }
