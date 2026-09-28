@@ -27,8 +27,8 @@ class DealServiceTest {
 
     @Test
     void largePageReturnsEmptyPageWithoutOverflow() {
-        assertThat(dealService.findDeals(107374183, 20, "latest", null, null, null, null).items()).isEmpty();
-        var result = dealService.findDeals(Integer.MAX_VALUE, 100, "latest", null, null, null, null);
+        assertThat(dealService.findDeals(107374183, 20, "latest", null, null, null, null, false).items()).isEmpty();
+        var result = dealService.findDeals(Integer.MAX_VALUE, 100, "latest", null, null, null, null, false);
         assertThat(result.items()).isEmpty();
         assertThat(result.meta().hasNext()).isFalse();
     }
@@ -66,7 +66,7 @@ class DealServiceTest {
         sourceVisibilityRepository.save(new SourceVisibility(1L, hidden, false));
         saveDeal(hidden, "cat-5", "의류", DealStatus.ACTIVE);
         assertThat(dealService.findCategories()).extracting(c -> c.code()).containsExactly("PC", "FOOD", "ETC");
-        assertThat(dealService.findDeals(0, 20, "latest", null, "FOOD", null, null).items()).hasSize(2);
+        assertThat(dealService.findDeals(0, 20, "latest", null, "FOOD", null, null, false).items()).hasSize(2);
     }
 
     @Test
@@ -77,7 +77,7 @@ class DealServiceTest {
         Deal first = saveDeal(source, "category-group-1", "PC/하드웨어", DealStatus.ACTIVE);
         Deal second = saveDeal(other, "category-group-2", "식품/건강", DealStatus.ACTIVE);
         joinGroup(first, second);
-        var result = dealService.findDeals(0, 20, "latest", List.of(source.getId(), other.getId()), "FOOD", null, null);
+        var result = dealService.findDeals(0, 20, "latest", List.of(source.getId(), other.getId()), "FOOD", null, null, false);
         assertThat(result.meta().totalElements()).isEqualTo(1);
         assertThat(result.items().get(0).categoryCode()).isEqualTo("PC");
         var detail = dealService.findDeal(second.getId());
@@ -98,7 +98,7 @@ class DealServiceTest {
         saveDeal(source, "ended-3", "기타", DealStatus.SOLD_OUT);
 
         List<DealSummaryResponse> items =
-                dealService.findDeals(0, 50, "latest", List.of(source.getId()), null, null, null).items();
+                dealService.findDeals(0, 50, "latest", List.of(source.getId()), null, null, null, false).items();
 
         assertThat(items).hasSize(3);
         assertThat(items).extracting(DealSummaryResponse::status)
@@ -113,7 +113,7 @@ class DealServiceTest {
         Deal saved = saveDeal(source, "comments-1", "기타", DealStatus.ACTIVE, 7);
 
         DealSummaryResponse summary = dealService
-                .findDeals(0, 20, "latest", List.of(source.getId()), null, null, null)
+                .findDeals(0, 20, "latest", List.of(source.getId()), null, null, null, false)
                 .items().get(0);
 
         assertThat(summary.commentCount()).isEqualTo(7);
@@ -135,7 +135,7 @@ class DealServiceTest {
         ));
 
         DealSummaryResponse summary = dealService
-                .findDeals(0, 20, "latest", List.of(source.getId()), null, null, null)
+                .findDeals(0, 20, "latest", List.of(source.getId()), null, null, null, false)
                 .items().get(0);
 
         assertThat(summary.shopName()).isEqualTo("테스트몰");
@@ -160,7 +160,7 @@ class DealServiceTest {
         joinGroup(first, second);
 
         var response = dealService.findDeals(
-                0, 1, "latest", List.of(firstSource.getId(), secondSource.getId()), null, null, null);
+                0, 1, "latest", List.of(firstSource.getId(), secondSource.getId()), null, null, null, false);
 
         assertThat(response.items()).singleElement().satisfies(summary -> {
             assertThat(summary.id()).isEqualTo(first.getId());
@@ -187,7 +187,7 @@ class DealServiceTest {
         joinGroup(first, second);
 
         DealSummaryResponse summary = dealService
-                .findDeals(0, 20, "latest", List.of(secondSource.getId()), null, null, null)
+                .findDeals(0, 20, "latest", List.of(secondSource.getId()), null, null, null, false)
                 .items().get(0);
 
         assertThat(summary.id()).isEqualTo(second.getId());

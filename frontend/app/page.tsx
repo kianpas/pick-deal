@@ -17,14 +17,14 @@ const PAGE_SIZE = 20;
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; sourceId?: string | string[]; shopName?: string | string[] }>;
+  searchParams: Promise<{ q?: string; category?: string; sourceId?: string | string[]; shopName?: string | string[]; hideEnded?: string }>;
 }) {
-  const { q, category, sourceId: sourceParam, shopName: shopParam } = await searchParams;
+  const { q, category, sourceId: sourceParam, shopName: shopParam, hideEnded } = await searchParams;
   const values = sourceParam === undefined ? [] : Array.isArray(sourceParam) ? sourceParam : [sourceParam];
   const sourceId = [...new Set(values.filter((value) => /^[1-9]\d*$/.test(value))
     .map(Number).filter(Number.isSafeInteger))].sort((a, b) => a - b);
   const shopName = [...new Set(shopParam === undefined ? [] : Array.isArray(shopParam) ? shopParam : [shopParam])].sort();
-  const listParams: DealListParams = { size: PAGE_SIZE, q, category, sourceId, shopName };
+  const listParams: DealListParams = { size: PAGE_SIZE, q, category, sourceId, shopName, hideEnded: hideEnded === "true" };
   const [sourceResult, shopResult] = await Promise.all([
     getSources().then((sources) => ({ sources, failed: false })).catch(() => ({ sources: [], failed: true })),
     getDealShops().then((shops) => ({ shops, failed: false })).catch(() => ({ shops: [], failed: true })),

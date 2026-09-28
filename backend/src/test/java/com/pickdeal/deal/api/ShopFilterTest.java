@@ -114,13 +114,13 @@ class ShopFilterTest {
         a.joinGroup(group);
         b.joinGroup(group);
         deals.flush();
-        var result = service.findDeals(0, 20, "latest", null, null, null, List.of("g마켓"));
+        var result = service.findDeals(0, 20, "latest", null, null, null, List.of("g마켓"), false);
         assertThat(result.items()).singleElement().satisfies(item -> {
             assertThat(item.id()).isEqualTo(a.getId());
             assertThat(item.shopName()).isEqualTo("G마켓");
             assertThat(item.sourceCount()).isEqualTo(2);
         });
-        assertThat(service.findDeals(0, 20, "latest", null, null, null, List.of("지마켓")).items()).hasSize(1);
+        assertThat(service.findDeals(0, 20, "latest", null, null, null, List.of("지마켓"), false).items()).hasSize(1);
     }
 
     @Test void aliasesShareOptionsAndFilterWhilePreservingOriginalNames() throws Exception {
@@ -147,7 +147,7 @@ class ShopFilterTest {
                     .andExpect(status().isOk()).andExpect(jsonPath("$.meta.totalElements").value(2));
         }
         var result = service.findDeals(0, 20, "latest", List.of(first.getId()), null, null,
-                List.of("카카오쇼핑", "카카오톡딜", "네이버"));
+                List.of("카카오쇼핑", "카카오톡딜", "네이버"), false);
         assertThat(result.items()).extracting(item -> item.shopName())
                 .containsExactlyInAnyOrder("카카오쇼핑", "카카오톡딜", "카카오 톡딜", "카카오", "카카오 쇼핑", "네이버쇼핑", "네이버");
         visibility.save(new SourceVisibility(1L, first, false));

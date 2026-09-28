@@ -34,10 +34,11 @@ public class DealController {
             @RequestParam(required = false) List<Long> sourceId,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "false") boolean hideEnded,
             @RequestParam MultiValueMap<String, String> queryParams
     ) {
         // 판매처 이름에 쉼표가 있어도 분리하지 않고 반복 파라미터만 읽는다.
-        DealListResponse response = dealService.findDeals(page, size, sort, sourceId, category, q, queryParams.get("shopName"));
+        DealListResponse response = dealService.findDeals(page, size, sort, sourceId, category, q, queryParams.get("shopName"), hideEnded);
         return ApiResponse.success(response.items(), response.meta());
     }
 

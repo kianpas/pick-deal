@@ -15,12 +15,15 @@ export function ActiveFilters({ sources, categories }: { sources: SourceItem[]; 
         : `${key === "q" ? "검색" : key === "category" ? "카테고리" : "쇼핑몰"}: ${key === "category" ? categories.find((c) => c.code === value)?.name ?? value : value}`,
     })),
   );
+  if (params.get("hideEnded") === "true") {
+    items.push({ key: "hideEnded", value: "true", label: "종료·품절 숨기기" });
+  }
   if (!items.length) return null;
 
   function remove(key?: string, value?: string) {
     const next = new URLSearchParams(params);
     if (key) next.delete(key, value);
-    else for (const name of ["q", "category", "shopName", "sourceId"]) next.delete(name);
+    else for (const name of ["q", "category", "shopName", "sourceId", "hideEnded"]) next.delete(name);
     next.delete("page");
     startTransition(() => router.push(next.size ? `/?${next}` : "/", { scroll: false }));
   }

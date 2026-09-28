@@ -3,7 +3,7 @@ export function listLocation(value?: string): string {
   if (!value || (value !== "/" && !value.startsWith("/?"))) return "/";
   const input = new URLSearchParams(value.slice(2));
   const output = new URLSearchParams();
-  for (const key of ["q", "category", "sourceId", "shopName"]) {
+  for (const key of ["q", "category", "sourceId", "shopName", "hideEnded"]) {
     for (const item of input.getAll(key)) {
       if (item) output.append(key, item);
     }
