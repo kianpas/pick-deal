@@ -1,6 +1,6 @@
 export function formatPrice(value: number, currency: string): string {
   if (currency === "USD") {
-    return `${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}$`;
+    return `US$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
   return `${value.toLocaleString("ko-KR")}원`;
 }

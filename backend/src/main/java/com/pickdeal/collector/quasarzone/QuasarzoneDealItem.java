@@ -8,11 +8,17 @@ public record QuasarzoneDealItem(
         String url,
         String storeName,
         String title,
-        Long price,
+        java.math.BigDecimal price,
         String category,
         String thumbnailUrl,
         Integer commentCount,
         boolean ended,
-        String postedAtText
+        String postedAtText,
+        String currency
 ) {
+    public QuasarzoneDealItem(String externalId, String url, String storeName, String title, Number price,
+            String category, String thumbnailUrl, Integer commentCount, boolean ended, String postedAtText) {
+        this(externalId, url, storeName, title, price == null ? null : new java.math.BigDecimal(price.toString()),
+                category, thumbnailUrl, commentCount, ended, postedAtText, "KRW");
+    }
 }

@@ -3,6 +3,8 @@ package com.pickdeal.collector.quasarzone;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.math.BigDecimal;
+import java.util.Locale;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -17,7 +19,9 @@ public class QuasarzoneListParser {
     private static final String ENDED_LABEL = "종료";
     private static final String DEAL_PATH = "/bbs/qb_saleinfo/views/";
     private static final Pattern STORE_PREFIX = Pattern.compile("^\\[([^\\]]+)\\]\\s*(.*)$");
-    private static final Pattern PRICE_DIGITS = Pattern.compile("([\\d,]+)");
+    private static final String AMOUNT = "([0-9]+|[1-9][0-9]{0,2}(?:,[0-9]{3})+)(\\.[0-9]{1,2})?";
+    private static final Pattern KRW_PRICE = Pattern.compile("^(?:[￦₩]\\s*|KRW\\s*)?" + AMOUNT + "(?:\\s*원)?(?:\\s*(?:\\(KRW\\)|KRW))?$");
+    private static final Pattern USD_PRICE = Pattern.compile("^(?:\\$\\s*|USD\\s*)?" + AMOUNT + "(?:\\s*(?:\\(USD\\)|USD|달러))?$");
     private static final Pattern BACKGROUND_URL = Pattern.compile("url\\(['\"]?(.*?)['\"]?\\)");
 
     public List<QuasarzoneDealItem> parse(String html) {
@@ -51,13 +55,15 @@ public class QuasarzoneListParser {
         String url = link.absUrl("href");
         String externalId = url.substring(url.lastIndexOf('/') + 1);
         String rawTitle = titleOf(item);
+        String priceText = item.select("span.text-orange, span.v2-list-row__price").text();
         return new QuasarzoneDealItem(externalId, url, parseStoreName(item, rawTitle), parseTitle(rawTitle),
-                parsePrice(item.select("span.text-orange, span.v2-list-row__price").text()),
+                parsePrice(priceText),
                 categoryOf(item),
                 parseThumbnailUrl(item),
                 parseCommentCount(item.selectFirst("span.ctn-count")),
                 ENDED_LABEL.equals(labelOf(item)) || item.hasClass("is-done"),
-                item.select("span.date, span.v2-list-row__time").text().trim());
+                item.select("span.date, span.v2-list-row__time").text().trim(),
+                currencyOf(priceText));
     }
 
     private String titleOf(Element item) {
@@ -119,16 +125,25 @@ public class QuasarzoneListParser {
         return Integer.valueOf(count.text().replace(",", "").trim());
     }
 
-    /** 원화 가격만 정수로 변환한다. 통화 정보가 없는 현재 모델에서 USD 등을 원화로 오인하지 않는다. */
-    private Long parsePrice(String priceText) {
-        if (!isKrw(priceText)) {
-            return null;
-        }
-        Matcher matcher = PRICE_DIGITS.matcher(priceText);
-        if (!matcher.find()) {
-            return null;
-        }
-        return Long.parseLong(matcher.group(1).replace(",", ""));
+    /** 전용 가격 영역의 명시적인 KRW/USD 금액만 인정한다. 본문 할인액은 추측하지 않는다. */
+    private BigDecimal parsePrice(String priceText) {
+        String text = priceText.trim().toUpperCase(Locale.ROOT);
+        boolean krw = isKrw(text);
+        boolean usd = text.contains("$") || text.contains("USD") || text.contains("달러");
+        if (krw == usd) return null;
+        Matcher matcher = (krw ? KRW_PRICE : USD_PRICE).matcher(text);
+        if (!matcher.matches()) return null;
+        try {
+            BigDecimal amount = new BigDecimal(matcher.group(1).replace(",", "")
+                    + (matcher.group(2) == null ? "" : matcher.group(2)));
+            if (amount.precision() - amount.scale() > 19
+                    || (krw && amount.stripTrailingZeros().scale() > 0)) return null;
+            return amount;
+        } catch (NumberFormatException ignored) { return null; }
+    }
+
+    private String currencyOf(String text) {
+        return parsePrice(text) != null && !isKrw(text) ? "USD" : "KRW";
     }
 
     private boolean isKrw(String priceText) {

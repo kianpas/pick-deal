@@ -63,7 +63,8 @@ public class RemoteCollectionService {
             String shop = blankToNull(item.shopName());
             var deal = new CollectedDeal(item.externalId(), item.originalUrl(), shop, item.title(), item.price(),
                     CategoryNormalizer.normalize(item.category()), item.commentCount(), blankToNull(item.thumbnailUrl()),
-                    item.ended(), item.postedAt(), blankToNull(item.productUrl()));
+                    item.ended(), item.postedAt(), blankToNull(item.productUrl()),
+                    item.currency() == null ? "KRW" : item.currency());
             if (deal.rawTitle().length() > 300) throw badRequest("판매처를 포함한 제목은 300자 이하여야 합니다.");
             return deal;
         }).toList();

@@ -35,7 +35,8 @@ class QuasarzoneListParserTest {
         assertThat(active.externalId()).isEqualTo("1984229");
         assertThat(active.storeName()).isEqualTo("알리");
         assertThat(active.title()).isEqualTo("투키 Toocki 신상 싱글풀 릴케이블 100W");
-        assertThat(active.price()).isNull();
+        assertThat(active.price()).isEqualByComparingTo("4.64");
+        assertThat(active.currency()).isEqualTo("USD");
         assertThat(active.category()).isEqualTo("기타");
         assertThat(active.commentCount()).isEqualTo(1);
         assertThat(active.postedAtText()).isEqualTo("2시간 전");
@@ -45,7 +46,8 @@ class QuasarzoneListParserTest {
         QuasarzoneDealItem ended = items.get(1);
         assertThat(ended.externalId()).isEqualTo("1984033");
         assertThat(ended.storeName()).isEqualTo("지마켓");
-        assertThat(ended.price()).isEqualTo(2_405_000L);
+        assertThat(ended.price()).isEqualByComparingTo("2405000");
+        assertThat(ended.currency()).isEqualTo("KRW");
         assertThat(ended.ended()).isTrue();
     }
 
@@ -81,14 +83,14 @@ class QuasarzoneListParserTest {
     void parsesPriceAsAmount() {
         List<QuasarzoneDealItem> items = parser.parse(fixtureHtml);
 
-        assertThat(items.get(0).price()).isEqualTo(0L);      // 무료 딜: ￦ 0 (KRW)
-        assertThat(items.get(1).price()).isEqualTo(36000L);  // ￦ 36,000 (KRW)
+        assertThat(items.get(0).price()).isEqualByComparingTo("0");
+        assertThat(items.get(1).price()).isEqualByComparingTo("36000");
 
-        // 원화 표기의 접미 변형은 파싱하고, 통화 컬럼이 없는 현재 모델에서 USD는 null로 둔다.
-        assertThat(items).filteredOn(item -> item.title().contains("UGREEN USB-C 허브"))
-                .singleElement().extracting(QuasarzoneDealItem::price).isNull();
-        assertThat(items).filteredOn(item -> item.externalId().equals("1968615"))
-                .singleElement().extracting(QuasarzoneDealItem::price).isEqualTo(10_850L);
+        var usd = items.stream().filter(item -> item.title().contains("UGREEN USB-C 허브")).findFirst().orElseThrow();
+        assertThat(usd.price()).isEqualByComparingTo("15.51");
+        assertThat(usd.currency()).isEqualTo("USD");
+        assertThat(items.stream().filter(item -> item.externalId().equals("1968615")).findFirst().orElseThrow().price())
+                .isEqualByComparingTo("10850");
     }
 
     @Test
@@ -97,7 +99,26 @@ class QuasarzoneListParserTest {
         List<QuasarzoneDealItem> items = parser.parse(singleItemHtml(
                 "1984189", "[알리] 투키 무선 충전기", "$ 25 (USD)"));
 
-        assertThat(items).singleElement().extracting(QuasarzoneDealItem::price).isNull();
+        assertThat(items.get(0).price()).isEqualByComparingTo("25");
+        assertThat(items.get(0).currency()).isEqualTo("USD");
+    }
+
+    @Test
+    void preservesReportedMiniPcDollarPriceExactly() {
+        var item = parser.parse(singleItemHtml("1989607",
+                "[알리] FIREBAT F1 미니PC AMD Ryzen 7 H255 LPDDR5 16GB RAM 512GB SSD",
+                "$ 382.76 (USD)")).get(0);
+        assertThat(item.price()).isEqualByComparingTo("382.76");
+        assertThat(item.currency()).isEqualTo("USD");
+    }
+
+    @Test
+    void rejectsAmbiguousUnsupportedOrMalformedAmounts() {
+        for (String price : List.of("$ 382.765 (USD)", "$ 3,82.76 (USD)", "$ -1 (USD)",
+                "$ 10~20 (USD)", "€ 20 (EUR)", "C$ 20 (CAD)", "$ 20 (KRW)", "￦ 20.50 (KRW)")) {
+            assertThat(parser.parse(singleItemHtml("1989607", "상품", price)).get(0).price())
+                    .as(price).isNull();
+        }
     }
 
     @Test

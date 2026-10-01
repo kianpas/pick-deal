@@ -17,7 +17,7 @@
 - 포맷: `application/json; charset=utf-8`
 - 인증: 사용자 로그인은 **MVP 없음**(단일 사용자). 내부적으로 고정 `user_id`(예: `1`)를 사용한다. 설정·기존 수동 등록 API는 공개 쓰기를 차단한다(`docs/06`). 원격 수집 API만 별도 Bearer 토큰을 사용하며, 사용자 인증이나 다른 쓰기 권한을 부여하지 않는다.
 - 시간 포맷: ISO-8601 문자열. 직렬화 시간대는 **`Asia/Seoul`(KST)**을 사용한다(예: `2026-05-20T20:36:00+09:00`).
-- 통화/금액: 금액은 정수(최소 화폐 단위 또는 원 단위)로 표현하고, `currency` 필드(예: `KRW`)를 함께 둔다.
+- 통화/금액: `price`·`originalPrice`는 JSON 숫자이며 `currency`를 함께 둔다. KRW는 원 단위 정수, USD는 달러 단위 소수점 최대 2자리(예: `382.76`)다. 환율 환산이나 센트 정수로의 변환은 하지 않는다.
 
 ### 1.2 공통 응답 래퍼
 
@@ -243,6 +243,10 @@ GET /api/v1/deals/{id}
         "dealId": 1024,
         "sourceId": 3,
         "sourceName": "샘플커뮤니티",
+        "title": "샘플 상품 원문 제목",
+        "price": 29900,
+        "currency": "KRW",
+        "shopName": "샘플 판매처",
         "originalUrl": "https://source.example.com/deal/abc",
         "productUrl": "https://shop.example.com/products/123",
         "commentCount": 18,
@@ -261,6 +265,7 @@ GET /api/v1/deals/{id}
 - `originalUrl`은 수집 출처의 커뮤니티 원문 게시글이고, `productUrl`은 원문이 별도 제공한 HTTP(S) 구매 링크다. 두 값의 의미를 합치거나 서로 대체하지 않는다.
 - `productUrl`은 상세 수집에 성공한 신규 Deal에만 있을 수 있는 nullable 값이다. 없으면 화면은 원문 링크만 제공한다.
 - `sourcePosts`는 같은 `DealGroup`의 출처별 원본 게시글이며 그룹이 없으면 현재 Deal 한 건을 반환한다. 기존 `/deals/{id}` URL과 상단 상세 필드는 요청한 Deal 기준으로 유지한다.
+- 각 `sourcePosts`의 `title`, `price`, `currency`, `shopName`은 해당 게시글의 저장값이다. 가격·판매처·댓글의 미확인은 null이며 출처 간 합산하거나 대표값으로 대체하지 않는다. 게시 시각 내림차순으로 제공한다.
 - 존재하지 않으면 404 + `code: DEAL_NOT_FOUND`.
 
 ### 2.4 (선택) 딜 수동 등록 — 내부용
@@ -456,7 +461,7 @@ DELETE /api/v1/keywords/{id}
   `ended`는 nullable boolean이다. true는 종료, false는 활성, null/생략은 미확인으로 기존 상태를 유지한다.
   신규 딜의 종료 여부가 미확인이면 기존 모델의 ACTIVE로 등록하며 판매 가능 여부를 보장하지 않는다.
   `shopName`을 붙인 실제 저장 제목은 300자 이하, shopName 100자, category 50자 이하다.
-- 가격은 nullable 원화 정수이며 0 이상, 댓글 수도 nullable 정수 0 이상이다.
+- 가격은 nullable이며 0 이상, 정수부 최대 19자리·소수부 최대 2자리다. `currency`는 `KRW` 또는 `USD`이며 생략하면 기존 수집기와 호환되도록 `KRW`로 처리한다. KRW의 소수 금액은 거부한다. 금액과 통화를 함께 저장·갱신하며, 가격 미확인 재수집은 기존 금액·통화를 보존한다. 댓글 수도 nullable 정수 0 이상이다.
 - 원문 URL은 출처/게시글 ID가 일치하는 HTTPS 주소만 허용한다.
   퀘이사존 `/bbs/qb_saleinfo/views/{externalId}`, 루리웹 `/market/board/1020/read/{externalId}`,
   뽐뿌 `/zboard/view.php?id=ppomppu&no={externalId}`를 사용하고 다른 쿼리/fragment는 제외한다.

@@ -56,7 +56,7 @@ public final class RemoteApiClient implements AutoCloseable {
 
     public void send(String source, List<CollectedDeal> deals) {
         var items = deals.stream().map(d -> new CollectionRequests.Item(d.externalId(), d.url(), d.storeName(),
-                d.title(), d.price(), d.category(), d.commentCount(), d.thumbnailUrl(), d.ended(), d.postedAt(), d.productUrl())).toList();
+                d.title(), d.price(), d.category(), d.commentCount(), d.thumbnailUrl(), d.ended(), d.postedAt(), d.productUrl(), d.currency())).toList();
         var result = post(ROOT, new CollectionRequests.Batch(source, items));
         if (!result.path("received").isIntegralNumber() || result.path("received").asInt() != deals.size()) {
             throw new Failure("Unconfirmed batch acceptance", true);

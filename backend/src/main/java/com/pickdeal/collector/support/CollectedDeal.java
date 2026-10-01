@@ -1,6 +1,7 @@
 package com.pickdeal.collector.support;
 
 import java.time.OffsetDateTime;
+import java.math.BigDecimal;
 
 /**
  * 출처별 파싱 결과를 표준 형태로 정규화한 딜 1건 (파이프라인의 normalize 산출물).
@@ -14,21 +15,32 @@ public record CollectedDeal(
         String url,
         String storeName,
         String title,
-        Long price,
+        BigDecimal price,
         String category,
         Integer commentCount,
         String thumbnailUrl,
         Boolean ended,
         OffsetDateTime postedAt,
-        String productUrl
+        String productUrl,
+        String currency
 ) {
+    public CollectedDeal {
+        currency = currency == null ? "KRW" : currency;
+    }
+
+    public CollectedDeal(String externalId, String url, String storeName, String title, Number price,
+            String category, Integer commentCount, String thumbnailUrl, Boolean ended,
+            OffsetDateTime postedAt, String productUrl) {
+        this(externalId, url, storeName, title, price == null ? null : new BigDecimal(price.toString()),
+                category, commentCount, thumbnailUrl, ended, postedAt, productUrl, "KRW");
+    }
 
     public CollectedDeal(
             String externalId,
             String url,
             String storeName,
             String title,
-            Long price,
+            Number price,
             String category,
             Integer commentCount,
             String thumbnailUrl,
@@ -51,6 +63,6 @@ public record CollectedDeal(
                 : storeName;
         return new CollectedDeal(
                 externalId, url, resolvedShopName, title, price, category, commentCount,
-                thumbnailUrl, ended, postedAt, detailProductUrl);
+                thumbnailUrl, ended, postedAt, detailProductUrl, currency);
     }
 }

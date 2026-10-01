@@ -27,7 +27,7 @@ class DogdripCollectServiceTest {
         var deal = deals.findBySourceIdAndExternalId(source.getId(), "725757041").orElseThrow();
         assertThat(deal.getStatus().name()).isEqualTo("EXPIRED");
         assertThat(deal.getProductUrl()).startsWith("https://sharkninja.co.kr/");
-        assertThat(deal.getPrice()).isEqualTo(20800L);
+        assertThat(deal.getPrice()).isEqualByComparingTo("20800");
         verify(client, times(2)).fetchListHtml();
         verify(client, times(3)).fetchDetailHtml(anyString());
     }

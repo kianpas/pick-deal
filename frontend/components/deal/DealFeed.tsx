@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode, RefObject } from "react";
 import { listLocation } from "@/lib/list-location";
+import { clearListSnapshot, saveListSnapshot, takeListSnapshot, type ListSnapshot } from "@/lib/list-resume";
 import { CategoryGrid } from "./CategoryGrid";
 import { DealList } from "./DealList";
 import { SortBar } from "./SortBar";
@@ -75,6 +76,7 @@ export function DealFeed(props: Props) {
       {...props}
       showThumbnail={showThumbnail}
       onToggleThumbnail={() => setShowThumbnail((value) => !value)}
+      onRestoreThumbnail={setShowThumbnail}
       filterPending={filterPending}
       onToggleHideEnded={toggleHideEnded}
       endedToggleRef={endedToggleRef}
@@ -84,10 +86,12 @@ export function DealFeed(props: Props) {
 
 function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, activeCategory, filters,
   showThumbnail, onToggleThumbnail,
+  onRestoreThumbnail,
   filterPending, onToggleHideEnded, endedToggleRef,
-}: Props & { showThumbnail: boolean; onToggleThumbnail: () => void; filterPending: boolean; onToggleHideEnded: () => void; endedToggleRef: RefObject<HTMLInputElement | null> }) {
+}: Props & { showThumbnail: boolean; onToggleThumbnail: () => void; onRestoreThumbnail: (value: boolean) => void; filterPending: boolean; onToggleHideEnded: () => void; endedToggleRef: RefObject<HTMLInputElement | null> }) {
   const searchParams = useSearchParams();
-  const listHref = listLocation(`/?${searchParams}`);
+  const listHref = listLocation(`/?${searchParams}`, false);
+  const resumeId = searchParams.get("resume");
   const [firstPageDeals, setFirstPageDeals] = useState(deals);
   const [currentCategories, setCurrentCategories] = useState(categories);
   const [currentLoadFailed, setCurrentLoadFailed] = useState(loadFailed);
@@ -98,10 +102,46 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
+  const [resumeReady, setResumeReady] = useState(false);
   const refreshGeneration = useRef(0);
+  const pendingPosition = useRef<ListSnapshot | null>(null);
+
+  useEffect(() => {
+    // 라우트 이동이 끝난 프레임에서 같은 탭의 일회성 스냅샷을 복원한다.
+    const frame = requestAnimationFrame(() => {
+      const saved = takeListSnapshot(listHref, resumeId);
+      setResumeReady(true);
+      if (!saved || loadFailed) return;
+      pendingPosition.current = saved;
+      setFirstPageDeals(saved.deals);
+      setExtraDeals([]);
+      setNextPage(saved.nextPage);
+      setHasNext(saved.hasNext);
+      onRestoreThumbnail(saved.showThumbnail);
+      // 복귀 표식을 현재 이력에서 제거한다. 이후 다른 상품의 브라우저 뒤로 가기와 충돌하지 않는다.
+      if (resumeId !== null) window.history.replaceState(window.history.state, "", listHref);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [listHref, resumeId, loadFailed, onRestoreThumbnail]);
+
+  useEffect(() => {
+    const saved = pendingPosition.current;
+    if (!saved) return;
+    const frame = requestAnimationFrame(() => {
+      const card = document.querySelector<HTMLElement>(`[data-deal-id="${saved.selectedDealId}"]`);
+      const titleLink = card?.querySelector<HTMLAnchorElement>("[data-detail-title]");
+      titleLink?.focus({ preventScroll: true });
+      if (window.innerWidth === saved.viewportWidth) window.scrollTo(0, saved.scrollY);
+      else card?.scrollIntoView({ block: "start" });
+      pendingPosition.current = null;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [firstPageDeals, showThumbnail]);
 
   useEffect(() => {
     async function refreshFirstPage() {
+      clearListSnapshot();
+      pendingPosition.current = null;
       const generation = ++refreshGeneration.current;
       setRefreshing(true);
       setLoadingMore(false);
@@ -138,6 +178,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
   }, [listParams]);
 
   async function loadMore() {
+    if (!resumeReady || loadingMore || refreshing || filterPending) return;
     const generation = refreshGeneration.current;
     setLoadingMore(true);
     setLoadError(false);
@@ -155,6 +196,10 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
   }
 
   const allDeals = extraDeals.length > 0 ? [...firstPageDeals, ...extraDeals] : firstPageDeals;
+  function rememberList(selectedDealId: number) {
+    saveListSnapshot({ listHref, deals: allDeals, nextPage, hasNext, selectedDealId,
+      scrollY: window.scrollY, viewportWidth: window.innerWidth, showThumbnail });
+  }
   const filtered = Boolean(listParams.q || listParams.category || listParams.sourceId?.length || listParams.shopName?.length || listParams.hideEnded);
   const registeredAt = latestRegisteredAt(allDeals);
 
@@ -201,7 +246,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
         </div>
       ) : allDeals.length > 0 ? (
         <>
-          <DealList deals={allDeals} showThumbnail={showThumbnail} listHref={listHref} />
+          <DealList deals={allDeals} showThumbnail={showThumbnail} listHref={listHref} onOpenDetail={rememberList} />
           {hasNext && (
             <div className="flex flex-col items-center gap-2 pt-1">
               {loadError && (
@@ -212,7 +257,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
               <button
                 type="button"
                 onClick={loadMore}
-                disabled={loadingMore || refreshing || filterPending}
+                disabled={!resumeReady || loadingMore || refreshing || filterPending}
                 className="w-full rounded-xl border border-border bg-surface py-2.5 text-sm font-medium text-fg-muted transition hover:bg-surface-hover hover:text-fg disabled:opacity-50 sm:max-w-xs"
               >
                 {loadingMore ? "불러오는 중…" : refreshing ? "목록 갱신 중…" : "더 보기"}
@@ -221,7 +266,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
           )}
           {registeredAt && (
             <p className="text-center text-xs text-fg-subtle" suppressHydrationWarning>
-              최근 등록 {formatRelativeTime(registeredAt)}
+              이 목록의 최근 등록 {formatRelativeTime(registeredAt)}
             </p>
           )}
         </>

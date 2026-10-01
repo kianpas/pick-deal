@@ -23,8 +23,6 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class DealUpsertSupport {
 
-    private static final String DEFAULT_CURRENCY = "KRW";
-
     private final SourceRepository sourceRepository;
     private final DealRepository dealRepository;
     private final DealGroupingService dealGroupingService;
@@ -70,7 +68,7 @@ public class DealUpsertSupport {
                 boundedOptional(source, "category", deal.category(), 50), deal.commentCount(),
                 boundedOptional(source, "thumbnailUrl", deal.thumbnailUrl(), 1000),
                 deal.ended(), deal.postedAt(),
-                boundedOptional(source, "productUrl", deal.productUrl(), 2000));
+                boundedOptional(source, "productUrl", deal.productUrl(), 2000), deal.currency());
         if (valid.rawTitle().length() > 300) {
             log.warn("수집 제목이 저장 길이를 초과하여 항목을 건너뜀 [{}]", source.getCode());
             return null;
@@ -120,6 +118,9 @@ public class DealUpsertSupport {
                             collected.price(), collected.category(), collected.storeName(),
                             collected.productUrl(), collected.commentCount(),
                             collected.ended() == null ? existing.getStatus() : status);
+                    if (collected.price() != null) {
+                        existing.updateCurrency(collected.currency());
+                    }
                     existing.updateTitleNormHash(
                             DealMatchNormalizer.titleHash(existing.getTitle(), existing.getShopName(), existing.getPrice()));
                     dealGroupingService.groupIfMatched(existing);
@@ -140,7 +141,7 @@ public class DealUpsertSupport {
                 collected.price(),
                 null,
                 null,
-                DEFAULT_CURRENCY,
+                collected.currency(),
                 collected.category(),
                 collected.storeName(),
                 collected.commentCount(),

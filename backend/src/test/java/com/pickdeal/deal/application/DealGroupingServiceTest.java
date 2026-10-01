@@ -276,6 +276,24 @@ class DealGroupingServiceTest {
         assertThat(second.getDealGroup()).isNull();
     }
 
+    @Test
+    void rejectsSameAmountInDifferentCurrenciesAndMatchesDecimalScales() {
+        Deal krw = saveDeal(saveSource("money-krw"), "1", "상품", "알리", 382L, null, null);
+        Deal usd = saveDeal(saveSource("money-usd"), "2", "상품", "알리", 382L, null, null);
+        usd.updateCurrency("USD");
+        groupingService.groupIfMatched(usd);
+        assertThat(krw.getDealGroup()).isNull();
+        assertThat(usd.getDealGroup()).isNull();
+
+        Deal usd2 = saveDeal(saveSource("money-usd-2"), "3", "상품", "알리", 382L, null, null);
+        usd2.updateCurrency("USD");
+        usd.updateFromRecollection(new java.math.BigDecimal("382.76"), null, null, null, null, DealStatus.ACTIVE);
+        usd2.updateFromRecollection(new java.math.BigDecimal("382.760"), null, null, null, null, DealStatus.ACTIVE);
+        groupingService.groupIfMatched(usd2);
+        assertThat(usd.getDealGroup()).isNotNull().isSameAs(usd2.getDealGroup());
+        assertThat(krw.getDealGroup()).isNull();
+    }
+
     private Deal saveDeal(
             Source source,
             String externalId,

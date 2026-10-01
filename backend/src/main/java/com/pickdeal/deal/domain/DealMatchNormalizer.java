@@ -8,6 +8,7 @@ import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.math.BigDecimal;
 
 /** 교차 출처 후보 탐색에 사용할 보수적인 제목·판매몰 정규화 규칙. */
 public final class DealMatchNormalizer {
@@ -29,7 +30,7 @@ public final class DealMatchNormalizer {
         return normalizeTitle(title, shopName, null);
     }
 
-    public static String normalizeTitle(String title, String shopName, Long price) {
+    public static String normalizeTitle(String title, String shopName, Number price) {
         if (title == null || title.isBlank()) {
             return null;
         }
@@ -55,7 +56,7 @@ public final class DealMatchNormalizer {
         return titleHash(title, shopName, null);
     }
 
-    public static String titleHash(String title, String shopName, Long price) {
+    public static String titleHash(String title, String shopName, Number price) {
         String normalizedTitle = normalizeTitle(title, shopName, price);
         if (normalizedTitle == null) {
             return null;
@@ -79,7 +80,7 @@ public final class DealMatchNormalizer {
         return result.isBlank() ? null : SHOP_ALIASES.getOrDefault(result, result);
     }
 
-    private static String removeVerifiedPriceSuffix(String title, Long price) {
+    private static String removeVerifiedPriceSuffix(String title, Number price) {
         if (price == null) {
             return title;
         }
@@ -87,7 +88,7 @@ public final class DealMatchNormalizer {
             var match = pattern.matcher(title);
             if (match.find()) {
                 try {
-                    if (Long.parseLong(match.group(1).replace(",", "")) == price) {
+                    if (new BigDecimal(match.group(1).replace(",", "")).compareTo(new BigDecimal(price.toString())) == 0) {
                         return title.substring(0, match.start()).trim();
                     }
                 } catch (NumberFormatException ignored) {

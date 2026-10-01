@@ -10,9 +10,9 @@ import org.jsoup.nodes.Element;
 /** 네트워크·DB 없는 목록 파서. 자동 수집기에는 아직 등록하지 않는다. */
 public final class PpomppuListParser {
     public static final String BASE_URL = "https://www.ppomppu.co.kr/zboard/";
-    // 원화 단위와 가격/배송비 구분이 명시된 마지막 괄호만 인정한다.
+    // 마지막 괄호의 명시적인 원화 가격만 인정한다. 배송비 표기는 선택 사항이다.
     private static final Pattern PRICE = Pattern.compile(
-            "\\(([0-9]+|[1-9][0-9]{0,2}(?:,[0-9]{3})+)\\s*원\\s*/[^()]+\\)\\s*$");
+            "\\(([0-9]+|[1-9][0-9]{0,2}(?:,[0-9]{3})+)\\s*원\\s*(?:/[^()]+)?\\)\\s*$");
 
     public List<PpomppuDealItem> parse(String html) {
         var document = Jsoup.parse(html, BASE_URL);
@@ -66,6 +66,9 @@ public final class PpomppuListParser {
     }
 
     private static Long price(String title) {
+        // 적립·환급·할인 금액을 판매가로 오인하지 않는다.
+        if (title.contains("적립") || title.contains("캐시백") || title.contains("환급")
+                || title.contains("쿠폰팩") || title.contains("원 할인")) return null;
         var matcher = PRICE.matcher(title);
         if (!matcher.find()) return null;
         try { return Long.valueOf(matcher.group(1).replace(",", "")); }
