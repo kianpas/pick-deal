@@ -55,7 +55,7 @@ class QuasarzoneCollectServiceTest {
                 .filter(deal -> deal.getExternalId().equals("1968628"))
                 .findFirst().orElseThrow();
         assertThat(first.getTitle()).isEqualTo("[쿠팡] 오리코 PD 100W SD/TF 리더 M.2 SSD 외장하드 케이스");
-        assertThat(first.getPrice()).isEqualTo(36000L);
+        assertThat(first.getPrice()).isEqualByComparingTo("36000");
         assertThat(first.getCurrency()).isEqualTo("KRW");
         assertThat(first.getCommentCount()).isEqualTo(1);
         assertThat(first.getStatus()).isEqualTo(DealStatus.ACTIVE);
@@ -98,10 +98,25 @@ class QuasarzoneCollectServiceTest {
 
         Source source = sourceRepository.findByCode("quasarzone").orElseThrow();
         Deal updated = dealRepository.findBySourceIdAndExternalId(source.getId(), "9999901").orElseThrow();
-        assertThat(updated.getPrice()).isEqualTo(8000L);
+        assertThat(updated.getPrice()).isEqualByComparingTo("8000");
         assertThat(updated.getCategory()).isEqualTo("게임/SW");
         assertThat(updated.getCommentCount()).isEqualTo(9);
         assertThat(updated.getStatus()).isEqualTo(DealStatus.EXPIRED);
+    }
+
+    @Test
+    void savesAndRecollectsUsdWithoutLosingCentsOrCurrency() {
+        given(client.fetchListHtml(1))
+                .willReturn(singleItemHtml("1989607", "진행중", "가격 확인 중", "PC/하드웨어", 1))
+                .willReturn(singleItemHtml("1989607", "진행중", "$ 382.76 (USD)", "PC/하드웨어", 2))
+                .willReturn(singleItemHtml("1989607", "진행중", "가격 확인 중", "PC/하드웨어", 3));
+        collectService.collect();
+        assertThat(collectService.collect()).isZero();
+        collectService.collect();
+        var source = sourceRepository.findByCode("quasarzone").orElseThrow();
+        var saved = dealRepository.findBySourceIdAndExternalId(source.getId(), "1989607").orElseThrow();
+        assertThat(saved.getPrice()).isEqualByComparingTo("382.76");
+        assertThat(saved.getCurrency()).isEqualTo("USD");
     }
 
     /** 실제 목록 마크업을 축약한 딜 1건짜리 목록 HTML. */

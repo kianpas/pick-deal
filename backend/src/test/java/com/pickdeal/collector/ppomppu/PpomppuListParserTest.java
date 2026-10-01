@@ -68,6 +68,29 @@ class PpomppuListParserTest {
         assertThat(parser.parse(withTitle("상품 (0원/무료)")).get(0).price()).isZero();
     }
 
+    @Test
+    void parsesBurgerKingTrailingPriceWithoutShippingSeparator() throws Exception {
+        String title = "버거킹 롱치킨버거+와퍼주니어+콜라R+콜라R+프렌치프라이R(8,550원)";
+        var item = parser.parse(withTitle(title)).get(0);
+        assertThat(item.price()).isEqualTo(8550L);
+        assertThat(item.title()).isEqualTo(title);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"상품 (8550원)", "상품 (8,550 원)", "상품 (8,550원/무료배송)"})
+    void acceptsExplicitWonPrices(String title) throws Exception {
+        assertThat(parser.parse(withTitle(title)).get(0).price()).isEqualTo(8550L);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"상품 (12,34원)", "상품 (8,550원부터)", "상품 ($8,550)",
+            "상품 8,550원", "상품 (8,550원)부터", "클릭 적립 (100원)",
+            "캐시백 행사 (8,550원)", "구매 환급 (8,550원)", "쿠폰팩 (8,550원)",
+            "1,000원 할인 쿠폰 (1,000원)"})
+    void doesNotTreatAmbiguousOrBenefitAmountsAsSalePrices(String title) throws Exception {
+        assertThat(parser.parse(withTitle(title)).get(0).price()).isNull();
+    }
+
     private String withTitle(String title) throws Exception {
         var doc = Jsoup.parse(fixture());
         doc.selectFirst("tr.baseList a.baseList-title").text(title);

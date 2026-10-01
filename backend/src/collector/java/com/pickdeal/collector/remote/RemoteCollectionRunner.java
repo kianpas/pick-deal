@@ -75,7 +75,7 @@ public final class RemoteCollectionRunner {
                     || item.url() == null || item.url().length() > 1000) continue;
             target.putIfAbsent(item.externalId(), new CollectedDeal(item.externalId(), item.url(), bounded(item.storeName(), 100),
                     item.title(), item.price(), bounded(item.category(), 50), item.commentCount(), safeUrl(item.thumbnailUrl(), 1000),
-                    item.ended(), item.postedAt(), safeUrl(item.productUrl(), 2000)));
+                    item.ended(), item.postedAt(), safeUrl(item.productUrl(), 2000), item.currency()));
         }
     }
     private static String bounded(String value, int max) { return value == null || value.length() > max ? null : value; }

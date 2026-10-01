@@ -196,7 +196,7 @@ class DealServiceTest {
     }
 
     @Test
-    @DisplayName("그룹 딜 상세는 출처별 원문과 댓글 수를 각각 제공한다")
+    @DisplayName("그룹 상세는 요청한 딜 기준을 유지하고 출처별 원문 가격 상태와 미확인을 보존한다")
     void groupedDetailExposesSourcePostsWithoutSummingComments() {
         keywordRepository.deleteAll();
         Source firstSource = sourceRepository.save(
@@ -204,17 +204,40 @@ class DealServiceTest {
         Source secondSource = sourceRepository.save(
                 new Source("상세출처B", "https://detail-b.example.com", "group-detail-b", true));
         Deal first = saveDeal(firstSource, "group-detail-1", "기타", DealStatus.ACTIVE, 4);
-        Deal second = saveDeal(secondSource, "group-detail-2", "기타", DealStatus.ACTIVE, 11);
+        OffsetDateTime later = first.getPostedAt().plusMinutes(1);
+        Deal second = dealRepository.save(new Deal(
+                secondSource, "다른 원문 제목", null, null, null, null, "USD",
+                "기타", "원문 판매처", null, null, "https://cat.example.com/group-detail-2",
+                "https://shop.example.com/item", "group-detail-2", null,
+                DealStatus.EXPIRED, later, later));
         DealGroup group = joinGroup(first, second);
 
         var detail = dealService.findDeal(first.getId());
 
         assertThat(detail.groupId()).isEqualTo(group.getId());
+        assertThat(detail.title()).isEqualTo(first.getTitle());
+        assertThat(detail.price()).isEqualByComparingTo("1000");
+        assertThat(detail.status()).isEqualTo("ACTIVE");
         assertThat(detail.sourcePosts()).hasSize(2);
         assertThat(detail.sourcePosts()).extracting(post -> post.sourceName())
                 .containsExactlyInAnyOrder("상세출처A", "상세출처B");
         assertThat(detail.sourcePosts()).extracting(post -> post.commentCount())
-                .containsExactlyInAnyOrder(4, 11);
+                .containsExactlyInAnyOrder(4, null);
+        assertThat(detail.sourcePosts().get(0)).satisfies(post -> {
+            assertThat(post.dealId()).isEqualTo(second.getId());
+            assertThat(post.title()).isEqualTo("다른 원문 제목");
+            assertThat(post.price()).isNull();
+            assertThat(post.currency()).isEqualTo("USD");
+            assertThat(post.shopName()).isEqualTo("원문 판매처");
+            assertThat(post.status()).isEqualTo("EXPIRED");
+            assertThat(post.productUrl()).isEqualTo("https://shop.example.com/item");
+        });
+        assertThat(detail.sourcePosts().get(1)).satisfies(post -> {
+            assertThat(post.title()).isEqualTo(first.getTitle());
+        assertThat(post.price()).isEqualByComparingTo("1000");
+            assertThat(post.currency()).isEqualTo("KRW");
+            assertThat(post.shopName()).isNull();
+        });
         assertThat(detail.sourcePosts()).extracting(post -> post.originalUrl())
                 .containsExactlyInAnyOrder(
                         "https://cat.example.com/group-detail-1",

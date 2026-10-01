@@ -8,8 +8,8 @@ import java.util.List;
 public record DealSummaryResponse(
         Long id,
         String title,
-        Long price,
-        Long originalPrice,
+        java.math.BigDecimal price,
+        java.math.BigDecimal originalPrice,
         Integer discountRate,
         String currency,
         String category,

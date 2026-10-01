@@ -1,7 +1,8 @@
 import { DealThumbnail } from "@/components/deal/DealThumbnail";
+import { SourcePostComparison } from "@/components/deal/SourcePostComparison";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink, Flame, MessageCircle } from "lucide-react";
+import { ArrowLeft, ExternalLink, Flame } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ApiError, getDeal } from "@/lib/api";
 import type { DealDetail, DealStatus } from "@/lib/api-types";
@@ -108,7 +109,7 @@ export default async function DealDetailPage({
             </h1>
 
             <div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">
-              <span className="font-medium text-fg">{deal.sourceNames.join(" · ")}</span>
+              <span className="font-medium text-fg">{deal.sourceName}{grouped ? " 게시글 기준" : ""}</span>
               {grouped && (
                 <span className="rounded-md bg-brand-soft px-1.5 py-0.5 font-medium text-brand">
                   출처 {deal.sourcePosts.length}곳
@@ -126,7 +127,7 @@ export default async function DealDetailPage({
               </div>
             )}
             <div className="min-w-0 space-y-1">
-              <p className="text-xs text-fg-muted">가격</p>
+              <p className="text-xs text-fg-muted">가격 · {deal.sourceName} 게시글 기준</p>
               {deal.price === 0 ? (
                 <span className="inline-flex items-center rounded-md bg-positive-soft px-2 py-0.5 text-sm font-semibold text-positive">
                   무료
@@ -150,6 +151,8 @@ export default async function DealDetailPage({
               )}
             </div>
           </div>
+
+          {grouped && <SourcePostComparison posts={deal.sourcePosts} currentDealId={deal.id} />}
 
           {/* 단일 Deal은 원문 CTA를 유지하고, 그룹 원문은 출처별 영역에서 제공한다. */}
           {(deal.productUrl || !grouped) && (
@@ -203,65 +206,6 @@ export default async function DealDetailPage({
             <section className="space-y-2" aria-labelledby="description-heading">
               <h2 id="description-heading" className="text-base font-semibold">상품 설명</h2>
               <p className="whitespace-pre-wrap wrap-anywhere text-sm leading-relaxed text-fg-muted">{deal.description}</p>
-            </section>
-          )}
-
-          {grouped && (
-            <section className="space-y-2" aria-labelledby="source-posts-heading">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 id="source-posts-heading" className="text-base font-semibold text-fg">
-                  출처별 게시글
-                </h2>
-                <span className="text-xs text-fg-muted">댓글 수는 출처별 반응입니다</span>
-              </div>
-              <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface/40">
-                {deal.sourcePosts.map((post) => {
-                  const postBadge = statusBadge(post.status);
-                  return (
-                    <div key={post.dealId} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2 text-sm">
-                          <span className="font-medium text-fg">{post.sourceName}</span>
-                          {postBadge && (
-                            <span className={`rounded-md px-1.5 py-0.5 text-xs font-semibold ${postBadge.className}`}>
-                              {postBadge.label}
-                            </span>
-                          )}
-                          {post.commentCount !== null && (
-                            <span className="inline-flex items-center gap-1 text-xs text-fg-muted" aria-label={`댓글 ${post.commentCount}개`}>
-                              <MessageCircle className="size-3" aria-hidden="true" />
-                              {post.commentCount}
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-1 text-xs text-fg-muted">{formatFullDateTime(post.postedAt)}</p>
-                      </div>
-                      <div className="flex shrink-0 gap-2">
-                        {post.productUrl && (
-                          <a
-                            href={post.productUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-fg transition hover:border-border-strong"
-                          >
-                            구매처
-                            <ExternalLink className="size-3.5" />
-                          </a>
-                        )}
-                        <a
-                          href={post.originalUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-brand-strong px-3 py-2 text-xs font-semibold text-white transition hover:brightness-110"
-                        >
-                          원문
-                          <ExternalLink className="size-3.5" />
-                        </a>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </section>
           )}
 

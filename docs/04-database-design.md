@@ -38,8 +38,8 @@
 | `external_id` | varchar(200) | not null | 출처 내 원본 식별자(dedup용) |
 | `title` | varchar(300) | not null | 제목 |
 | `description` | text | null | 본문/상세 설명 |
-| `price` | bigint | null | 판매가(통화 최소단위/원 단위 정수) |
-| `original_price` | bigint | null | 정가 |
+| `price` | numeric(21,2) | null | 판매가(KRW는 원 단위 정수, USD는 달러 단위 소수점 2자리) |
+| `original_price` | numeric(21,2) | null | 정가(판매가와 동일한 통화·단위) |
 | `discount_rate` | int | null | 할인율(%) — 저장 또는 계산값. 정렬용으로 컬럼 유지 권장 |
 | `currency` | varchar(8) | not null default 'KRW' | 통화 코드 |
 | `category` | varchar(50) | null | 정확한 별칭만 최소 정규화한 카테고리(미등록 값은 출처 원문 유지) |

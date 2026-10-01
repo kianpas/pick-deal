@@ -20,7 +20,7 @@ class DogdripCollectorTest {
         var first = deals.get(0);
         assertThat(first.externalId()).isEqualTo("725854470");
         assertThat(first.storeName()).isEqualTo("자사몰");
-        assertThat(first.price()).isEqualTo(399840L);
+        assertThat(first.price()).isEqualByComparingTo("399840");
         assertThat(first.category()).isEqualTo("생활용품");
         assertThat(first.postedAt()).isEqualTo(now.minusMinutes(6));
         assertThat(first.thumbnailUrl()).startsWith("https://www.dogdrip.net/files/thumbnails/");

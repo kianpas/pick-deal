@@ -122,7 +122,9 @@ public class DealGroupingService {
         boolean sameShopAndPrice = shopKey != null
                 && shopKey.equals(candidateShopKey)
                 && deal.getPrice() != null
-                && deal.getPrice().equals(candidate.getPrice());
+                && candidate.getPrice() != null
+                && deal.getCurrency().equals(candidate.getCurrency())
+                && deal.getPrice().compareTo(candidate.getPrice()) == 0;
         return sameShopAndPrice && (sameProductUrl || sameTitleHash);
     }
 

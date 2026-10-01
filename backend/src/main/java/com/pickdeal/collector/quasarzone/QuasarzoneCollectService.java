@@ -85,7 +85,9 @@ public class QuasarzoneCollectService implements SourceCollector {
                 item.commentCount(),
                 item.thumbnailUrl(),
                 item.ended(),
-                postedAtResolver.resolve(item.postedAtText(), now)
+                postedAtResolver.resolve(item.postedAtText(), now),
+                null,
+                item.currency()
         );
     }
 }

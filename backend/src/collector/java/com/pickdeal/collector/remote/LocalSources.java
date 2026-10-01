@@ -42,7 +42,7 @@ public final class LocalSources implements AutoCloseable {
                             .stream().map(i -> new CollectedDeal(i.externalId(),
                                     "https://quasarzone.com/bbs/qb_saleinfo/views/" + i.externalId(), i.storeName(), i.title(),
                                     i.price(), CategoryNormalizer.normalize(i.category()), i.commentCount(), i.thumbnailUrl(),
-                                    i.ended(), new QuasarzonePostedAtResolver().resolve(i.postedAtText(), now))).toList();
+                                    i.ended(), new QuasarzonePostedAtResolver().resolve(i.postedAtText(), now), null, i.currency())).toList();
                     case "ruliweb" -> new RuliwebListParser().parse(fetch(
                             "https://bbs.ruliweb.com/market/board/1020" + (page == 1 ? "" : "?page=" + page), false))
                             .stream().map(i -> new CollectedDeal(i.externalId(),

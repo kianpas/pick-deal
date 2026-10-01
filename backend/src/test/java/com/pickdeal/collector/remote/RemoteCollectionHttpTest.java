@@ -46,9 +46,38 @@ class RemoteCollectionHttpTest {
             long sourceId = sources.findByCode("ppomppu").orElseThrow().getId();
             assertThat(deals.findKnownExternalIds(sourceId, parsed.stream().map(CollectedDeal::externalId).toList())).hasSize(4);
             var saved = deals.findBySourceIdAndExternalId(sourceId, "735731").orElseThrow();
-            assertThat(saved.getPrice()).isEqualTo(24800L);
+        assertThat(saved.getPrice()).isEqualByComparingTo("24800");
             assertThat(saved.getPostedAt()).isEqualTo(LocalSources.ppomppuTime("26.09.20 14:07:27"));
             assertThat(saved.getProductUrl()).isNull();
+        }
+    }
+
+    @Test
+    void sendsUsdThroughRunnerAndHttpWithExactCents() throws Exception {
+        var item = new CollectedDeal("1989607", "https://quasarzone.com/bbs/qb_saleinfo/views/1989607",
+                "알리", "미니PC", new java.math.BigDecimal("382.76"), "PC/하드웨어", 0,
+                null, false, java.time.OffsetDateTime.now(), null, "USD");
+        var source = new RemoteCollectionRunner.Source() {
+            public String code() { return "quasarzone"; }
+            public List<CollectedDeal> list(int page) { return List.of(item); }
+            public CollectedDeal detail(CollectedDeal deal) { return deal.withProductInfo("알리", null); }
+        };
+        try (var api = new RemoteApiClient("http://127.0.0.1:" + port, "test-only-collector-token-0123456789")) {
+            var runner = new RemoteCollectionRunner(api, 1, 1);
+            runner.run(source);
+            runner.run(source);
+            long sourceId = sources.findByCode("quasarzone").orElseThrow().getId();
+            var saved = deals.findBySourceIdAndExternalId(sourceId, "1989607").orElseThrow();
+            assertThat(saved.getPrice()).isEqualByComparingTo("382.76");
+            assertThat(saved.getCurrency()).isEqualTo("USD");
+            var response = java.net.http.HttpClient.newHttpClient().send(
+                    java.net.http.HttpRequest.newBuilder(java.net.URI.create(
+                            "http://127.0.0.1:" + port + "/api/v1/deals/" + saved.getId())).GET().build(),
+                    java.net.http.HttpResponse.BodyHandlers.ofString());
+            assertThat(response.statusCode()).isEqualTo(200);
+            var data = tools.jackson.databind.json.JsonMapper.builder().build().readTree(response.body()).get("data");
+            assertThat(data.get("price").decimalValue()).isEqualByComparingTo("382.76");
+            assertThat(data.get("currency").asString()).isEqualTo("USD");
         }
     }
 

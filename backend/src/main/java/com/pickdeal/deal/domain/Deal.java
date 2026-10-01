@@ -17,6 +17,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.OffsetDateTime;
+import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -65,10 +66,11 @@ public class Deal extends BaseTimeEntity {
     private String description;
 
     /** 판매가. 가격 정보가 없을 수 있어 nullable. */
-    private Long price;
+    @Column(precision = 21, scale = 2)
+    private BigDecimal price;
 
-    @Column(name = "original_price")
-    private Long originalPrice;
+    @Column(name = "original_price", precision = 21, scale = 2)
+    private BigDecimal originalPrice;
 
     @Column(name = "discount_rate")
     private Integer discountRate;
@@ -128,8 +130,8 @@ public class Deal extends BaseTimeEntity {
             Source source,
             String title,
             String description,
-            Long price,
-            Long originalPrice,
+            Number price,
+            Number originalPrice,
             Integer discountRate,
             String currency,
             String category,
@@ -147,8 +149,8 @@ public class Deal extends BaseTimeEntity {
         this.source = source;
         this.title = title;
         this.description = description;
-        this.price = price;
-        this.originalPrice = originalPrice;
+        this.price = price == null ? null : new BigDecimal(price.toString());
+        this.originalPrice = originalPrice == null ? null : new BigDecimal(originalPrice.toString());
         this.discountRate = discountRate;
         this.currency = currency;
         this.category = category;
@@ -166,14 +168,16 @@ public class Deal extends BaseTimeEntity {
 
     /** 재수집 시 변동 가능한 값과 새로 확인된 판매몰 정보를 갱신한다. */
     public void updateFromRecollection(
-            Long price,
+            Number price,
             String category,
             String shopName,
             String productUrl,
             Integer commentCount,
             DealStatus status
     ) {
-        this.price = price;
+        if (price != null) {
+            this.price = new BigDecimal(price.toString());
+        }
         this.category = category;
         if (shopName != null && !shopName.isBlank()) {
             this.shopName = shopName;
@@ -187,6 +191,11 @@ public class Deal extends BaseTimeEntity {
 
     public void updateTitleNormHash(String titleNormHash) {
         this.titleNormHash = titleNormHash;
+    }
+
+    /** 재수집 시 금액과 함께 통화를 갱신한다. */
+    public void updateCurrency(String currency) {
+        this.currency = currency;
     }
 
     public void joinGroup(DealGroup dealGroup) {

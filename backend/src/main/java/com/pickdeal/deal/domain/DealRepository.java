@@ -88,5 +88,5 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
             left join fetch d.dealGroup
             where d.source.id <> :sourceId and d.price = :price
             """)
-    List<Deal> findCrossSourceCandidatesByPrice(@Param("sourceId") Long sourceId, @Param("price") Long price);
+    List<Deal> findCrossSourceCandidatesByPrice(@Param("sourceId") Long sourceId, @Param("price") java.math.BigDecimal price);
 }

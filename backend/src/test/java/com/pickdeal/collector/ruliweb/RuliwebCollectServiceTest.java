@@ -51,7 +51,7 @@ class RuliwebCollectServiceTest {
         Deal deal = dealRepository.findBySourceIdAndExternalId(source.getId(), "106481").orElseThrow();
         // 제목은 출처 게시판 원문 그대로 저장한다(판매처 접두사 포함)
         assertThat(deal.getTitle()).isEqualTo("[롯데온] 스위치2+스플래툰 레이더스+ 아미보 / 730900원");
-        assertThat(deal.getPrice()).isEqualTo(730900L);
+        assertThat(deal.getPrice()).isEqualByComparingTo("730900");
         assertThat(deal.getCurrency()).isEqualTo("KRW");
         assertThat(deal.getCategory()).isEqualTo("게임H/W");
         assertThat(deal.getCommentCount()).isEqualTo(5);

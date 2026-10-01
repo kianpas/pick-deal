@@ -101,6 +101,10 @@ export interface DealSourcePost {
   dealId: number;
   sourceId: number;
   sourceName: string;
+  title: string;
+  price: number | null;
+  currency: string;
+  shopName: string | null;
   originalUrl: string;
   productUrl: string | null;
   commentCount: number | null;

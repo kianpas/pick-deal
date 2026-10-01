@@ -32,13 +32,34 @@ class ComposeMigrationTest {
     @Autowired Flyway flyway;
     @Autowired JdbcTemplate jdbc;
     @Autowired ApplicationContext context;
+    @Autowired javax.sql.DataSource dataSource;
+
+    @Test
+    void upgradesV1WithoutChangingKrwAndPersistsUsdCents() {
+        String schema = "decimal_upgrade";
+        Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration").target("1").load().migrate();
+        jdbc.update("insert into " + schema + ".source (name, base_url, code) values ('test', 'https://example.com', 'test')");
+        Long sourceId = jdbc.queryForObject("select id from " + schema + ".source", Long.class);
+        jdbc.update("insert into " + schema + ".deal (source_id, external_id, title, original_url, posted_at, price)"
+                + " values (?, 'legacy', 'test', 'https://example.com', current_timestamp, 89000)", sourceId);
+        var upgrade = Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration").load();
+        assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select price from " + schema + ".deal", java.math.BigDecimal.class))
+                .isEqualByComparingTo("89000");
+        jdbc.update("update " + schema + ".deal set price=?, currency='USD'", new java.math.BigDecimal("382.76"));
+        assertThat(jdbc.queryForObject("select price from " + schema + ".deal", java.math.BigDecimal.class))
+                .isEqualByComparingTo("382.76");
+        assertThat(upgrade.migrate().migrationsExecuted).isZero();
+    }
 
     @Test
     void migratesEmptyDatabaseValidatesEntitiesAndPreservesDataOnNextMigration() {
         // 컨텍스트 기동 자체가 compose 프로필의 Hibernate validate 통과를 검증한다.
         assertThat(context.getEnvironment().getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
         assertThat(context.getBeansOfType(SeedDataInitializer.class)).isEmpty();
-        assertThat(flyway.info().current().getVersion().toString()).isEqualTo("1");
+        assertThat(flyway.info().current().getVersion().toString()).isEqualTo("2");
         for (String table : new String[]{"source", "deal", "deal_group", "keyword", "source_visibility"}) {
             assertThat(jdbc.queryForObject("select count(*) from " + table, Long.class)).isZero();
         }
@@ -60,6 +81,6 @@ class ComposeMigrationTest {
 
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("select count(*) from deal", Long.class)).isEqualTo(2L);
-        assertThat(flyway.info().applied()).hasSize(1);
+        assertThat(flyway.info().applied()).hasSize(2);
     }
 }

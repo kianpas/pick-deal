@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.AssertTrue;
 import java.time.OffsetDateTime;
 
 public record CreateDealRequest(
@@ -16,13 +18,13 @@ public record CreateDealRequest(
 
         String description,
 
-        @PositiveOrZero Long price,
+        @PositiveOrZero @Digits(integer = 19, fraction = 2) java.math.BigDecimal price,
 
-        @PositiveOrZero Long originalPrice,
+        @PositiveOrZero @Digits(integer = 19, fraction = 2) java.math.BigDecimal originalPrice,
 
         @PositiveOrZero Integer discountRate,
 
-        @Size(max = 8)
+        @Size(max = 8) @Pattern(regexp = "KRW|USD")
         String currency,
 
         @Size(max = 50)
@@ -49,4 +51,18 @@ public record CreateDealRequest(
         @NotNull
         OffsetDateTime postedAt
 ) {
+    public CreateDealRequest(Long sourceId, String title, String description, Number price, Number originalPrice,
+            Integer discountRate, String currency, String category, String shopName, String thumbnailUrl,
+            String originalUrl, String productUrl, String externalId, OffsetDateTime postedAt) {
+        this(sourceId, title, description, price == null ? null : new java.math.BigDecimal(price.toString()),
+                originalPrice == null ? null : new java.math.BigDecimal(originalPrice.toString()), discountRate,
+                currency, category, shopName, thumbnailUrl, originalUrl, productUrl, externalId, postedAt);
+    }
+
+    @AssertTrue(message = "KRW prices must be integers")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public boolean isCurrencyPriceCompatible() {
+        return "USD".equals(currency) || ((price == null || price.stripTrailingZeros().scale() <= 0)
+                && (originalPrice == null || originalPrice.stripTrailingZeros().scale() <= 0));
+    }
 }
