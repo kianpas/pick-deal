@@ -62,7 +62,7 @@ export default async function Home({
       <DealFeed
         filters={<>
           <CommunityFilter sources={sourceResult.sources} selected={sourceId} failed={sourceResult.failed} />
-          <ActiveFilters sources={sourceResult.sources} categories={categories} />
+          <ActiveFilters />
         </>}
         deals={deals}
         meta={meta}

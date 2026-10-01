@@ -2,22 +2,22 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
-import type { DealCategory, SourceItem } from "@/lib/api-types";
 
-export function ActiveFilters({ sources, categories }: { sources: SourceItem[]; categories: DealCategory[] }) {
+/**
+ * 목록 근처에 토글로 보이지 않는 조건(검색어·쇼핑몰)만 해제 칩으로 보여준다.
+ * 커뮤니티·카테고리·종료 숨기기는 바로 위의 칩/토글이 이미 선택 상태를 보여주므로
+ * 같은 정보를 한 줄 더 쌓아 목록을 밀어내지 않는다. "전체 초기화"는 모든 조건을 지운다.
+ */
+export function ActiveFilters() {
   const params = useSearchParams();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const items = ["q", "category", "shopName", "sourceId"].flatMap((key) =>
+  const items = ["q", "shopName"].flatMap((key) =>
     [...new Set(params.getAll(key))].filter(Boolean).map((value) => ({
       key, value,
-      label: key === "sourceId" ? `커뮤니티: ${sources.find((s) => String(s.id) === value)?.name ?? value}`
-        : `${key === "q" ? "검색" : key === "category" ? "카테고리" : "쇼핑몰"}: ${key === "category" ? categories.find((c) => c.code === value)?.name ?? value : value}`,
+      label: `${key === "q" ? "검색" : "쇼핑몰"}: ${value}`,
     })),
   );
-  if (params.get("hideEnded") === "true") {
-    items.push({ key: "hideEnded", value: "true", label: "종료·품절 숨기기" });
-  }
   if (!items.length) return null;
 
   function remove(key?: string, value?: string) {
