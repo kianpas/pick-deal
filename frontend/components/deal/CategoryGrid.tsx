@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import type { DealCategory } from "@/lib/api-types";
 import { ChevronDown } from "lucide-react";
+import { chipClassName, FilterChipRow } from "@/components/filter/FilterChipRow";
 
 interface Props {
   /** 백엔드가 내려준 실데이터 카테고리 목록. */
@@ -13,7 +14,7 @@ interface Props {
 }
 
 /**
- * 카테고리 필터 바. SortBar와 같은 pill 시각 언어를 쓴다.
+ * 카테고리 필터 바. 커뮤니티 필터와 같은 칩·한 줄 스크롤 모양을 쓴다(FilterChipRow).
  * 선택 상태는 URL(?category=)이 SSOT — 클릭은 URL만 바꾸고,
  * 목록 갱신은 서버(page.tsx)의 재실행으로 일어난다(useTransition으로 진행 피드백).
  */
@@ -23,16 +24,6 @@ export function CategoryGrid({ categories, active }: Props) {
   const [isPending, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
-  const listRef = useRef<HTMLDivElement>(null);
-  const activeRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    const list = listRef.current;
-    const button = activeRef.current;
-    if (!expanded && list && button) {
-      list.scrollLeft = button.offsetLeft;
-    }
-  }, [active, expanded]);
 
   function setCategory(category?: string) {
     const params = new URLSearchParams(searchParams);
@@ -50,16 +41,22 @@ export function CategoryGrid({ categories, active }: Props) {
   ];
 
   return (
-    <div className="flex min-w-0 items-start gap-2">
-    <div
-      id={listId}
-      ref={listRef}
-      role="group"
-      aria-label="카테고리 필터"
-      className={`relative flex min-w-0 flex-1 items-center gap-1 p-1 transition-opacity md:flex-wrap ${expanded ? "flex-wrap" : "flex-nowrap overflow-x-auto scrollbar-thin"} ${
-        isPending ? "opacity-60" : ""
-      }`}
-      aria-busy={isPending}
+    <FilterChipRow
+      label={<h2 className="text-sm font-semibold text-fg">카테고리</h2>}
+      ariaLabel="카테고리 필터"
+      listId={listId}
+      scrollKey={active ?? ""}
+      wrap={expanded}
+      pending={isPending}
+      trailing={
+        <button type="button" aria-expanded={expanded} aria-controls={listId}
+          aria-label={expanded ? "카테고리 접기" : "카테고리 전체 펼치기"}
+          onClick={() => setExpanded((value) => !value)}
+          className="flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-xs text-fg-muted hover:text-fg md:hidden">
+          {expanded ? "접기" : "펼치기"}
+          <ChevronDown aria-hidden="true" className={`size-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+        </button>
+      }
     >
       {items.map((c) => {
         const isActive = (active ?? undefined) === c.value;
@@ -67,27 +64,15 @@ export function CategoryGrid({ categories, active }: Props) {
           <button
             key={c.name}
             type="button"
-            ref={isActive ? activeRef : undefined}
             disabled={isPending}
             onClick={() => setCategory(c.value)}
             aria-pressed={isActive}
-            className={`inline-flex min-h-11 max-w-full shrink-0 items-center rounded-full px-3 py-1.5 text-start text-sm font-medium wrap-anywhere transition md:min-h-10 ${
-              isActive
-                ? "bg-brand-soft text-brand"
-                : "text-fg-muted hover:bg-surface hover:text-fg"
-            }`}
+            className={chipClassName(isActive)}
           >
             {c.name}
           </button>
         );
       })}
-    </div>
-    <button type="button" aria-expanded={expanded} aria-controls={listId}
-      onClick={() => setExpanded((value) => !value)}
-      className="mt-1 flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-border px-2 text-xs text-fg-muted md:hidden">
-      {expanded ? "접기" : "전체 펼치기"}
-      <ChevronDown aria-hidden="true" className={`size-4 ${expanded ? "rotate-180" : ""}`} />
-    </button>
-    </div>
+    </FilterChipRow>
   );
 }
