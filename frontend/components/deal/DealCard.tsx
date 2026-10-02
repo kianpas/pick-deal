@@ -74,7 +74,10 @@ export function DealCard({ deal, showThumbnail = true, listHref = "/", onOpenDet
               {!grouped && <span>{deal.sourceNames.join(" · ")}</span>}
               {deal.commentCount !== null && (
                 <span className="inline-flex items-center gap-1" aria-label={`댓글 ${deal.commentCount}개`}>
-                  <MessageCircle className="size-3" aria-hidden="true" />{deal.commentCount}
+                  <MessageCircle className="size-3" aria-hidden="true" />
+                  <span className={!ended && deal.commentCount >= 20 ? "font-bold" : undefined}>
+                    {deal.commentCount}
+                  </span>
                 </span>
               )}
               <span suppressHydrationWarning>{formatRelativeTime(deal.postedAt)}</span>

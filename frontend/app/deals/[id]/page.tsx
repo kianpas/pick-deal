@@ -1,4 +1,5 @@
 import { DealThumbnail } from "@/components/deal/DealThumbnail";
+import { DealShareButton } from "@/components/deal/DealShareButton";
 import { SourcePostComparison } from "@/components/deal/SourcePostComparison";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -64,14 +65,16 @@ export default async function DealDetailPage({
   return (
     <AppShell>
       <div className="mx-auto w-full max-w-3xl">
-        {/* 뒤로 */}
-        <Link
-          href={listHref}
-          className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-sm text-fg-muted transition hover:text-fg"
-        >
-          <ArrowLeft className="size-4" />
-          목록으로
-        </Link>
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+          <Link
+            href={listHref}
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-fg-muted transition hover:text-fg"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            목록으로
+          </Link>
+          <DealShareButton dealId={deal.id} />
+        </div>
 
         <article className="space-y-5 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {/* 헤더: 배지 + 제목 */}
