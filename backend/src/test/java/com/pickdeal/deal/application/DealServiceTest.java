@@ -9,6 +9,8 @@ import com.pickdeal.deal.domain.DealRepository;
 import com.pickdeal.deal.domain.DealStatus;
 import com.pickdeal.deal.dto.DealSummaryResponse;
 import com.pickdeal.keyword.domain.KeywordRepository;
+import com.pickdeal.keyword.domain.Keyword;
+import com.pickdeal.keyword.domain.KeywordType;
 import com.pickdeal.source.domain.Source;
 import com.pickdeal.source.domain.SourceRepository;
 import com.pickdeal.source.domain.SourceVisibility;
@@ -24,6 +26,69 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 @Transactional
 class DealServiceTest {
+
+    @Test
+    void searchRequiresAllWhitespaceSeparatedTermsInOnePost() {
+        keywordRepository.deleteAll();
+        Source source = sourceRepository.save(new Source("검색출처", "https://search.example", "search-terms", true));
+        Deal matched = saveSearchDeal(source, "search-1", "로지텍 G304 무선", "게이밍 Mouse 할인");
+        saveSearchDeal(source, "search-2", "로지텍 키보드", null);
+        saveSearchDeal(source, "search-3", "다른 브랜드 Mouse", null);
+
+        var result = dealService.findDeals(0, 20, "latest", List.of(source.getId()), null,
+                "  로지텍\tMOUSE\n로지텍  ", null, false);
+        assertThat(result.items()).extracting(DealSummaryResponse::id).containsExactly(matched.getId());
+        assertThat(result.meta().totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void searchDoesNotCombineTermsAcrossGroupMembers() {
+        keywordRepository.deleteAll();
+        Source firstSource = sourceRepository.save(new Source("검색그룹A", "https://search-a.example", "search-group-a", true));
+        Source secondSource = sourceRepository.save(new Source("검색그룹B", "https://search-b.example", "search-group-b", true));
+        Deal first = saveSearchDeal(firstSource, "search-group-1", "로지텍 키보드", null);
+        Deal second = saveSearchDeal(secondSource, "search-group-2", "다른 브랜드 마우스", null);
+        joinGroup(first, second);
+        List<Long> sourceIds = List.of(firstSource.getId(), secondSource.getId());
+
+        assertThat(dealService.findDeals(0, 20, "latest", sourceIds, null, "로지텍 마우스", null, false).items()).isEmpty();
+        assertThat(dealService.findDeals(0, 20, "latest", sourceIds, null, "마우스", null, false).items()).hasSize(1);
+    }
+
+    @Test
+    void blankAndSingleTermSearchRemainCompatible() {
+        keywordRepository.deleteAll();
+        Source source = sourceRepository.save(new Source("빈검색", "https://blank-search.example", "search-blank", true));
+        Deal matched = saveSearchDeal(source, "search-blank-1", "로지텍 G304 무선 마우스", null);
+        saveSearchDeal(source, "search-blank-2", "다른 상품", null);
+        List<Long> sourceIds = List.of(source.getId());
+        assertThat(dealService.findDeals(0, 20, "latest", sourceIds, null, null, null, false).items()).hasSize(2);
+        for (String query : List.of("", " \t\n", "\u00a0\u3000")) {
+            assertThat(dealService.findDeals(0, 20, "latest", sourceIds, null, query, null, false).items()).hasSize(2);
+        }
+        assertThat(dealService.findDeals(0, 20, "latest", sourceIds, null, "g304", null, false).items())
+                .extracting(DealSummaryResponse::id).containsExactly(matched.getId());
+        assertThat(dealService.findDeals(0, 20, "latest", sourceIds, null, "마우스\u3000로지텍", null, false).items()).hasSize(1);
+    }
+
+    @Test
+    void multiWordInterestAndExcludeKeywordsKeepLiteralMatching() {
+        keywordRepository.deleteAll();
+        Source source = sourceRepository.save(new Source("키워드검색", "https://keyword-search.example", "search-keyword", true));
+        saveSearchDeal(source, "search-keyword-1", "로지텍 G304 무선 마우스", null);
+        keywordRepository.save(new Keyword(DEFAULT_USER_ID, KeywordType.INTEREST, "로지텍 마우스"));
+        assertThat(dealService.findDeals(0, 20, "latest", List.of(source.getId()), null, "로지텍 마우스", null, false).items()).isEmpty();
+        keywordRepository.deleteAll();
+        keywordRepository.save(new Keyword(DEFAULT_USER_ID, KeywordType.EXCLUDE, "로지텍 마우스"));
+        assertThat(dealService.findDeals(0, 20, "latest", List.of(source.getId()), null, "로지텍 마우스", null, false).items()).hasSize(1);
+    }
+
+    private Deal saveSearchDeal(Source source, String externalId, String title, String description) {
+        OffsetDateTime now = OffsetDateTime.now();
+        return dealRepository.save(new Deal(source, title, description, 1000L, null, null, "KRW",
+                "기타", null, null, null, "https://search.example/" + externalId, null, externalId,
+                null, DealStatus.ACTIVE, now, now));
+    }
 
     @Test
     void largePageReturnsEmptyPageWithoutOverflow() {

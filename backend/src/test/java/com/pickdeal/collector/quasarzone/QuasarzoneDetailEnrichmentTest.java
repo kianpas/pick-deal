@@ -19,14 +19,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.annotation.DirtiesContext;
 
 @SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:${random.uuid};MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH",
         "pickdeal.collector.sources.quasarzone.bootstrap-max-pages=1",
         "pickdeal.collector.sources.quasarzone.bootstrap-max-items=1",
         "pickdeal.collector.sources.quasarzone.max-detail-requests=1"
 })
-@Transactional
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class QuasarzoneDetailEnrichmentTest {
 
     @Autowired

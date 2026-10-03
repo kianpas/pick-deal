@@ -7,13 +7,14 @@ import com.pickdeal.collector.support.DealUpsertSupport;
 import com.pickdeal.collector.support.NewDealDetailSupport;
 import com.pickdeal.collector.support.PagedCollectionSupport;
 import com.pickdeal.collector.support.SourceCollector;
-import com.pickdeal.source.domain.Source;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -49,11 +50,10 @@ public class QuasarzoneCollectService implements SourceCollector {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public int collect() {
         OffsetDateTime now = OffsetDateTime.now(KST);
-        Source source = upsertSupport.findOrRegisterSource(SOURCE_CODE, SOURCE_NAME, SOURCE_BASE_URL);
-        boolean bootstrap = !upsertSupport.hasCollectedDeals(source);
+        boolean bootstrap = !upsertSupport.hasCollectedDeals(SOURCE_CODE);
         int maxPages = bootstrap ? properties.bootstrapMaxPages() : properties.maxPages();
         int maxItems = bootstrap ? properties.bootstrapMaxItems() : properties.maxItems();
         List<CollectedDeal> deals = PagedCollectionSupport.collect(
@@ -63,10 +63,12 @@ public class QuasarzoneCollectService implements SourceCollector {
                 parser::parse,
                 item -> normalize(item, now)
         );
+        Set<String> knownIds = properties.maxDetailRequests() > 0
+                ? upsertSupport.knownExternalIds(SOURCE_CODE, deals) : Set.of();
         deals = detailSupport.enrich(
-                source, deals, properties.maxDetailRequests(), this::enrichProductInfo);
+                SOURCE_CODE, knownIds, deals, properties.maxDetailRequests(), this::enrichProductInfo);
 
-        return upsertSupport.upsertAll(source, deals, now);
+        return upsertSupport.upsertAll(SOURCE_CODE, SOURCE_NAME, SOURCE_BASE_URL, deals, now);
     }
 
     private CollectedDeal enrichProductInfo(CollectedDeal deal) {

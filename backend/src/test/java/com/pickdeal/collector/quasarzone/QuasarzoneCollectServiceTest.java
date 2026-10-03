@@ -18,10 +18,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.annotation.DirtiesContext;
 
-@SpringBootTest
-@Transactional // 각 테스트 후 롤백 — 테스트 간 수집 결과가 섞이지 않게 한다
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:${random.uuid};MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class QuasarzoneCollectServiceTest {
 
     @Autowired

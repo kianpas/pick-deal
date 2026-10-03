@@ -9,10 +9,12 @@ import com.pickdeal.source.domain.Source;
 import com.pickdeal.source.domain.SourceRepository;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 출처와 무관한 저장 단계(persist)를 모은다. 중복은 (source, externalId) 유니크 제약과
@@ -36,6 +38,28 @@ public class DealUpsertSupport {
     /** 이 출처에서 이미 수집된 딜이 있는지 확인한다. 수집 실행 시작 시 한 번만 호출한다. */
     public boolean hasCollectedDeals(Source source) {
         return dealRepository.existsBySourceId(source.getId());
+    }
+
+    /** 외부 요청 전에 최초 수집 여부만 읽는다. 출처 등록은 저장 단계로 미룬다. */
+    @Transactional(readOnly = true)
+    public boolean hasCollectedDeals(String sourceCode) {
+        return sourceRepository.findByCode(sourceCode).map(this::hasCollectedDeals).orElse(false);
+    }
+
+    /** 상세 요청 전에 필요한 기존 ID만 읽고, 엔티티나 트랜잭션을 HTTP 단계로 넘기지 않는다. */
+    @Transactional(readOnly = true)
+    public Set<String> knownExternalIds(String sourceCode, List<CollectedDeal> deals) {
+        if (deals.isEmpty()) return Set.of();
+        List<String> ids = deals.stream().map(CollectedDeal::externalId).distinct().toList();
+        return sourceRepository.findByCode(sourceCode)
+                .map(source -> Set.copyOf(dealRepository.findKnownExternalIds(source.getId(), ids)))
+                .orElseGet(Set::of);
+    }
+
+    /** 외부 요청이 끝난 결과만 한 트랜잭션에서 출처 등록·최종 upsert·그룹화한다. */
+    @Transactional
+    public int upsertAll(String code, String name, String baseUrl, List<CollectedDeal> deals, OffsetDateTime now) {
+        return upsertAll(findOrRegisterSource(code, name, baseUrl), deals, now);
     }
 
     /**
