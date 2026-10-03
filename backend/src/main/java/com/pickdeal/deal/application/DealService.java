@@ -23,11 +23,13 @@ import com.pickdeal.source.domain.Source;
 import com.pickdeal.source.domain.SourceRepository;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ public class DealService {
 
     private static final Long DEFAULT_USER_ID = 1L;
     private static final String DEFAULT_CURRENCY = "KRW";
+    private static final Pattern QUERY_WHITESPACE = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS);
 
     private final DealRepository dealRepository;
     private final SourceRepository sourceRepository;
@@ -52,6 +55,7 @@ public class DealService {
     @Transactional(readOnly = true)
     public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String category, String query, List<String> shopNames, boolean hideEnded) {
         DealCategory selectedCategory = parseCategory(category);
+        List<String> queryTerms = queryTerms(query);
         var selectedShops = shopNames == null ? java.util.Set.<String>of() : shopNames.stream()
                 .map(ShopFilterNames::canonical).filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toSet());
@@ -67,7 +71,7 @@ public class DealService {
         List<DealGroupView> filteredGroups = groupDeals(sourceEligibleDeals).stream()
                 .filter(group -> !hideEnded || aggregateStatus(group.members()) == DealStatus.ACTIVE)
                 .filter(group -> group.members().stream().anyMatch(deal -> (selectedCategory == null || DealCategory.from(deal) == selectedCategory)))
-                .filter(group -> group.members().stream().anyMatch(deal -> matchesQuery(deal, query)))
+                .filter(group -> group.members().stream().anyMatch(deal -> matchesQuery(deal, queryTerms)))
                 .filter(group -> group.members().stream().noneMatch(deal -> containsAnyKeyword(deal, excludeKeywords)))
                 .filter(group -> interestKeywords.isEmpty()
                         || group.members().stream().anyMatch(deal -> containsAnyKeyword(deal, interestKeywords)))
@@ -167,13 +171,15 @@ public class DealService {
         }
     }
 
-    private boolean matchesQuery(Deal deal, String query) {
-        if (!StringUtils.hasText(query)) {
-            return true;
-        }
+    private List<String> queryTerms(String query) {
+        if (!StringUtils.hasText(query)) return List.of();
+        return Arrays.stream(QUERY_WHITESPACE.split(query.toLowerCase(Locale.ROOT).strip()))
+                .filter(StringUtils::hasText).distinct().toList();
+    }
 
-        String normalizedQuery = query.toLowerCase(Locale.ROOT).trim();
-        return contains(deal.getTitle(), normalizedQuery) || contains(deal.getDescription(), normalizedQuery);
+    private boolean matchesQuery(Deal deal, List<String> terms) {
+        // 모든 단어가 같은 원본 게시글의 제목 또는 본문에 있어야 한다.
+        return terms.stream().allMatch(term -> contains(deal.getTitle(), term) || contains(deal.getDescription(), term));
     }
 
     private boolean containsAnyKeyword(Deal deal, List<Keyword> keywords) {
