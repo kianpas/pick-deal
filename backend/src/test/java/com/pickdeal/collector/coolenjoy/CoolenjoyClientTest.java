@@ -61,4 +61,23 @@ class CoolenjoyClientTest {
         assertThatThrownBy(failed::fetchListHtml).isInstanceOf(UncheckedIOException.class);
         assertThatThrownBy(failed::fetchListHtml).hasMessageContaining("대기");
     }
+
+    @Test void spacesListAndDetailsAndStopsImmediatelyAfterBlocking() {
+        var clock = new MutableClock();
+        var calls = new java.util.ArrayList<Instant>();
+        var client = new CoolenjoyClient(clock, url -> {
+            calls.add(clock.instant());
+            return new CoolenjoyClient.Response(calls.size() == 3 ? 429 : 200, "html", null);
+        }, millis -> clock.now = clock.now.plusMillis(millis));
+        client.fetchListHtml();
+        client.fetchDetailHtml("https://coolenjoy.net/bbs/jirum/1");
+        assertThat(Duration.between(calls.get(0), calls.get(1))).isEqualTo(Duration.ofSeconds(10));
+        assertThatThrownBy(() -> client.fetchDetailHtml("https://coolenjoy.net/bbs/jirum/2")).hasMessageContaining("HTTP 429");
+        assertThat(Duration.between(calls.get(1), calls.get(2))).isEqualTo(Duration.ofSeconds(10));
+        assertThatThrownBy(() -> client.fetchDetailHtml("https://coolenjoy.net/bbs/jirum/3")).hasMessageContaining("대기");
+        assertThat(calls).hasSize(3);
+        for (String url : new String[]{"http://coolenjoy.net/bbs/jirum/1", "https://evil.example/bbs/jirum/1", "https://coolenjoy.net/bbs/jirum/1?x=1"})
+            assertThatThrownBy(() -> client.fetchDetailHtml(url)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(calls).hasSize(3);
+    }
 }
