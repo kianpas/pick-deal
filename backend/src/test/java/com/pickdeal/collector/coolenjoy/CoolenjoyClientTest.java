@@ -19,15 +19,15 @@ class CoolenjoyClientTest {
         var clock = new MutableClock();
         var count = new AtomicInteger();
         var client = new CoolenjoyClient(clock, url -> {
-            assertThat(url).isEqualTo("https://coolenjoy.net/bbs/rss.php?bo_table=jirum");
+            assertThat(url).isEqualTo("https://coolenjoy.net/bbs/jirum");
             count.incrementAndGet();
             return new CoolenjoyClient.Response(200, "rss", null);
         });
-        assertThat(client.fetchRss()).isEqualTo("rss");
-        assertThatThrownBy(client::fetchRss).isInstanceOf(IllegalStateException.class);
+        assertThat(client.fetchListHtml()).isEqualTo("rss");
+        assertThatThrownBy(client::fetchListHtml).isInstanceOf(IllegalStateException.class);
         assertThat(count.get()).isEqualTo(1);
         clock.now = clock.now.plusSeconds(1200);
-        assertThat(client.fetchRss()).isEqualTo("rss");
+        assertThat(client.fetchListHtml()).isEqualTo("rss");
         assertThat(count.get()).isEqualTo(2);
     }
 
@@ -39,12 +39,12 @@ class CoolenjoyClientTest {
                 count.incrementAndGet();
                 return new CoolenjoyClient.Response(status, "blocked", "172800");
             });
-            assertThatThrownBy(client::fetchRss).hasMessageContaining("HTTP " + status);
+            assertThatThrownBy(client::fetchListHtml).hasMessageContaining("HTTP " + status);
             clock.now = clock.now.plus(Duration.ofHours(25));
-            assertThatThrownBy(client::fetchRss).hasMessageContaining("대기");
+            assertThatThrownBy(client::fetchListHtml).hasMessageContaining("대기");
             assertThat(count.get()).isEqualTo(1);
             clock.now = clock.now.plus(Duration.ofHours(23));
-            assertThatThrownBy(client::fetchRss).hasMessageContaining("HTTP " + status);
+            assertThatThrownBy(client::fetchListHtml).hasMessageContaining("HTTP " + status);
             assertThat(count.get()).isEqualTo(2);
         }
     }
@@ -55,10 +55,10 @@ class CoolenjoyClientTest {
             count.incrementAndGet();
             return new CoolenjoyClient.Response(302, "", null);
         });
-        assertThatThrownBy(redirect::fetchRss).hasMessageContaining("HTTP 302");
+        assertThatThrownBy(redirect::fetchListHtml).hasMessageContaining("HTTP 302");
         assertThat(count.get()).isEqualTo(1);
         var failed = new CoolenjoyClient(new MutableClock(), url -> { throw new IOException("timeout"); });
-        assertThatThrownBy(failed::fetchRss).isInstanceOf(UncheckedIOException.class);
-        assertThatThrownBy(failed::fetchRss).hasMessageContaining("대기");
+        assertThatThrownBy(failed::fetchListHtml).isInstanceOf(UncheckedIOException.class);
+        assertThatThrownBy(failed::fetchListHtml).hasMessageContaining("대기");
     }
 }
