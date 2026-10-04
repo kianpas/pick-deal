@@ -4,6 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 class DealCategoryTest {
+    @Test void coolenjoyCategoriesAreMappedWithoutChangingOtherSources() {
+        var mappings = java.util.Map.ofEntries(
+                java.util.Map.entry("PC관련", DealCategory.PC), java.util.Map.entry("가전", DealCategory.DIGITAL),
+                java.util.Map.entry("모바일", DealCategory.DIGITAL), java.util.Map.entry("게임", DealCategory.GAME),
+                java.util.Map.entry("식품", DealCategory.FOOD), java.util.Map.entry("의류잡화", DealCategory.FASHION),
+                java.util.Map.entry("화장품", DealCategory.FASHION), java.util.Map.entry("쿠폰", DealCategory.BENEFIT),
+                java.util.Map.entry("이벤트", DealCategory.BENEFIT), java.util.Map.entry("인터넷", DealCategory.ETC));
+        mappings.forEach((raw, expected) -> assertThat(DealCategory.from("coolenjoy", raw)).isEqualTo(expected));
+        assertThat(DealCategory.from("other", "PC관련")).isEqualTo(DealCategory.ETC);
+    }
     @Test void exactAliasesAndSourceOverrides() {
         assertThat(DealCategory.from("quasarzone", "생활/식품")).isEqualTo(DealCategory.FOOD);
         assertThat(DealCategory.from("unknown", "생활/식품")).isEqualTo(DealCategory.ETC);

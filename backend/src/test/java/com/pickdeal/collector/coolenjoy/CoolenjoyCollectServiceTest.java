@@ -22,6 +22,7 @@ class CoolenjoyCollectServiceTest {
     @Autowired SourceRepository sources;
     @Autowired com.pickdeal.collector.support.DealUpsertSupport upsert;
     @MockitoBean CoolenjoyClient client;
+    @Autowired org.springframework.transaction.PlatformTransactionManager transactionManager;
 
     @Test void storesActualFeedWithoutDuplicatesAndRequestsOutsideTransaction() throws Exception {
         String xml = CoolenjoyListParserTest.fixture();
@@ -65,5 +66,38 @@ class CoolenjoyCollectServiceTest {
         assertThat(deal.getThumbnailUrl()).isEqualTo("https://coolenjoy.net/data/original.jpg");
         assertThat(deal.getProductUrl()).isEqualTo("https://shop.example/product");
         assertThat(deal.getTitle()).isEqualTo("RSS 원본 제목");
+    }
+
+    @Test void suspendsCallerTransactionForBothHttpRequestsAndStoresEnrichedDeal() throws Exception {
+        String detail = CoolenjoyDetailParserTest.fixture();
+        given(client.fetchListHtml()).willAnswer(invocation -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            return CoolenjoyListParserTest.feed(CoolenjoyListParserTest.item("3563135", "[옥션] 잘린 제목…", "36,660원"));
+        });
+        given(client.fetchDetailHtml("https://coolenjoy.net/bbs/jirum/3563135")).willAnswer(invocation -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            assertThat(sources.findByCode("coolenjoy")).isEmpty();
+            return detail;
+        });
+        var outer = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        outer.executeWithoutResult(status -> {
+            assertThat(collector.collect()).isEqualTo(1);
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+        });
+        var source = sources.findByCode("coolenjoy").orElseThrow();
+        var deal = deals.findBySourceIdAndExternalId(source.getId(), "3563135").orElseThrow();
+        assertThat(deal.getTitle()).isEqualTo("[옥션] 아이더 신상 공용 플리스 자켓 36,660원 (무배)");
+        assertThat(deal.getProductUrl()).contains("auction.co.kr");
+        assertThat(deal.getThumbnailUrl()).contains("photo.coolenjoy.co.kr");
+        assertThat(deal.getPostedAt()).isEqualTo("2026-10-04T11:15:12+09:00");
+    }
+
+    @Test void limitsDetailsAndPreservesListOnFailureWithoutRetryingKnownPosts() throws Exception {
+        given(client.fetchListHtml()).willReturn(CoolenjoyListParserTest.fixture());
+        given(client.fetchDetailHtml(org.mockito.ArgumentMatchers.anyString())).willThrow(new IllegalStateException("blocked"));
+        assertThat(collector.collect()).isEqualTo(25);
+        org.mockito.Mockito.verify(client, org.mockito.Mockito.times(3)).fetchDetailHtml(org.mockito.ArgumentMatchers.anyString());
+        assertThat(collector.collect()).isZero();
+        org.mockito.Mockito.verify(client, org.mockito.Mockito.times(3)).fetchDetailHtml(org.mockito.ArgumentMatchers.anyString());
     }
 }

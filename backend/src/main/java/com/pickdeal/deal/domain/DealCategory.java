@@ -26,7 +26,12 @@ public enum DealCategory {
 
     // 복합 분류는 출처별로 명시한다. 제목 추측으로 개별 상품을 재분류하지 않는다.
     private static final Map<String, Map<String, DealCategory>> BY_SOURCE = Map.of(
-            "quasarzone", Map.of("생활/식품", FOOD));
+            "quasarzone", Map.of("생활/식품", FOOD),
+            "coolenjoy", Map.ofEntries(
+                    Map.entry("PC관련", PC), Map.entry("가전", DIGITAL), Map.entry("모바일", DIGITAL),
+                    Map.entry("게임", GAME), Map.entry("식품", FOOD), Map.entry("의류잡화", FASHION),
+                    Map.entry("화장품", FASHION), Map.entry("쿠폰", BENEFIT),
+                    Map.entry("이벤트", BENEFIT), Map.entry("인터넷", ETC), Map.entry("기타", ETC)));
 
     public static DealCategory from(String sourceCode, String rawCategory) {
         if (rawCategory == null || rawCategory.isBlank()) return ETC;
