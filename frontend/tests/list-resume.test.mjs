@@ -10,7 +10,7 @@ async function loadModule(path) {
   return import(`data:text/javascript;base64,${Buffer.from(outputText).toString("base64")}`);
 }
 const { saveListSnapshot, takeListSnapshot, clearListSnapshot } = await loadModule("../lib/list-resume.ts");
-const { listLocation } = await loadModule("../lib/list-location.ts");
+const { listLocation, hasSearchFilters, resetSearchLocation } = await loadModule("../lib/list-location.ts");
 const KEY = "pickdeal:list-resume:v1";
 let store;
 beforeEach(() => {
@@ -68,4 +68,23 @@ test("목록 복귀 URL은 안전한 필터와 양의 상품 ID만 허용한다"
   assert.equal(listLocation("/?sourceId=3&resume=35", false), "/?sourceId=3");
   assert.equal(listLocation("/?resume=-1"), "/");
   assert.equal(listLocation("/?resume=9007199254740992"), "/");
+});
+
+test("검색어·쇼핑몰 없이 커뮤니티·카테고리·종료 숨기기만 있어도 초기화할 조건으로 판별한다", () => {
+  for (const query of ["q=노트북", "shopName=쿠팡", "sourceId=2", "category=DIGITAL", "hideEnded=true"]) {
+    assert.equal(hasSearchFilters(new URLSearchParams(query)), true, query);
+  }
+  for (const query of ["", "page=2&resume=35", "q=%20&shopName=", "hideEnded=false", "sourceId=-1", "sourceId=9007199254740992"]) {
+    assert.equal(hasSearchFilters(new URLSearchParams(query)), false, query);
+  }
+});
+
+test("초기화는 중복 탐색 조건과 페이지·복귀 표식을 제거하고 입력 URL을 변경하지 않는다", () => {
+  const params = new URLSearchParams("q=노트북&category=DIGITAL&sourceId=1&sourceId=2&shopName=쿠팡&shopName=네이버&hideEnded=true&page=3&resume=35");
+  assert.equal(resetSearchLocation(params), "/");
+  assert.equal(params.get("resume"), "35");
+  assert.equal(params.getAll("sourceId").length, 2);
+  params.set("sort", "latest");
+  assert.equal(resetSearchLocation(params), "/?sort=latest");
+  assert.equal(hasSearchFilters(new URLSearchParams(resetSearchLocation(params).slice(2))), false);
 });

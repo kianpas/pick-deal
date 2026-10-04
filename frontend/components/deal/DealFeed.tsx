@@ -4,7 +4,9 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode, RefObject } from "react";
-import { listLocation } from "@/lib/list-location";
+import { hasSearchFilters, listLocation } from "@/lib/list-location";
+import { ResetSearchFilters } from "@/components/filter/ResetSearchFilters";
+import { READ_ONLY } from "@/lib/runtime-config";
 import { clearListSnapshot, saveListSnapshot, takeListSnapshot, type ListSnapshot } from "@/lib/list-resume";
 import { CategoryGrid } from "./CategoryGrid";
 import { DealList } from "./DealList";
@@ -200,7 +202,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
     saveListSnapshot({ listHref, deals: allDeals, nextPage, hasNext, selectedDealId,
       scrollY: window.scrollY, viewportWidth: window.innerWidth, showThumbnail });
   }
-  const filtered = Boolean(listParams.q || listParams.category || listParams.sourceId?.length || listParams.shopName?.length || listParams.hideEnded);
+  const filtered = hasSearchFilters(new URLSearchParams(searchParams));
   const registeredAt = latestRegisteredAt(allDeals);
 
   return (
@@ -235,7 +237,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
       ) : currentLoadFailed ? (
         <div className="space-y-3 rounded-xl border border-dashed border-danger/40 py-12 text-center">
           <p className="text-sm text-danger">딜 목록을 불러오지 못했어요.</p>
-          <p className="text-xs text-fg-muted">백엔드 서버가 실행 중인지 확인한 뒤 다시 시도해 주세요.</p>
+          <p className="text-xs text-fg-muted">잠시 후 다시 시도해 주세요.</p>
           <button
             type="button"
             onClick={() => window.location.reload()}
@@ -270,19 +272,30 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
             </p>
           )}
         </>
-      ) : filtered ? (
-        <div className="space-y-3 rounded-xl border border-dashed border-border py-12 text-center">
-          <p className="text-sm text-fg-muted">조건에 맞는 핫딜이 없어요.</p>
-          <Link
-            href="/"
-            className="inline-flex rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-fg-muted transition hover:bg-surface-hover hover:text-fg"
-          >
-            필터 해제
-          </Link>
-        </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-fg-muted">
-          아직 수집된 핫딜이 없어요. 수집기가 곧 채워줄 거예요.
+        <div className="space-y-3 rounded-xl border border-dashed border-border px-4 py-12 text-center">
+          <p className="text-sm text-fg-muted">
+            {filtered ? "선택한 검색·필터 조건에 맞는 핫딜이 없어요." : "현재 표시할 핫딜이 없어요."}
+          </p>
+          {!READ_ONLY && (
+            <p className="text-xs leading-relaxed text-fg-muted">
+              관심·제외 키워드와 출처 표시 설정도 목록에 적용됩니다.
+              <br />키워드 관리와 출처 표시 설정을 확인해 주세요.
+            </p>
+          )}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {filtered ? <ResetSearchFilters /> : (
+              <button type="button" onClick={() => { clearListSnapshot(); window.location.reload(); }}
+                className="inline-flex min-h-11 items-center rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-fg-muted transition hover:bg-surface-hover hover:text-fg">
+                다시 불러오기
+              </button>
+            )}
+            {!READ_ONLY && (
+              <Link href="/settings/keywords" className="inline-flex min-h-11 items-center rounded-lg px-3 py-2 text-sm text-brand">
+                키워드 관리
+              </Link>
+            )}
+          </div>
         </div>
       )}
       </div>
