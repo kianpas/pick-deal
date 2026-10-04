@@ -32,6 +32,9 @@ pickdeal:
     scheduling:
       enabled: true
     sources:
+      coolenjoy:
+        enabled: false
+        timeout: 10s
       dogdrip:
         enabled: false
         timeout: 10s
