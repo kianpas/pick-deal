@@ -11,10 +11,10 @@ import org.jsoup.Jsoup;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-/** 고정 RSS 주소에만 요청한다. 상세 요청·redirect·쿠키 재사용·즉시 재시도 없음. */
+/** 고정 HTML 목록 주소에만 요청한다. 상세 요청·redirect·쿠키 재사용·즉시 재시도 없음. */
 @Component
 public class CoolenjoyClient {
-    public static final String RSS_URL = "https://coolenjoy.net/bbs/rss.php?bo_table=jirum";
+    public static final String LIST_URL = "https://coolenjoy.net/bbs/jirum";
     private static final int MAX_BYTES = 2 * 1024 * 1024;
     private final Clock clock;
     private final Fetch fetch;
@@ -30,7 +30,7 @@ public class CoolenjoyClient {
                     .timeout(Math.toIntExact(properties.timeout().toMillis()))
                     .followRedirects(false).ignoreHttpErrors(true).ignoreContentType(true)
                     .maxBodySize(MAX_BYTES + 1).execute();
-            if (response.bodyAsBytes().length > MAX_BYTES) throw new IOException("RSS body limit exceeded");
+            if (response.bodyAsBytes().length > MAX_BYTES) throw new IOException("HTML 목록 body limit exceeded");
             return new Response(response.statusCode(), response.body(), response.header("Retry-After"));
         });
     }
@@ -40,19 +40,19 @@ public class CoolenjoyClient {
         this.fetch = fetch;
     }
 
-    public synchronized String fetchRss() {
+    public synchronized String fetchListHtml() {
         if (clock.instant().isBefore(nextRequest)) throw new IllegalStateException("쿨엔조이 요청 대기 중: " + nextRequest);
         try {
-            var response = fetch.get(RSS_URL);
+            var response = fetch.get(LIST_URL);
             if (response.status() == 403 || response.status() == 429) {
                 nextRequest = clock.instant().plus(Duration.ofHours(24));
                 var specified = retryAt(response.retryAfter());
                 if (specified != null && specified.isAfter(nextRequest)) nextRequest = specified;
             }
-            if (response.status() != 200) throw new IllegalStateException("쿨엔조이 RSS HTTP " + response.status());
+            if (response.status() != 200) throw new IllegalStateException("쿨엔조이 HTML 목록 HTTP " + response.status());
             return response.body();
         } catch (IOException e) {
-            throw new UncheckedIOException("쿨엔조이 RSS 요청 실패", e);
+            throw new UncheckedIOException("쿨엔조이 HTML 목록 요청 실패", e);
         } finally {
             var minimum = clock.instant().plus(Duration.ofMinutes(20));
             if (nextRequest.isBefore(minimum)) nextRequest = minimum;

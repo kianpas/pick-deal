@@ -15,14 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class CoolenjoyCollectService implements SourceCollector {
     private final CoolenjoyClient client;
     private final DealUpsertSupport upsertSupport;
-    private final CoolenjoyRssParser parser = new CoolenjoyRssParser();
+    private final CoolenjoyListParser parser = new CoolenjoyListParser();
 
     @Override public String sourceCode() { return "coolenjoy"; }
 
     @Override
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public int collect() {
-        var deals = parser.parse(client.fetchRss());
+        var deals = parser.parse(client.fetchListHtml(), OffsetDateTime.now());
         if (deals.isEmpty()) return 0;
         return upsertSupport.upsertAll(sourceCode(), "쿨엔조이", "https://coolenjoy.net", deals, OffsetDateTime.now());
     }
