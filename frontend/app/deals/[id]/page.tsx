@@ -59,6 +59,10 @@ export default async function DealDetailPage({
   const badge = statusBadge(deal.status);
   const { store: titleStore, title } = splitStoreFromTitle(deal.title);
   const shopName = deal.shopName ?? titleStore;
+  const purchaseShopName = shopName?.trim();
+  const purchaseLinkLabel = purchaseShopName && purchaseShopName !== "기타"
+    ? `${purchaseShopName}에서 보기`
+    : "구매처에서 보기";
   const ended = badge !== null;
   const grouped = deal.sourcePosts.length > 1;
 
@@ -168,7 +172,7 @@ export default async function DealDetailPage({
                   rel="noopener noreferrer"
                   className="inline-flex min-h-11 min-w-0 w-full items-center justify-center gap-2 rounded-lg bg-brand-strong px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 sm:w-auto"
                 >
-                  <span className="min-w-0 wrap-anywhere">{shopName ? `${shopName}에서 보기` : "구매처에서 보기"}</span>
+                  <span className="min-w-0 wrap-anywhere">{purchaseLinkLabel}</span>
                   <ExternalLink className="size-4 shrink-0" />
                 </a>
               )}
