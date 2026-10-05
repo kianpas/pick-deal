@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { KeywordManager } from "@/components/settings/KeywordManager";
+import { KeywordLoadError } from "@/components/settings/KeywordLoadError";
 import { getKeywords } from "@/lib/api";
 import type { KeywordItem } from "@/lib/api-types";
 import { notFound } from "next/navigation";
@@ -14,10 +15,11 @@ import { READ_ONLY } from "@/lib/runtime-config";
 export default async function KeywordSettingsPage() {
   if (READ_ONLY) notFound();
   let keywords: KeywordItem[] = [];
+  let loadFailed = false;
   try {
     keywords = await getKeywords();
   } catch (error) {
-    // 백엔드 미기동 등 → 빈 목록으로 시작(추가 시도 시 에러 메시지로 안내).
+    loadFailed = true;
     console.error("키워드를 불러오지 못했습니다:", error);
   }
 
@@ -41,7 +43,7 @@ export default async function KeywordSettingsPage() {
           </p>
         </header>
 
-        <KeywordManager initialKeywords={keywords} />
+        {loadFailed ? <KeywordLoadError /> : <KeywordManager initialKeywords={keywords} />}
       </main>
     </div>
   );

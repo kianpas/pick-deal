@@ -69,7 +69,7 @@ export function ShopFilter({ shops, selected, failed = false }: {
         </button>
       )}
       {query.trim() && matching.length === 0 && <p role="status" className="py-2 text-xs text-fg-muted">검색한 쇼핑몰이 없어요.</p>}
-      {!failed && options.length === 0 && <p className="py-2 text-xs text-fg-muted">수집된 쇼핑몰이 아직 없습니다.</p>}
+      {!failed && options.length === 0 && <p className="py-2 text-xs text-fg-muted">표시할 쇼핑몰이 없습니다.</p>}
       <span role="status" className="sr-only">{pending ? "필터 적용 중" : selected.length ? `${selected.length}개 쇼핑몰 선택` : "전체 쇼핑몰"}</span>
     </fieldset>
   );
