@@ -1,4 +1,14 @@
-# Frontend UI 스킬
+# Frontend 작업 지침
+
+## 디자인
+
+- 색·폰트 토큰은 `app/globals.css`가 기준이다. 컴포넌트의 hex/rgb 리터럴을 피하고 새 색은 기본·`.dark`·`.cassette` 테마에 모두 정의한다.
+- brand는 상호작용, price는 가격, positive/warning/danger는 상태에 사용한다.
+- 본문은 `font-sans`, 가격은 `font-sans tabular-nums`를 사용한다. 숫자의 자릿수 정렬은 `tabular-nums`로 처리하고, 고정폭 글꼴이 필요한 별도 영역에만 `font-mono`를 사용한다. 최소 크기는 `text-xs`.
+- 폰트는 현재 Google Fonts CDN 방식을 유지한다. `next/font` 전환은 기존 빌드 다운로드 실패 문제가 해결되는지 검증할 때만 한다.
+- 전역 focus-visible·reduced-motion 규칙을 재사용한다. 커스텀 요소·애니메이션은 키보드 접근과 감속 설정 적용 여부를 확인한다.
+
+## UI 스킬
 
 상위 `AGENTS.md`를 따른다. 아래 스킬은 이 프로젝트의 프론트 UI 검토·수정에만 적용한다.
 

@@ -251,10 +251,19 @@ Compose에는 `COLLECTOR_INGRESS_ENABLED=false`, `COLLECTOR_INGRESS_TOKEN=`을 �
 수집기 전용 Java 실행점은 Spring을 시작하지 않으며, 파서와 DTO는 backend 코드를 공유한다.
 같은 JAR를 프로필로 전환하는 방식은 아니다. 서버 bootJar와 로컬 배포 디렉터리를 같은 Gradle 빌드에서 만든다.
 
-1. 노트북에서 `.env.collector.example`을 `.env.collector`로 복사한다.
+1. 노트북의 프로젝트 루트에 아래 예시로 `.env.collector`를 만든다. 실제 토큰은 Git에 커밋하지 않는다.
 2. `COLLECTOR_RECEIVER_URL`에는 backend의 HTTPS origin만 설정한다(경로 없이).
 3. `COLLECTOR_INGRESS_TOKEN`에는 수신 서버와 같은 토큰을 넣고 `COLLECTOR_SOURCES`에 명시적으로 출처를 선택한다.
 4. 처음에는 `COLLECTOR_RUN_ONCE=true`, `COLLECTOR_BOOTSTRAP_MAX_PAGES=1`, `COLLECTOR_MAX_DETAIL_REQUESTS=0`으로 검증한다.
+
+```ini
+COLLECTOR_RECEIVER_URL=https://your-backend.example.com
+COLLECTOR_INGRESS_TOKEN=
+COLLECTOR_SOURCES=ppomppu
+COLLECTOR_RUN_ONCE=true
+COLLECTOR_BOOTSTRAP_MAX_PAGES=1
+COLLECTOR_MAX_DETAIL_REQUESTS=0
+```
 
 ```powershell
 # 이미지 빌드만으로는 사이트/API 요청이나 서비스 기동이 일어나지 않는다.
@@ -362,7 +371,7 @@ SSR 성공만으로 통합 검증을 끝내지 않는다. 출처 토글과 더 �
 ## 개드립 OCI 수집 활성화
 
 개드립은 로컬 전송 모드가 아니라 OCI의 기존 서버 스케줄러에서 실행한다.
-최초 실행도 목록 1페이지뿐이며 상세 요청은 하지 않는다. `.env`에서 명시적으로 활성화한다.
+최초·일반 실행 모두 목록 1페이지를 조회하고, 신규 글에 한해 실행당 최대 3건의 상세 정보를 보강한다. 상세 요청 실패 시 목록 정보로 저장하며 기존 글의 상세를 다시 조회하지 않는다. `.env`에서 명시적으로 활성화한다.
 
 ```ini
 COLLECTOR_ENABLED=true

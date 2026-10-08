@@ -17,3 +17,7 @@ PickDeal에서 반복적으로 다시 설명하게 되는 **용어**와 **이미
 
 - **`ApiResponse<T>` 봉투** — 모든 백엔드 응답은 `{ data, meta?, error? }` 형태. 새 엔드포인트도 이걸로 감싼다. (`backend/.../common/response/`)
 - **`frontend/lib/api-types.ts`** — 프론트-백 **계약 타입의 SSOT**, 백엔드 DTO와 1:1. 데모용 `frontend/lib/types.ts`(Deal 등)와 혼동 금지.
+- **`SourceCollector` / `CollectedDeal`** — 출처별 수집 실행과 파싱 결과의 공통 계약. (`backend/src/main/java/com/pickdeal/collector/support/`)
+- **`DealUpsertSupport`** — 수집 결과의 저장·갱신·그룹 연결을 재사용하는 진입점. (`backend/src/main/java/com/pickdeal/collector/support/DealUpsertSupport.java`)
+- **`NewDealDetailSupport`** — 신규 글에만 요청 상한 내 상세를 보강하고 실패 시 목록 정보를 유지한다. 기존 ID 일괄 조회 결과를 받는 형태도 제공한다. (`backend/src/main/java/com/pickdeal/collector/support/NewDealDetailSupport.java`)
+- **`DealCategory`** — 출처별 원문 카테고리를 공통 조회 카테고리로 해석한다. (`backend/src/main/java/com/pickdeal/deal/domain/DealCategory.java`)
