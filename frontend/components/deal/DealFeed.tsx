@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode, RefObject } from "react";
-import { hasSearchFilters, listLocation } from "@/lib/list-location";
+import { countSearchFilters, listLocation } from "@/lib/list-location";
 import { ResetSearchFilters } from "@/components/filter/ResetSearchFilters";
 import { READ_ONLY } from "@/lib/runtime-config";
 import { clearListSnapshot, saveListSnapshot, takeListSnapshot, type ListSnapshot } from "@/lib/list-resume";
@@ -202,7 +202,8 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
     saveListSnapshot({ listHref, deals: allDeals, nextPage, hasNext, selectedDealId,
       scrollY: window.scrollY, viewportWidth: window.innerWidth, showThumbnail });
   }
-  const filtered = hasSearchFilters(new URLSearchParams(searchParams));
+  const filterCount = countSearchFilters(new URLSearchParams(searchParams));
+  const filtered = filterCount > 0;
   const registeredAt = latestRegisteredAt(allDeals);
 
   return (
@@ -215,7 +216,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
         )}
       </div>
       <SortBar showThumbnail={showThumbnail} onToggleThumbnail={onToggleThumbnail}
-        hideEnded={Boolean(listParams.hideEnded)} onToggleHideEnded={onToggleHideEnded} pending={filterPending} endedToggleRef={endedToggleRef} />
+        hideEnded={Boolean(listParams.hideEnded)} onToggleHideEnded={onToggleHideEnded} pending={filterPending} endedToggleRef={endedToggleRef} filterCount={filterCount} />
       <p role="status" className={filterPending ? "text-xs text-fg-muted" : "sr-only"}>{filterPending ? "종료·품절 조건을 적용하고 있어요…" : ""}</p>
       <div aria-busy={filterPending} className={filterPending ? "opacity-60" : ""}>
 
