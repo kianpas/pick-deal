@@ -59,7 +59,7 @@ API·DB·필터 정책 변경은 해당 계약 문서와 테스트를 함께 갱
 
 - 색·폰트 토큰은 `frontend/app/globals.css`가 기준이다. 컴포넌트의 hex/rgb 리터럴을 피하고 새 색은 기본·`.dark`·`.cassette` 테마에 모두 정의한다.
 - brand는 상호작용, price는 가격, positive/warning/danger는 상태에 사용한다.
-- 본문은 `font-sans`, 자릿수 비교용 숫자는 `font-mono tabular-nums`. 최소 크기는 `text-xs`.
+- 본문은 `font-sans`, 가격은 `font-sans tabular-nums`를 사용한다. 숫자의 자릿수 정렬은 `tabular-nums`로 처리하고, 고정폭 글꼴이 필요한 별도 영역에만 `font-mono`를 사용한다. 최소 크기는 `text-xs`.
 - 폰트는 현재 Google Fonts CDN 방식을 유지한다. `next/font` 전환은 기존 빌드 다운로드 실패 문제가 해결되는지 검증할 때만 한다.
 - 전역 focus-visible·reduced-motion 규칙을 재사용한다. 커스텀 요소·애니메이션은 키보드 접근과 감속 설정 적용 여부를 확인한다.
 
@@ -89,4 +89,4 @@ API·DB·필터 정책 변경은 해당 계약 문서와 테스트를 함께 갱
 | DB 스키마·migration | 관련 테스트 + 허용된 PostgreSQL 환경에서 스키마 적용·기동 확인 |
 | 수집기·파서 | 관련 fixture 테스트 + 위 실수집 기준 |
 
-UI 변경은 가능하면 관련 화면·상호작용도 확인한다. 새 테스트는 변경된 동작과 회귀 위험을 검증하는 경우에 추가한다.
+UI 변경은 영향받는 화면과 상호작용을 실제로 확인한다. 환경 제약으로 확인하지 못하면 코드 검사 결과와 화면·동작 미검증 항목 및 사유를 구분해 보고한다. 새 테스트는 변경된 동작과 회귀 위험을 검증하는 경우에 추가한다.
