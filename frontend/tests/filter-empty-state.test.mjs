@@ -10,7 +10,9 @@ const require = createRequire(import.meta.url);
 async function loadTs(path, overrides = {}) {
   const source = await readFile(new URL(path, import.meta.url), "utf8");
   const { outputText } = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true,
+    },
   });
   const compiled = { exports: {} };
   new Function("require", "module", "exports", outputText)(
@@ -28,9 +30,11 @@ async function screen(query = "", readOnly = false) {
     "@/lib/runtime-config": { READ_ONLY: readOnly },
   };
   const reset = await loadTs("../components/filter/ResetSearchFilters.tsx", overrides);
-  const { ActiveFilters } = await loadTs("../components/filter/ActiveFilters.tsx", {
-    ...overrides, "./ResetSearchFilters": reset,
+  const { ActiveFilters } = await loadTs("../components/filter/ActiveFilters.tsx", overrides);
+  const { SortBar } = await loadTs("../components/deal/SortBar.tsx", {
+    ...overrides, "@/components/filter/ResetSearchFilters": reset,
   });
+  const { countSearchFilters } = overrides["@/lib/list-location"];
   const { DealFeed } = await loadTs("../components/deal/DealFeed.tsx", {
     ...overrides,
     "@/components/filter/ResetSearchFilters": reset,
@@ -43,17 +47,36 @@ async function screen(query = "", readOnly = false) {
   });
   return {
     filters: () => renderToStaticMarkup(createElement(ActiveFilters)),
+    sortBar: () => renderToStaticMarkup(createElement(SortBar, {
+      showThumbnail: true, onToggleThumbnail() {}, hideEnded: params.get("hideEnded") === "true",
+      onToggleHideEnded() {}, pending: false, endedToggleRef: { current: null },
+      filterCount: countSearchFilters(params),
+    })),
     feed: (loadFailed = false) => renderToStaticMarkup(createElement(DealFeed, {
       deals: [], meta: null, loadFailed, listParams: {}, categories: [],
     })),
   };
 }
 
-test("각 단독 필터에서 실제 초기화 버튼을 렌더하고 조건이 없으면 숨긴다", async () => {
+test("각 단독 필터에서 정렬 줄에 초기화 버튼을 렌더하고 조건이 없으면 최신순만 보인다", async () => {
   for (const query of ["q=노트북", "shopName=쿠팡", "category=DIGITAL", "sourceId=1", "hideEnded=true"]) {
-    assert.match((await screen(query)).filters(), /검색·필터 초기화/);
+    assert.match((await screen(query)).sortBar(), /검색·필터 <\/span>초기화.*\(조건 1개\)/);
   }
-  assert.equal((await screen()).filters(), "");
+  const multi = (await screen("category=DIGITAL&sourceId=1&sourceId=2&hideEnded=true")).sortBar();
+  assert.match(multi, /\(조건 3개\)/);
+  const none = (await screen()).sortBar();
+  assert.match(none, /최신순/);
+  assert.doesNotMatch(none, /초기화/);
+});
+
+test("필터 위쪽에는 칩으로 상태가 안 보이는 검색어·쇼핑몰 해제 칩만 쌓는다", async () => {
+  for (const query of ["category=DIGITAL", "sourceId=1", "hideEnded=true", ""]) {
+    assert.equal((await screen(query)).filters(), "");
+  }
+  const chips = (await screen("q=노트북&shopName=쿠팡&category=DIGITAL")).filters();
+  assert.match(chips, /검색: 노트북/);
+  assert.match(chips, /쇼핑몰: 쿠팡/);
+  assert.doesNotMatch(chips, /초기화/);
 });
 
 test("조건 유무에 맞는 빈 결과 안내와 행동을 표시한다", async () => {

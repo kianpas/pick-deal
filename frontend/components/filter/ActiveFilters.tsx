@@ -2,26 +2,24 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
-import { hasSearchFilters } from "@/lib/list-location";
 import { clearListSnapshot } from "@/lib/list-resume";
-import { ResetSearchFilters } from "./ResetSearchFilters";
 
 /**
  * 목록 근처에 토글로 보이지 않는 조건(검색어·쇼핑몰)만 해제 칩으로 보여준다.
  * 커뮤니티·카테고리·종료 숨기기는 바로 위의 칩/토글이 이미 선택 상태를 보여주므로
- * 같은 정보를 한 줄 더 쌓아 목록을 밀어내지 않는다. 초기화는 탐색 조건이 하나라도 있으면 표시한다.
+ * 같은 정보를 한 줄 더 쌓아 목록을 밀어내지 않는다. 전체 초기화는 SortBar 줄이 맡는다.
  */
 export function ActiveFilters() {
   const params = useSearchParams();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const items = ["q", "shopName"].flatMap((key) =>
-    [...new Set(params.getAll(key))].filter(Boolean).map((value) => ({
+    [...new Set(params.getAll(key))].filter((value) => value.trim()).map((value) => ({
       key, value,
       label: `${key === "q" ? "검색" : "쇼핑몰"}: ${value}`,
     })),
   );
-  if (!hasSearchFilters(new URLSearchParams(params))) return null;
+  if (items.length === 0) return null;
 
   function remove(key: string, value: string) {
     const next = new URLSearchParams(params);
@@ -41,7 +39,6 @@ export function ActiveFilters() {
           {label} <span aria-hidden="true">×</span>
         </button>
       ))}
-      <ResetSearchFilters disabled={pending} />
       <span role="status" className="sr-only">{pending ? "조건 해제 중" : ""}</span>
     </section>
   );
