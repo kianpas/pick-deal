@@ -1,13 +1,13 @@
 # 02. 아키텍처 설계 (Architecture)
 
 > PickDeal — 전체 아키텍처 / 프론트엔드 화면 구조 / 백엔드 패키지 구조 / 확장 방향
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-09-25
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-10-05
 
 ---
 
 ## 1. 기술 스택 및 버전 기준
 
-> 버전은 프로젝트 생성 시점(2026-05) 기준의 stable을 따른다. 보안 패치가 반영된 최신 패치 버전을 사용한다.
+> 의존성 선언은 `frontend/package.json`과 `backend/build.gradle`, 프론트의 고정 설치 버전은 `frontend/package-lock.json`을 기준으로 한다.
 
 ### 1.1 Frontend
 
@@ -71,30 +71,12 @@
 - 서버의 **backend와 scheduler는 하나의 Spring Boot 애플리케이션**에서 실행된다. 기본 로컬 설정에서는 수집이 활성화되고, Compose는 명시적으로 켜야 한다. 테스트에서는 `pickdeal.collector.scheduling.enabled=false`로 끈다. 로컬 전송 모드는 별도 Java 실행점에서 서버 수신 API를 호출하며 동일 출처를 중복 실행하지 않는다.
 - frontend는 backend REST API(`/api/v1/*`)만 호출한다.
 
-### 2.2 확장 아키텍처 (2차: collector worker 분리)
+### 2.2 확장 검토 기준 (보류)
 
-```
-                ┌────────────┐
-   Vercel ──────│  Frontend   │
-                └─────┬──────┘
-                      │ REST
-                ┌─────▼───────┐        ┌──────────────┐
-                │  Backend API │◀──────│ Redis (캐시/큐/ │
-                │ (조회·설정 전담)│        │ rate limit/dedup)│
-                └─────┬───────┘        └──────▲───────┘
-                      │ JDBC                   │
-                ┌─────▼───────┐         ┌──────┴────────┐
-                │ PostgreSQL   │◀────────│ Collector Worker│ (별도 컨테이너)
-                └─────────────┘  insert  │ - 출처별 수집     │
-                                          │ - 정규화/dedup   │
-                                          │ - (3차) AI 요약  │
-                                          └─────────────────┘
-```
-
-- 수집 대상이 늘어나면 **collector worker를 별도 컨테이너로 분리**한다.
-- Backend API는 조회/설정에 집중하고, Worker는 수집·정규화·중복 제거를 담당한다.
-- Redis는 이 시점에 캐시/작업 큐/중복 수집 방지/rate limit 용도로 도입한다.
-- 상세는 `docs/05-collector-design.md`, 컨테이너 구성은 `docs/06-deployment.md` 참고.
+- 수집 부하가 조회 API에 영향을 주는지 응답 시간·수집 지연·자원 사용량으로 확인한 뒤 collector worker 분리를 검토한다. 출처 수 증가만으로 분리를 확정하지 않는다.
+- Redis는 반복 조회의 캐시, 여러 실행점의 요청 제한·중복 실행 조정, 작업 큐가 실제로 필요할 때 용도별로 검토한다. worker 분리와 Redis 도입은 별개 결정이다.
+- 캐시는 수집·설정 변경 후 갱신 정책이 필요하고, 큐는 실패·재처리 정책이 필요하다. 현재 PostgreSQL과 단일 서버 스케줄러를 유지한다.
+- 남은 판단은 `docs/roadmap.md`, 수집 계약은 `docs/05-collector-design.md`, 실행 구성은 `docs/06-deployment.md`를 따른다.
 
 ---
 
@@ -212,11 +194,14 @@ backend/
 ```
 backend/
 └─ src/main/resources/
-   └─ application.yml                   # 현재: 로컬 PostgreSQL + ddl-auto update
+   ├─ application.yml                   # 기본 로컬: PostgreSQL + ddl-auto update
+   ├─ application-compose.yml           # Compose: Flyway + ddl-auto validate
+   └─ db/migration/
+      ├─ V1__initial_schema.sql
+      └─ V2__decimal_deal_prices.sql
 ```
 
-- **현재 시드는 코드 기반**(`config/SeedDataInitializer`)으로 적재하며, SQL 마이그레이션 파일은 두지 않는다.
-- 운영 배포 준비 시 추가할 **계획**(미작성): 프로파일 분리(`application-local.yml`/`application-prod.yml`)와 Flyway 마이그레이션(`db/migration/V1__init.sql`). 상세는 `docs/04` 1장.
+- 시드 데이터는 `config/SeedDataInitializer`가 담당하며 Compose에서는 비활성화한다. 스키마 변경은 Compose에서 Flyway migration으로 적용한다. 기본 로컬 실행은 Flyway 비활성·`ddl-auto: update`다. 기존 DB에 Compose 프로필을 임의로 적용하지 않으며 전환 절차는 `docs/04`와 `docs/06`을 따른다.
 
 ### 5.1 계층 책임
 
@@ -238,10 +223,10 @@ backend/
 | --- | --- | --- |
 | 수집 | 복수 출처 자동 수집 + 보수적 교차 출처 그룹 연결 | 출처 추가·판정 규칙 고도화 (`docs/05`) |
 | scheduler | 단일 앱 내 기본 활성 | worker 분리 가능 (`docs/02` 2.2, `docs/06`) |
-| 캐시/큐 | 없음 | Redis 도입 (`docs/05`) |
+| 캐시/큐 | 없음 | 실제 필요 확인 후 Redis 등 검토, 도입 보류 |
 | 중복 제거 | 동일 출처 유니크 + 교차 출처 DealGroup 연결·UI | 운영 데이터 기반 규칙 보정 (`docs/04`, `docs/05`) |
 | AI | 없음 | 댓글 요약·구매 판단 보조 (`docs/05`) |
-| 사용자 | 단일(고정 user_id) | 멀티유저 + 인증 |
+| 사용자 | 단일(고정 user_id) | 사용자별 데이터 격리 필요 시 인증·멀티유저 검토, 보류 |
 
 ---
 
