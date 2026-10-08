@@ -23,7 +23,8 @@ export function TopBar() {
 
         {/* Search — useSearchParams를 쓰는 클라이언트 컴포넌트라 Suspense로 감싼다 */}
         <div className="order-3 col-span-2 mx-auto min-w-0 w-full md:order-none md:max-w-2xl">
-          <Suspense fallback={<div className="h-11 rounded-lg border border-border bg-surface" />}>
+          {/* fallback은 실제 폼(내부 44px + 테두리)과 같은 높이로 맞춰 교체 시 헤더가 밀리지 않게 한다. */}
+          <Suspense fallback={<div className="box-content h-11 rounded-lg border border-border bg-surface" />}>
             <SearchBox />
           </Suspense>
         </div>
