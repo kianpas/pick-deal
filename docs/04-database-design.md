@@ -65,6 +65,7 @@
 - `INDEX (status)` — 활성 딜 필터.
 - `INDEX (title_norm_hash)` — 교차 출처 중복 후보 탐색.
 - `INDEX (group_id)` — 그룹 소속 Deal 조회.
+- `INDEX (product_url)`, `INDEX (price)` — 교차 출처 그룹 후보 탐색(상품 URL·가격 일치, V3).
 - 제목 포함 검색 최적화는 데이터량 증가 시 PostgreSQL `pg_trgm` GIN 인덱스 도입 고려(MVP는 불필요).
 
 `shop_name`과 `product_url`은 수집 시 관측한 값을 그대로 보존한다. 현재는 별도 Shop 엔티티, 판매몰 표준 코드, canonical 상품 URL, 판매몰 상품 ID를 두지 않는다. 실제 데이터 분포가 쌓인 뒤 교차 출처 dedup에 필요할 때 추가한다.

@@ -45,7 +45,7 @@ class ComposeMigrationTest {
                 + " values (?, 'legacy', 'test', 'https://example.com', current_timestamp, 89000)", sourceId);
         var upgrade = Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema)
                 .locations("classpath:db/migration").load();
-        assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(2);
         assertThat(jdbc.queryForObject("select price from " + schema + ".deal", java.math.BigDecimal.class))
                 .isEqualByComparingTo("89000");
         jdbc.update("update " + schema + ".deal set price=?, currency='USD'", new java.math.BigDecimal("382.76"));
@@ -55,11 +55,12 @@ class ComposeMigrationTest {
     }
 
     @Test
-    void migratesEmptyDatabaseValidatesEntitiesAndPreservesDataOnNextMigration() {
+    void migratesEmptyDatabaseValidatesEntitiesAndPreservesDataOnNextMigration() throws Exception {
         // 컨텍스트 기동 자체가 compose 프로필의 Hibernate validate 통과를 검증한다.
         assertThat(context.getEnvironment().getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
         assertThat(context.getBeansOfType(SeedDataInitializer.class)).isEmpty();
-        assertThat(flyway.info().current().getVersion().toString()).isEqualTo("2");
+        assertThat(flyway.info().current().getVersion().toString()).isEqualTo("3");
+        assertThat(dealIndexNames()).contains("idx_deal_product_url", "idx_deal_price");
         for (String table : new String[]{"source", "deal", "deal_group", "keyword", "source_visibility"}) {
             assertThat(jdbc.queryForObject("select count(*) from " + table, Long.class)).isZero();
         }
@@ -81,6 +82,18 @@ class ComposeMigrationTest {
 
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("select count(*) from deal", Long.class)).isEqualTo(2L);
-        assertThat(flyway.info().applied()).hasSize(2);
+        assertThat(flyway.info().applied()).hasSize(3);
+    }
+
+    private java.util.Set<String> dealIndexNames() throws java.sql.SQLException {
+        java.util.Set<String> names = new java.util.HashSet<>();
+        try (var connection = dataSource.getConnection();
+             var indexes = connection.getMetaData().getIndexInfo(null, null, "deal", false, false)) {
+            while (indexes.next()) {
+                String name = indexes.getString("INDEX_NAME");
+                if (name != null) names.add(name.toLowerCase(java.util.Locale.ROOT));
+            }
+        }
+        return names;
     }
 }
