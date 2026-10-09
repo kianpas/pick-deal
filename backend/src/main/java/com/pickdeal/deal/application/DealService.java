@@ -51,7 +51,7 @@ public class DealService {
 
     // MVP 한정: ACTIVE 딜 전체를 메모리로 올린 뒤 필터/정렬/페이지네이션한다.
     // 키워드 필터가 제목·본문 부분일치라 DB로 내리기 애매한 점을 감안한 소규모 시드 전용 구현.
-    // 데이터가 커지면 DB 쿼리/키셋 페이지네이션으로 전환한다(docs/03 §5).
+    // 데이터가 커지면 DB 쿼리/키셋 페이지네이션으로 전환한다(docs/03 §6).
     @Transactional(readOnly = true)
     public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String category, String query, List<String> shopNames, boolean hideEnded) {
         DealCategory selectedCategory = parseCategory(category);

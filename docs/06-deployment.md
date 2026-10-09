@@ -168,7 +168,7 @@ docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -
 
 ### 공개 조회 모드
 
-- `compose` 프로필은 `pickdeal.read-only=true`가 기본이다. 공개 쓰기는 `403 / READ_ONLY`로 거부한다. 키워드·출처 변경 및 기존 내부 Deal 등록도 포함한다. 명시적으로 활성화하고 토큰 인증된 원격 수집 전용 POST 두 개만 예외다(`docs/03` §8). 앱 내부 수집기의 DB 저장에는 영향이 없다.
+- `compose` 프로필은 `pickdeal.read-only=true`가 기본이다. 공개 쓰기는 `403 / READ_ONLY`로 거부한다. 키워드·출처 변경 및 기존 내부 Deal 등록도 포함한다. 명시적으로 활성화하고 토큰 인증된 원격 수집 전용 POST 두 개만 예외다(`docs/03` §5). 앱 내부 수집기의 DB 저장에는 영향이 없다.
 - 기본 로컬 backend 실행에서는 필터가 비활성화되어 기존 설정 기능을 유지한다. 운영에서 `PICKDEAL_READ_ONLY=false`로 해제하지 않는다.
 - frontend는 production 빌드에서 조회 전용이 기본이다. Vercel에는 `NEXT_PUBLIC_READ_ONLY=true`를 명시하고 재배포한다. 키워드 메뉴·데스크톱 출처 설정·모바일 출처 drawer를 숨기고, `/settings/keywords` 직접 접근은 404로 처리한다. 데모 UI는 변경하지 않는다.
 - 로컬 `npm run dev`는 기존 UI를 유지한다. 로컬 production 빌드로 설정 화면을 검증할 때만 `NEXT_PUBLIC_READ_ONLY=false`를 지정한다. UI 숨김은 보안 경계가 아니며 backend 차단이 실제 보호다.
@@ -350,6 +350,24 @@ pwsh -NoProfile -File scripts/verify-local-collector.ps1
 
 SSR 성공만으로 통합 검증을 끝내지 않는다. 출처 토글과 더 보기처럼 브라우저가 직접 수행하는 요청도 실제 도메인에서 확인한다.
 
+### 개드립 OCI 수집 활성화
+
+개드립은 로컬 전송 모드가 아니라 OCI의 기존 서버 스케줄러에서 실행한다.
+최초·일반 실행 모두 목록 1페이지를 조회하고, 신규 글에 한해 실행당 최대 3건의 상세 정보를 보강한다. 상세 요청 실패 시 목록 정보로 저장하며 기존 글의 상세를 다시 조회하지 않는다. `.env`에서 명시적으로 활성화한다.
+
+```ini
+COLLECTOR_ENABLED=true
+DOGDRIP_COLLECTOR_ENABLED=true
+```
+
+코드 반영 후 저장소 루트에서 `docker compose up -d --build backend`로 재생성한다.
+기존 전체 스케줄러를 켜므로 퀘이사존 등 다른 활성 출처도 실행된다. 동일 출처를 노트북과
+OCI 양쪽에서 실행하지 않는다. 루리웹의 기존 Compose 비활성 설정은 유지한다.
+`docker compose logs --since=30m backend`에서 `[dogdrip]` 성공/실패를 확인한다.
+403/429 발생 시 자동으로 최소 24시간 요청을 쉬며 해당 기간에는 앱을 재시작해 재시도하지 않는다.
+반복 제한은 `DOGDRIP_COLLECTOR_ENABLED=false`로 비활성화하고 원인을 확인한다.
+요청 간격은 차단되지 않음을 보장하지 않는다. 자동 스케줄러와 일회성 진단을 중복 실행하지 않는다.
+
 ## 7. 백업과 복구
 
 - OCI DB 컨테이너: 정기 `pg_dump`, 영속 볼륨 백업, 복구 명령 확인
@@ -368,31 +386,10 @@ SSR 성공만으로 통합 검증을 끝내지 않는다. 출처 토글과 더 �
 
 운영에서 반복 배포나 장애 대응 비용이 확인되면 필요한 항목부터 추가한다.
 
-## 개드립 OCI 수집 활성화
-
-개드립은 로컬 전송 모드가 아니라 OCI의 기존 서버 스케줄러에서 실행한다.
-최초·일반 실행 모두 목록 1페이지를 조회하고, 신규 글에 한해 실행당 최대 3건의 상세 정보를 보강한다. 상세 요청 실패 시 목록 정보로 저장하며 기존 글의 상세를 다시 조회하지 않는다. `.env`에서 명시적으로 활성화한다.
-
-```ini
-COLLECTOR_ENABLED=true
-DOGDRIP_COLLECTOR_ENABLED=true
-```
-
-코드 반영 후 저장소 루트에서 `docker compose up -d --build backend`로 재생성한다.
-기존 전체 스케줄러를 켜므로 퀘이사존 등 다른 활성 출처도 실행된다. 동일 출처를 노트북과
-OCI 양쪽에서 실행하지 않는다. 루리웹의 기존 Compose 비활성 설정은 유지한다.
-`docker compose logs --since=30m backend`에서 `[dogdrip]` 성공/실패를 확인한다.
-403/429 발생 시 자동으로 최소 24시간 요청을 쉬며 해당 기간에는 앱을 재시작해 재시도하지 않는다.
-반복 제한은 `DOGDRIP_COLLECTOR_ENABLED=false`로 비활성화하고 원인을 확인한다.
-요청 간격은 차단되지 않음을 보장하지 않는다. 자동 스케줄러와 일회성 진단을 중복 실행하지 않는다.
-
-### USD 가격 지원 배포
-
-V2 Flyway migration은 `deal.price`·`original_price`를 `numeric(21,2)`로 변경하며 기존 원화 금액은 유지한다. 운영 DB 백업 후 backend를 먼저 배포하여 migration과 기동을 확인하고, 로컬 수집기 이미지를 다시 빌드·실행한다. 프론트는 USD를 `US$382.76`처럼 환산 없이 표시한다. 기존 가격 누락 행은 목록 재수집 시 갱신되며, 목록 범위를 벗어난 과거 글은 자동으로 다시 상세 조회하지 않는다.
-
 ## 9. 관련 문서
 
 - 남은 작업과 보류 항목: `docs/roadmap.md`
 - DB 스키마와 Flyway 방향: `docs/04-database-design.md`
 - 수집 설정과 실수집 확인: `docs/05-collector-design.md`
 - 검토 근거: `docs/notes/2026-09-05-pickdeal-review.md`
+- USD 가격 migration(V2) 배포 기록: `docs/notes/2026-10-01-usd-price-deploy.md`

@@ -151,7 +151,7 @@ Parser는 원문 카테고리를 그대로 추출하고 `CategoryNormalizer`가 
 
 ## 7. 남은 경계
 
-원격 수집 전환을 위한 기존 ID 조회·배치 수신 API가 추가됐다(`docs/03` §8).
+원격 수집 전환을 위한 기존 ID 조회·배치 수신 API가 추가됐다(`docs/03` §5).
 기본 비활성이며, 수신은 기존 저장/그룹화 로직을 재사용한다. 로컬 실행은 같은 backend Gradle 프로젝트의
 `src/collector/java`와 `collectorDist`로 빌드한다. 별도 저장소나 Spring 프로필 스캔을 만들지 않고
 `LocalCollectorMain`을 실행하므로 DB·Flyway·웹 서버가 기동하지 않는다. 서버 bootJar에는 전용 런타임 의존성을 포함하지 않는다.

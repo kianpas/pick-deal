@@ -13,7 +13,7 @@
 
 - Base URL: `/api/v1`
 - CORS: 운영 Compose는 `CORS_ALLOWED_ORIGINS`에 지정한 정확한 frontend origin만 허용한다(빈 값은 교차 origin 미허용). 쿠키 credentials는 허용하지 않으며, CORS와 별개로 공개 조회 모드의 쓰기 차단을 유지한다. 설정·배포 절차는 `docs/06`을 따른다.
-- 공개 조회용 `compose` 프로필은 `pickdeal.read-only=true`로 공개 쓰기를 `403 / READ_ONLY`로 거부한다. 명시적으로 활성화하고 토큰 인증에 성공한 §8의 수집 전용 POST 두 개만 예외다. 수집기의 내부 DB 저장은 영향을 받지 않는다. 기본 로컬 실행은 기존 쓰기 API를 유지한다.
+- 공개 조회용 `compose` 프로필은 `pickdeal.read-only=true`로 공개 쓰기를 `403 / READ_ONLY`로 거부한다. 명시적으로 활성화하고 토큰 인증에 성공한 §5의 수집 전용 POST 두 개만 예외다. 수집기의 내부 DB 저장은 영향을 받지 않는다. 기본 로컬 실행은 기존 쓰기 API를 유지한다.
 - 포맷: `application/json; charset=utf-8`
 - 인증: 사용자 로그인은 **MVP 없음**(단일 사용자). 내부적으로 고정 `user_id`(예: `1`)를 사용한다. 설정·기존 수동 등록 API는 공개 쓰기를 차단한다(`docs/06`). 원격 수집 API만 별도 Bearer 토큰을 사용하며, 사용자 인증이나 다른 쓰기 권한을 부여하지 않는다.
 - 시간 포맷: ISO-8601 문자열. 직렬화 시간대는 **`Asia/Seoul`(KST)**을 사용한다(예: `2026-05-20T20:36:00+09:00`).
@@ -369,44 +369,7 @@ DELETE /api/v1/keywords/{id}
 
 ---
 
-## 5. 확장 시 변경 예정 (참고)
-
-> 아래는 MVP 구현 대상이 아니다. 확장 단계에서 추가/변경한다.
-
-- **cursor 페이지네이션**: 데이터/트래픽 증가 시 `GET /api/v1/deals?cursor=...&size=...`로 전환(`postedAt + id` 기반 키셋).
-- **알림 구독 API**(2차): 관심 키워드 알림 on/off, 채널 설정.
-- **댓글 요약 조회**(3차): `GET /api/v1/deals/{id}/comment-summary` — collector/AI 결과 노출(`docs/05`).
-- **구매 판단 보조**(3차): `GET /api/v1/deals/{id}/buy-advice`.
-- **인증**: 멀티유저 전환 시 모든 설정성 API에 `Authorization` 적용, `user_id`를 토큰에서 추출.
-
----
-
-## 6. 엔드포인트 요약
-
-| 메서드 | 경로 | 설명 | 단계 |
-| --- | --- | --- | --- |
-| GET | `/api/v1/deals` | 핫딜 목록(필터/정렬/페이지) | MVP |
-| GET | `/api/v1/deals/{id}` | 핫딜 상세 | MVP |
-| POST | `/api/v1/internal/deals` | 딜 수동 등록(내부용, 선택) | MVP(선택) |
-| POST | `/api/v1/internal/collected-deals/known-external-ids` | 출처 내 기존 ID 일괄 확인 | 원격 수집·기본 비활성 |
-| POST | `/api/v1/internal/collected-deals` | 수집 결과 배치 저장/갱신 | 원격 수집·기본 비활성 |
-| GET | `/api/v1/sources` | 출처 목록 + 표시 상태 | MVP |
-| PATCH | `/api/v1/sources/{id}/visibility` | 출처 표시/숨김 | MVP |
-| GET | `/api/v1/keywords` | 키워드 목록 | MVP |
-| POST | `/api/v1/keywords` | 키워드 등록 | MVP |
-| DELETE | `/api/v1/keywords/{id}` | 키워드 삭제 | MVP |
-| GET | `/api/v1/deals/{id}/comment-summary` | 댓글 요약 | 3차 |
-| GET | `/api/v1/deals/{id}/buy-advice` | 구매 판단 보조 | 3차 |
-
----
-
-## 7. 관련 문서
-
-- 필드/제약/인덱스: `docs/04-database-design.md`
-- 필터 우선순위 규칙: `docs/01-requirements.md` 3.2
-- 화면-API 매핑: `docs/02-architecture.md` 4장
-
-## 8. 원격 수집 전용 API
+## 5. 원격 수집 전용 API
 
 수신 서버와 DB 없는 로컬 수집기의 전송 모드가 구현됐다. 실제 운영 연결은 별도 검증 후 적용한다.
 `pickdeal.collector.ingress.enabled=false`가 기본이며 비활성 시 두 경로는 404다.
@@ -414,7 +377,7 @@ DELETE /api/v1/keywords/{id}
 본문 파싱 전에 401, 인증 후 POST 외 메서드는 405다. 끝의 `/`를 붙이지 않는다.
 수집기는 서버 간 HTTPS로 호출하며, 토큰은 브라우저/Vercel에 전달하지 않는다.
 
-### 8.1 기존 ID 확인
+### 5.1 기존 ID 확인
 
 `POST /api/v1/internal/collected-deals/known-external-ids`
 
@@ -431,7 +394,7 @@ DELETE /api/v1/keywords/{id}
 - `hasCollectedDeals`는 해당 출처에 딜이 하나라도 있는지 나타내므로 향후 bootstrap 판별에 쓸 수 있다.
 - 출처가 아직 DB에 없으면 빈 목록/false이며 조회만으로 출처를 생성하지 않는다.
 
-### 8.2 수집 결과 전송
+### 5.2 수집 결과 전송
 
 `POST /api/v1/internal/collected-deals`
 
@@ -480,3 +443,42 @@ DELETE /api/v1/keywords/{id}
   같은 출처의 OCI 스케줄러와 로컬 수집기를 동시에 실행하지 않는다. 저장 충돌은 전체 롤백 후 409다.
 - 인증 후 본문은 Content-Length 유무와 관계없이 최대 1MiB, 초과 시 413이다.
   메모리 큐·영속 재전송 큐·자동 재시도는 이 API에 포함하지 않는다.
+
+---
+
+## 6. 확장 시 변경 예정 (참고)
+
+> 아래는 MVP 구현 대상이 아니다. 확장 단계에서 추가/변경한다.
+
+- **cursor 페이지네이션**: 데이터/트래픽 증가 시 `GET /api/v1/deals?cursor=...&size=...`로 전환(`postedAt + id` 기반 키셋).
+- **알림 구독 API**(2차): 관심 키워드 알림 on/off, 채널 설정.
+- **댓글 요약 조회**(3차): `GET /api/v1/deals/{id}/comment-summary` — collector/AI 결과 노출(`docs/05`).
+- **구매 판단 보조**(3차): `GET /api/v1/deals/{id}/buy-advice`.
+- **인증**: 멀티유저 전환 시 모든 설정성 API에 `Authorization` 적용, `user_id`를 토큰에서 추출.
+
+---
+
+## 7. 엔드포인트 요약
+
+| 메서드 | 경로 | 설명 | 단계 |
+| --- | --- | --- | --- |
+| GET | `/api/v1/deals` | 핫딜 목록(필터/정렬/페이지) | MVP |
+| GET | `/api/v1/deals/{id}` | 핫딜 상세 | MVP |
+| POST | `/api/v1/internal/deals` | 딜 수동 등록(내부용, 선택) | MVP(선택) |
+| POST | `/api/v1/internal/collected-deals/known-external-ids` | 출처 내 기존 ID 일괄 확인 | 원격 수집·기본 비활성 |
+| POST | `/api/v1/internal/collected-deals` | 수집 결과 배치 저장/갱신 | 원격 수집·기본 비활성 |
+| GET | `/api/v1/sources` | 출처 목록 + 표시 상태 | MVP |
+| PATCH | `/api/v1/sources/{id}/visibility` | 출처 표시/숨김 | MVP |
+| GET | `/api/v1/keywords` | 키워드 목록 | MVP |
+| POST | `/api/v1/keywords` | 키워드 등록 | MVP |
+| DELETE | `/api/v1/keywords/{id}` | 키워드 삭제 | MVP |
+| GET | `/api/v1/deals/{id}/comment-summary` | 댓글 요약 | 3차 |
+| GET | `/api/v1/deals/{id}/buy-advice` | 구매 판단 보조 | 3차 |
+
+---
+
+## 8. 관련 문서
+
+- 필드/제약/인덱스: `docs/04-database-design.md`
+- 필터 우선순위 규칙: `docs/01-requirements.md` 3.2
+- 화면-API 매핑: `docs/02-architecture.md` 4장

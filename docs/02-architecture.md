@@ -86,14 +86,18 @@
 pick-deal/
 ├─ frontend/                  # Next.js App Router (TypeScript, Tailwind)
 ├─ backend/                   # Spring Boot REST API (+ scheduler, 동일 앱)
-├─ docs/                      # 설계 문서 (본 문서들)
-│  ├─ 01-requirements.md
-│  ├─ 02-architecture.md
-│  ├─ 03-api-design.md
-│  ├─ 04-database-design.md
-│  ├─ 05-collector-design.md
-│  └─ 06-deployment.md
-└─ README.md                 # (추후 작성)
+├─ docs/
+│  ├─ 01~06-*.md              # 요구사항·아키텍처·API·DB·수집기·배포 계약
+│  ├─ roadmap.md              # 남은 작업·보류 항목
+│  ├─ adr/                    # 되돌리기 비싼 결정의 근거
+│  └─ notes/                  # 조사·검증·일회성 작업 기록
+├─ scripts/                   # 로컬 수집기 격리 검증 스크립트
+├─ tools/                     # 진단용 보조 도구
+├─ compose.yml                # backend + PostgreSQL
+├─ compose.collector*.yml     # 로컬 수집기 실행·격리 검증
+├─ AGENTS.md / CLAUDE.md      # 에이전트 작업 지침 (CLAUDE.md는 AGENTS.md를 import)
+├─ CONTEXT.md                 # 용어·재사용 자산 색인
+└─ README.md                  # 실행 방법·문서 안내
 ```
 
 - 하나의 저장소에서 frontend/backend를 폴더로 분리한다.
