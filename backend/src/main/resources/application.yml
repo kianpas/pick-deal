@@ -25,6 +25,11 @@ logging:
     org.hibernate.SQL: debug
 
 pickdeal:
+  # 게시 시각 기준 보관 기간 정리. 기본 OFF, 매주 월요일 04:00(한국 시각) 실행.
+  retention:
+    enabled: false
+    days: 90
+    cron: "0 0 4 * * MON"
   collector:
     ingress:
       enabled: false

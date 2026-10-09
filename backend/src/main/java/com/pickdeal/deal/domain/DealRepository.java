@@ -2,7 +2,9 @@ package com.pickdeal.deal.domain;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.OffsetDateTime;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -89,4 +91,32 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
             where d.source.id <> :sourceId and d.price = :price
             """)
     List<Deal> findCrossSourceCandidatesByPrice(@Param("sourceId") Long sourceId, @Param("price") java.math.BigDecimal price);
+
+    /**
+     * 보관 기간 정리 1단계: 모든 구성원의 게시 시각이 기준보다 오래된 그룹의 연결을 끊는다.
+     * 최근 구성원이 하나라도 있는 그룹은 오래된 구성원까지 그대로 둔다(docs/04 §4).
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            update deal set group_id = null
+            where group_id in (
+                select group_id from (
+                    select group_id from deal
+                    where group_id is not null
+                    group by group_id
+                    having max(posted_at) < :cutoff
+                ) expired
+            )
+            """, nativeQuery = true)
+    int detachExpiredGroups(@Param("cutoff") OffsetDateTime cutoff);
+
+    /** 보관 기간 정리 3단계: 그룹에 속하지 않고 어떤 그룹의 대표도 아닌 오래된 Deal을 삭제한다. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            delete from deal
+            where group_id is null
+              and posted_at < :cutoff
+              and not exists (select 1 from deal_group g where g.representative_deal_id = deal.id)
+            """, nativeQuery = true)
+    int deleteExpiredUngrouped(@Param("cutoff") OffsetDateTime cutoff);
 }

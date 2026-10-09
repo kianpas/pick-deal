@@ -244,6 +244,20 @@ Compose에는 `COLLECTOR_INGRESS_ENABLED=false`, `COLLECTOR_INGRESS_TOKEN=`을 �
 - 본문 제한은 1MiB이고 한 요청 최대 150건이다. 인증 실패를 반복 재시도하지 않는다.
 - 운영 배포 전에는 테스트용 DB에서 전송/재전송/토큰 오류/공개 쓰기 차단을 확인한다.
 
+### 보관 기간 정리 (기본 OFF)
+
+게시 후 90일이 지난 Deal을 매주 월요일 04:00(한국 시각)에 삭제한다. 그룹 처리 규칙은 `docs/04` §4를 따른다.
+
+- `.env`의 `DEAL_RETENTION_ENABLED=true` → `PICKDEAL_RETENTION_ENABLED`. 보관 일수 `pickdeal.retention.days`(기본 90, 최소 30)와 `pickdeal.retention.cron`은 필요할 때만 환경변수로 바꾼다. `.env` 변경 후에는 `restart`가 아니라 `docker compose up -d backend`로 컨테이너를 재생성해야 반영된다.
+- 운영 데이터를 되돌릴 수 없게 삭제하므로 처음 켜기 전에 백업하고 대상 건수를 확인한다. 아래는 그룹 없는 대상만 센 근사치다.
+
+```bash
+docker compose exec postgres psql -U <DB_USERNAME> -d pickdeal -c "select count(*) from deal where group_id is null and posted_at < now() - interval '90 days';"
+```
+
+- 실행 결과는 `docker compose logs backend`의 `보관 기간 정리 완료` 로그에서 Deal·그룹 삭제 수로 확인한다. 실패하면 전체 롤백 후 다음 주기에 다시 실행한다.
+- 처음 대량 삭제한 뒤 빈 공간은 autovacuum이 재사용한다. 디스크 파일 크기를 줄여야 할 때만 별도로 `VACUUM`을 검토한다.
+
 ### 로컬 수집기 실행 (노트북·홈 서버)
 
 별도 저장소 없이 같은 프로젝트를 사용한다. 서버용 `compose.yml`과 로컬용
