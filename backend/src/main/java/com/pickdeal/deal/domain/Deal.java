@@ -39,7 +39,9 @@ import lombok.NoArgsConstructor;
                 @Index(name = "idx_deal_discount_rate", columnList = "discount_rate"),
                 @Index(name = "idx_deal_status", columnList = "status"),
                 @Index(name = "idx_deal_title_norm_hash", columnList = "title_norm_hash"),
-                @Index(name = "idx_deal_group_id", columnList = "group_id")
+                @Index(name = "idx_deal_group_id", columnList = "group_id"),
+                @Index(name = "idx_deal_product_url", columnList = "product_url"),
+                @Index(name = "idx_deal_price", columnList = "price")
         },
         uniqueConstraints = {
                 // 같은 출처에서 같은 외부 ID의 딜은 한 번만 — 중복 수집 방지(docs/03 §2.3).
