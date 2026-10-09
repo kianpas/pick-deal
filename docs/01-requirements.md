@@ -141,12 +141,11 @@ Dockerfile·Compose·운영 프로필·Flyway는 제품 기능이 아니라 다�
 
 ## 7. 용어 정의 (Glossary)
 
+용어 정의는 루트 `CONTEXT.md`를 단일 출처로 한다. 이 문서에서 쓰는 용어 중 `CONTEXT.md`에 없는 것만 아래에 둔다.
+
 | 용어 | 정의 |
 | --- | --- |
 | 딜(Deal) | 하나의 핫딜 정보. 제목, 가격, 출처, 링크 등을 가진다. |
-| 출처(Source) | 딜이 게시된 커뮤니티/사이트. 표시/숨김 설정의 대상. |
-| 관심 키워드(Interest keyword) | 해당 키워드를 포함하는 딜만 노출시키는 화이트리스트성 키워드. |
-| 제외 키워드(Exclude keyword) | 해당 키워드를 포함하는 딜을 숨기는 블랙리스트성 키워드. |
 | dedup 키 | 중복 딜을 식별하기 위한 키(`source_id + external_id`, 정규화 제목 해시 등). |
 | collector / worker | collector는 현재 동일 backend 앱에서 등록된 복수 출처의 딜을 수집한다. 별도 worker 분리는 향후 선택 사항이다. |
 
