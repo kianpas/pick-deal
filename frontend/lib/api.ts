@@ -16,9 +16,20 @@ import type {
   PageMeta,
   SourceItem,
 } from "./api-types";
+import { READ_ONLY } from "./runtime-config";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+
+/** 백엔드가 응답하지 않을 때 SSR·클라이언트 요청이 멈추지 않도록 끊는 시간. */
+const REQUEST_TIMEOUT_MS = 10_000;
+
+/**
+ * 자주 바뀌지 않는 필터 목록의 서버 캐시 시간(초). 출처 표시 설정을 바꿀 수 없는
+ * 조회 전용 모드에서만 적용한다 — 설정을 바꾸면 목록이 달라지므로 그 외에는 캐시하지 않는다.
+ */
+const FILTER_LIST_REVALIDATE_SECONDS = 300;
+const filterListCache: RequestInit = READ_ONLY ? { next: { revalidate: FILTER_LIST_REVALIDATE_SECONDS } } : {};
 
 /** 백엔드 에러 봉투 또는 비정상 HTTP 상태를 표현하는 예외. */
 export class ApiError extends Error {
@@ -34,20 +45,36 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<ApiEnvelope<T>> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      // 본문이 있을 때만 JSON 타입을 붙인다. GET에 붙이면 브라우저가 매번 CORS preflight를 보낸다.
+      headers: {
+        ...(init?.body != null ? { "Content-Type": "application/json" } : {}),
+        ...(init?.headers ?? {}),
+      },
+      signal: init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      throw new ApiError(504, "TIMEOUT", "API request timed out");
+    }
+    throw error;
+  }
 
   // 204 No Content(키워드 삭제 등) 등 본문 없는 응답.
   if (response.status === 204) {
     return {};
   }
 
-  const body = (await response.json()) as ApiEnvelope<T>;
+  // reverse proxy의 HTML 오류 페이지 등 JSON이 아닌 응답도 ApiError로 통일한다.
+  let body: ApiEnvelope<T>;
+  try {
+    body = (await response.json()) as ApiEnvelope<T>;
+  } catch {
+    throw new ApiError(response.status, "INVALID_RESPONSE", response.statusText || "Invalid API response");
+  }
   if (!response.ok || body.error) {
     throw new ApiError(
       response.status,
@@ -95,13 +122,13 @@ export async function getDeals(params: DealListParams = {}): Promise<DealListRes
 
 /** GET /api/v1/deals/categories — 노출 중인 딜의 카테고리 목록(중복 없음, 정렬). */
 export async function getDealCategories(): Promise<DealCategory[]> {
-  const envelope = await request<DealCategory[]>("/api/v1/deals/categories");
+  const envelope = await request<DealCategory[]>("/api/v1/deals/categories", filterListCache);
   return envelope.data ?? [];
 }
 
 /** 표시 출처의 판매처 목록. 등록된 별칭은 백엔드에서 대표 이름으로 통합한다. */
 export async function getDealShops(): Promise<string[]> {
-  const envelope = await request<string[]>("/api/v1/deals/shops");
+  const envelope = await request<string[]>("/api/v1/deals/shops", filterListCache);
   return envelope.data ?? [];
 }
 
