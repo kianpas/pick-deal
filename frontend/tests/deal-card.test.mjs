@@ -24,13 +24,13 @@ const { DealCard } = await loadTs("../components/deal/DealCard.tsx", {
   "@/components/deal/DealThumbnail": { DealThumbnail: () => null },
 });
 
-function render(commentCount, status = "ACTIVE", sourceCount = 1, matchedKeywords = []) {
+function render(commentCount, status = "ACTIVE", sourceCount = 1, matchedKeywords = [], read = false) {
   const deal = {
     id: 1, title: "테스트 상품", price: 10000, originalPrice: null, discountRate: null,
     currency: "KRW", shopName: null, thumbnailUrl: null, commentCount, status,
     sourceCount, sourceNames: ["테스트 출처"], postedAt: "2026-10-03T00:00:00Z", matchedKeywords,
   };
-  return renderToStaticMarkup(createElement(DealCard, { deal, showThumbnail: false }));
+  return renderToStaticMarkup(createElement(DealCard, { deal, showThumbnail: false, read }));
 }
 
 function comments(markup) {
@@ -64,4 +64,14 @@ test("일치한 관심 키워드를 칩으로 표시하고 없으면 영역을 �
   assert.match(markup, />#ssd</);
   assert.match(markup, />#마우스</);
   assert.doesNotMatch(render(null), /일치한 관심 키워드/);
+});
+
+test("읽은 딜은 제목을 흐리게 하고 읽음 라벨을 붙이며, 종료 표시는 그대로 우선한다", () => {
+  const unread = render(null);
+  const read = render(null, "ACTIVE", 1, [], true);
+  assert.doesNotMatch(unread, />읽음</);
+  assert.match(read, />읽음</);
+  assert.match(read, /data-detail-title="true" class="[^"]*text-fg-muted/);
+  assert.doesNotMatch(read, /line-through/);
+  assert.match(render(null, "EXPIRED", 1, [], true), /text-fg-muted line-through/);
 });

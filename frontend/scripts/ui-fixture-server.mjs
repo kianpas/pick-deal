@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 
 const sourcePosts = [1, 2].map((id) => ({
   dealId: id, sourceId: id, sourceName: id === 1 ? "퀘이사존" : "다른 커뮤니티",
+  title: `출처 ${id} 원문 제목`, price: id === 1 ? 10000 : null, currency: "KRW", shopName: "판매처",
   originalUrl: "https://example.com/post", productUrl: "https://example.com/product",
   status: "ACTIVE", postedAt: "2026-09-13T12:00:00Z", commentCount: id * 12,
 }));
@@ -16,7 +17,7 @@ const deals = [
 ].map(([title, price], i) => ({
   id: i + 1, title, price, currency: "KRW", originalPrice: null, discountRate: null,
   category: "전자기기", shopName: i === 1 ? "아주긴판매처이름ABCDEFGHIJKLMNOPQRSTUVWXYZ" : "판매처",
-  sourceNames: ["퀘이사존", "다른 커뮤니티"], sourceCount: 2, sourceId: 1,
+  sourceNames: ["퀘이사존", "다른 커뮤니티"], sourceCount: 2, sourceId: 1, groupId: i + 1,
   sourceName: "퀘이사존", commentCount: 12, status: i === 3 ? "SOLD_OUT" : "ACTIVE",
   thumbnailUrl: null, postedAt: "2026-09-13T12:00:00Z", collectedAt: "2026-09-13T12:00:00Z",
   sourcePosts, originalUrl: "https://example.com/post", productUrl: "https://example.com/product",

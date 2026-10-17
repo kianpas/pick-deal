@@ -41,6 +41,7 @@ async function screen(query = "", readOnly = false) {
     "./CategoryGrid": { CategoryGrid: () => null },
     "./DealList": { DealList: () => null },
     "./SortBar": { SortBar: () => null },
+    "./use-read-deals": { useReadDeals: () => new Map() },
     "@/lib/api": {},
     "@/lib/format": { formatRelativeTime: () => "방금" },
     "@/lib/ui-events": { SOURCE_VISIBILITY_CHANGED_EVENT: "source-change" },

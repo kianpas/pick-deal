@@ -9,6 +9,8 @@ interface Props {
   showThumbnail?: boolean;
   listHref?: string;
   onOpenDetail?: (dealId: number) => void;
+  /** 이 브라우저에서 상세를 연 적이 있는 딜. 흐리게 표시만 하고 목록에서 숨기지 않는다. */
+  read?: boolean;
 }
 
 function PriceText({ deal, ended }: { deal: DealSummary; ended: boolean }) {
@@ -23,7 +25,7 @@ function PriceText({ deal, ended }: { deal: DealSummary; ended: boolean }) {
 }
 
 /** 제목 → 가격 → 판매처·반응 순서로 읽는 목록 행. 그룹은 현재 필터 기준 출처 수를 표시한다. */
-export function DealCard({ deal, showThumbnail = true, listHref = "/", onOpenDetail }: Props) {
+export function DealCard({ deal, showThumbnail = true, listHref = "/", onOpenDetail, read = false }: Props) {
   const returnParams = new URLSearchParams(listHref.split("?")[1]);
   if (onOpenDetail) returnParams.set("resume", String(deal.id));
   const returnTo = returnParams.size ? `/?${returnParams}` : "/";
@@ -41,7 +43,7 @@ export function DealCard({ deal, showThumbnail = true, listHref = "/", onOpenDet
       <div className="flex items-start gap-3 sm:gap-4">
         {showThumbnail && (
           <Link href={detailHref} onNavigate={() => onOpenDetail?.(deal.id)} aria-label={`${title} 상세 보기`}
-            className="relative mt-1 size-16 shrink-0 overflow-hidden rounded-lg bg-surface-2 @min-[36rem]:size-20">
+            className={`relative mt-1 size-16 shrink-0 overflow-hidden rounded-lg bg-surface-2 @min-[36rem]:size-20 ${read ? "opacity-60" : ""}`}>
             <DealThumbnail src={deal.thumbnailUrl} alt={title} />
           </Link>
         )}
@@ -49,7 +51,7 @@ export function DealCard({ deal, showThumbnail = true, listHref = "/", onOpenDet
         <div className="min-w-0 flex-1">
           <div className="min-w-0 space-y-1">
             <Link href={detailHref} onNavigate={() => onOpenDetail?.(deal.id)} title={title} data-detail-title
-              className={`flex min-h-11 items-center text-[15px] font-medium leading-relaxed transition-colors hover:text-brand @min-[36rem]:text-base ${ended ? "text-fg-muted line-through" : "text-fg"}`}>
+              className={`flex min-h-11 items-center text-[15px] font-medium leading-relaxed transition-colors hover:text-brand @min-[36rem]:text-base ${ended ? "text-fg-muted line-through" : read ? "text-fg-muted" : "text-fg"}`}>
               <span className="line-clamp-2 wrap-anywhere">{title}</span>
             </Link>
 
@@ -67,6 +69,7 @@ export function DealCard({ deal, showThumbnail = true, listHref = "/", onOpenDet
 
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted wrap-anywhere">
               {statusLabel && <span className="font-semibold">{statusLabel}</span>}
+              {read && <span>읽음</span>}
               {deal.isHot && (
                 <span className="inline-flex items-center gap-1 font-medium text-warning">
                   <Flame className="size-3" aria-hidden="true" />핫딜
