@@ -149,7 +149,8 @@ API는 `latest`와 `discount`를 모두 지원한다. 현재 홈 UI는 수집 �
       "sourceNames": ["루리웹", "퀘이사존"],
       "postedAt": "2026-05-20T18:10:00+09:00",
       "collectedAt": "2026-05-20T18:12:00+09:00",
-      "status": "ACTIVE"
+      "status": "ACTIVE",
+      "matchedKeywords": ["ssd"]
     }
   ],
   "meta": { "page": 0, "size": 20, "totalElements": 137, "totalPages": 7, "hasNext": true }
@@ -159,7 +160,7 @@ API는 `latest`와 `discount`를 모두 지원한다. 현재 홈 UI는 수집 �
 > 목록 응답은 카드 렌더링에 필요한 요약 필드만 포함한다(본문/원문 링크 등은 상세에서 제공).
 > `shopName`은 출처 게시글이 표시한 판매몰 이름을 표준화하지 않고 저장한 nullable 문자열이다. 제목 관례에서 보완할 수는 있지만 Shop 리소스로 해석하지 않는다.
 > `commentCount`는 해당 출처의 원문 게시글에서 마지막으로 확인한 댓글 수다. 출처가 제공하지 않거나 확인할 수 없으면 `null`이며, 여러 출처의 값을 합산하거나 긍정 반응으로 해석하지 않는다.
-> `id`, `sourceId`, `sourceName`, `commentCount`와 상품 요약 필드는 그룹 대표 Deal 기준이다. `sourceCount`와 `sourceNames`는 현재 출처 표시/필터 조건을 통과한 구성원 기준이다. `groupId`는 그룹이 없으면 `null`이다. 그룹 상태는 하나라도 활성이라면 `ACTIVE`, 모두 종료된 경우 품절 우선으로 집계한다.
+> `id`, `sourceId`, `sourceName`, `commentCount`와 상품 요약 필드는 그룹 대표 Deal 기준이다. `sourceCount`와 `sourceNames`는 현재 출처 표시/필터 조건을 통과한 구성원 기준이다. `groupId`는 그룹이 없으면 `null`이다. 그룹 상태는 하나라도 활성이라면 `ACTIVE`, 모두 종료된 경우 품절 우선으로 집계한다. `matchedKeywords`는 현재 목록에 포함된 그룹 구성원 중 하나라도 제목·본문에 포함한 관심 키워드를 등록 순으로 담는다. 매칭은 필터와 같은 포함 규칙(대소문자 무시)이며, 관심 키워드가 없으면 빈 배열이다.
 
 ### 2.2 카테고리 목록 조회
 

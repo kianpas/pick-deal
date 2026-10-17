@@ -25,11 +25,13 @@ public record DealSummaryResponse(
         List<String> sourceNames,
         OffsetDateTime postedAt,
         OffsetDateTime collectedAt,
-        String status
+        String status,
+        /** 그룹 구성원 중 하나라도 포함한 관심 키워드(등록 순). 관심 키워드가 없으면 빈 목록. */
+        List<String> matchedKeywords
 ) {
 
     public static DealSummaryResponse from(Deal deal) {
-        return from(deal, List.of(deal), deal.getStatus().name(), deal.getPostedAt(), deal.getCollectedAt());
+        return from(deal, List.of(deal), deal.getStatus().name(), deal.getPostedAt(), deal.getCollectedAt(), List.of());
     }
 
     public static DealSummaryResponse from(
@@ -37,7 +39,8 @@ public record DealSummaryResponse(
             List<Deal> members,
             String status,
             OffsetDateTime postedAt,
-            OffsetDateTime collectedAt
+            OffsetDateTime collectedAt,
+            List<String> matchedKeywords
     ) {
         return new DealSummaryResponse(
                 representative.getId(),
@@ -63,7 +66,8 @@ public record DealSummaryResponse(
                         .toList(),
                 postedAt,
                 collectedAt,
-                status
+                status,
+                List.copyOf(matchedKeywords)
         );
     }
 }

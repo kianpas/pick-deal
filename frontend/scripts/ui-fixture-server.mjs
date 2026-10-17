@@ -21,6 +21,7 @@ const deals = [
   thumbnailUrl: null, postedAt: "2026-09-13T12:00:00Z", collectedAt: "2026-09-13T12:00:00Z",
   sourcePosts, originalUrl: "https://example.com/post", productUrl: "https://example.com/product",
   description: "모바일 UI 검증용 데이터입니다. 실제 판매 정보가 아닙니다.",
+  matchedKeywords: [["헤드폰", "노이즈 캔슬링"], ["AVeryLongInterestKeywordWithoutSpacesABCDEFGHIJKLMNOPQRSTUVWXYZ"], [], []][i],
 }));
 
 createServer((req, res) => {

@@ -82,7 +82,7 @@ public class DealService {
         int toIndex = (int) Math.min((long) fromIndex + size, filteredGroups.size());
 
         List<DealSummaryResponse> items = filteredGroups.subList(fromIndex, toIndex).stream()
-                .map(this::toSummary)
+                .map(group -> toSummary(group, interestKeywords))
                 .toList();
 
         int totalPages = filteredGroups.isEmpty() ? 0 : (int) Math.ceil((double) filteredGroups.size() / size);
@@ -254,7 +254,7 @@ public class DealService {
                 .orElse(OffsetDateTime.MIN);
     }
 
-    private DealSummaryResponse toSummary(DealGroupView group) {
+    private DealSummaryResponse toSummary(DealGroupView group, List<Keyword> interestKeywords) {
         OffsetDateTime latestPostedAt = group.members().stream()
                 .map(Deal::getPostedAt)
                 .max(Comparator.naturalOrder())
@@ -269,8 +269,19 @@ public class DealService {
                 group.members(),
                 aggregateStatus(group.members()).name(),
                 latestPostedAt,
-                latestCollectedAt
+                latestCollectedAt,
+                matchedKeywords(group.members(), interestKeywords)
         );
+    }
+
+    /** 카드에 표시할 관심 키워드. 필터와 같은 포함 규칙으로 그룹 구성원 전체에서 찾는다. */
+    private List<String> matchedKeywords(List<Deal> members, List<Keyword> interestKeywords) {
+        return interestKeywords.stream()
+                .map(Keyword::getKeyword)
+                .filter(keyword -> members.stream()
+                        .anyMatch(deal -> contains(deal.getTitle(), keyword) || contains(deal.getDescription(), keyword)))
+                .distinct()
+                .toList();
     }
 
     private DealStatus aggregateStatus(List<Deal> members) {
