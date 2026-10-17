@@ -75,6 +75,8 @@ export interface DealSummary {
   /** PickDeal이 수집/등록한 시각. "마지막 수집 N분 전" 표시에 쓴다. */
   collectedAt: string;
   status: DealStatus;
+  /** 그룹 구성원 중 하나라도 포함한 관심 키워드(등록 순). 관심 키워드가 없으면 빈 배열. */
+  matchedKeywords: string[];
 
   // ---- 수집기 단계 추출 검토 · 현재 백엔드 미제공(전부 optional) ----
   // 백엔드가 실제로 내려주기 시작하면 그때 위 계약 블록으로 승격한다.

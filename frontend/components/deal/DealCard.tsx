@@ -33,6 +33,8 @@ export function DealCard({ deal, showThumbnail = true, listHref = "/", onOpenDet
   const ended = deal.status !== "ACTIVE";
   const statusLabel = deal.status === "SOLD_OUT" ? "품절" : deal.status === "EXPIRED" ? "종료" : null;
   const grouped = deal.sourceCount > 1;
+  // 배포 전에 저장된 목록 복귀 스냅샷에는 필드가 없을 수 있다.
+  const matchedKeywords = deal.matchedKeywords ?? [];
 
   return (
     <article data-deal-id={deal.id} className="@container scroll-mt-36 px-3 py-4 transition-colors hover:bg-surface/60 sm:scroll-mt-20 sm:px-4">
@@ -84,6 +86,16 @@ export function DealCard({ deal, showThumbnail = true, listHref = "/", onOpenDet
               {deal.freeShipping && <span>무료배송</span>}
               {deal.shippingNote && <span>{deal.shippingNote}</span>}
             </div>
+
+            {matchedKeywords.length > 0 && (
+              <ul aria-label="일치한 관심 키워드" className="flex min-w-0 flex-wrap gap-1 pt-0.5">
+                {matchedKeywords.map((keyword) => (
+                  <li key={keyword} title={keyword} className="max-w-full truncate rounded bg-surface-2 px-1.5 py-0.5 text-xs text-fg-muted">
+                    #{keyword}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {grouped && (

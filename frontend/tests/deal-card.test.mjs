@@ -24,11 +24,11 @@ const { DealCard } = await loadTs("../components/deal/DealCard.tsx", {
   "@/components/deal/DealThumbnail": { DealThumbnail: () => null },
 });
 
-function render(commentCount, status = "ACTIVE", sourceCount = 1) {
+function render(commentCount, status = "ACTIVE", sourceCount = 1, matchedKeywords = []) {
   const deal = {
     id: 1, title: "테스트 상품", price: 10000, originalPrice: null, discountRate: null,
     currency: "KRW", shopName: null, thumbnailUrl: null, commentCount, status,
-    sourceCount, sourceNames: ["테스트 출처"], postedAt: "2026-10-03T00:00:00Z",
+    sourceCount, sourceNames: ["테스트 출처"], postedAt: "2026-10-03T00:00:00Z", matchedKeywords,
   };
   return renderToStaticMarkup(createElement(DealCard, { deal, showThumbnail: false }));
 }
@@ -56,4 +56,12 @@ test("댓글 미확인은 숨기고 그룹도 전달된 대표 댓글 수만 사
   assert.equal(comments(render(null)), undefined);
   assert.doesNotMatch(comments(render(19, "ACTIVE", 3)), /font-bold/);
   assert.match(comments(render(20, "ACTIVE", 3)), /font-bold/);
+});
+
+test("일치한 관심 키워드를 칩으로 표시하고 없으면 영역을 렌더하지 않는다", () => {
+  const markup = render(null, "ACTIVE", 1, ["ssd", "마우스"]);
+  assert.match(markup, /aria-label="일치한 관심 키워드"/);
+  assert.match(markup, />#ssd</);
+  assert.match(markup, />#마우스</);
+  assert.doesNotMatch(render(null), /일치한 관심 키워드/);
 });

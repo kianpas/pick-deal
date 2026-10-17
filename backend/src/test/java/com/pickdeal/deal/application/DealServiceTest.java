@@ -83,6 +83,44 @@ class DealServiceTest {
         assertThat(dealService.findDeals(0, 20, "latest", List.of(source.getId()), null, "로지텍 마우스", null, false).items()).hasSize(1);
     }
 
+    @Test
+    @DisplayName("목록 카드에 그룹 구성원 전체에서 포함된 관심 키워드를 대소문자 구분 없이 반환한다")
+    void summaryListsInterestKeywordsMatchedByAnyGroupMember() {
+        keywordRepository.deleteAll();
+        Source first = sourceRepository.save(new Source("키워드표시A", "https://matched-a.example", "matched-a", true));
+        Source second = sourceRepository.save(new Source("키워드표시B", "https://matched-b.example", "matched-b", true));
+        Deal representative = saveSearchDeal(first, "matched-1", "삼성 SSD 1TB", null);
+        Deal member = saveSearchDeal(second, "matched-2", "삼성 1TB", "무선 마우스 증정");
+        Deal single = saveSearchDeal(first, "matched-3", "로지텍 마우스", null);
+        DealGroup group = dealGroupRepository.save(new DealGroup(representative));
+        representative.joinGroup(group);
+        member.joinGroup(group);
+        dealRepository.flush();
+        keywordRepository.save(new Keyword(DEFAULT_USER_ID, KeywordType.INTEREST, "ssd"));
+        keywordRepository.save(new Keyword(DEFAULT_USER_ID, KeywordType.INTEREST, "마우스"));
+        keywordRepository.save(new Keyword(DEFAULT_USER_ID, KeywordType.INTEREST, "키보드"));
+
+        List<DealSummaryResponse> items = dealService.findDeals(0, 20, "latest",
+                List.of(first.getId(), second.getId()), null, null, null, false).items();
+
+        assertThat(items).hasSize(2);
+        assertThat(items).filteredOn(item -> group.getId().equals(item.groupId())).singleElement()
+                .satisfies(item -> assertThat(item.matchedKeywords()).containsExactlyInAnyOrder("ssd", "마우스"));
+        assertThat(items).filteredOn(item -> item.id().equals(single.getId())).singleElement()
+                .satisfies(item -> assertThat(item.matchedKeywords()).containsExactly("마우스"));
+    }
+
+    @Test
+    @DisplayName("관심 키워드가 없으면 matchedKeywords는 빈 목록이다")
+    void summaryHasNoMatchedKeywordsWithoutInterestKeywords() {
+        keywordRepository.deleteAll();
+        Source source = sourceRepository.save(new Source("키워드없음", "https://no-keyword.example", "no-keyword", true));
+        saveSearchDeal(source, "no-keyword-1", "삼성 SSD", null);
+
+        assertThat(dealService.findDeals(0, 20, "latest", List.of(source.getId()), null, null, null, false).items())
+                .singleElement().satisfies(item -> assertThat(item.matchedKeywords()).isEmpty());
+    }
+
     private Deal saveSearchDeal(Source source, String externalId, String title, String description) {
         OffsetDateTime now = OffsetDateTime.now();
         return dealRepository.save(new Deal(source, title, description, 1000L, null, null, "KRW",
