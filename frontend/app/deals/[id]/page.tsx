@@ -1,6 +1,7 @@
 import { DealThumbnail } from "@/components/deal/DealThumbnail";
 import { DealShareButton } from "@/components/deal/DealShareButton";
 import { SourcePostComparison } from "@/components/deal/SourcePostComparison";
+import { MarkDealRead } from "@/components/deal/use-read-deals";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, Flame } from "lucide-react";
@@ -68,6 +69,7 @@ export default async function DealDetailPage({
 
   return (
     <AppShell>
+      <MarkDealRead id={deal.id} groupId={deal.groupId} />
       <div className="mx-auto w-full max-w-3xl">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <Link

@@ -11,6 +11,7 @@ import { clearListSnapshot, saveListSnapshot, takeListSnapshot, type ListSnapsho
 import { CategoryGrid } from "./CategoryGrid";
 import { DealList } from "./DealList";
 import { SortBar } from "./SortBar";
+import { useReadDeals } from "./use-read-deals";
 import { getDealCategories, getDeals, type DealListParams } from "@/lib/api";
 import { formatRelativeTime } from "@/lib/format";
 import type { DealCategory, DealSummary, PageMeta } from "@/lib/api-types";
@@ -107,6 +108,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
   const [resumeReady, setResumeReady] = useState(false);
   const refreshGeneration = useRef(0);
   const pendingPosition = useRef<ListSnapshot | null>(null);
+  const readDeals = useReadDeals();
 
   useEffect(() => {
     // 라우트 이동이 끝난 프레임에서 같은 탭의 일회성 스냅샷을 복원한다.
@@ -249,7 +251,7 @@ function FilteredDealFeed({ deals, meta, loadFailed, listParams, categories, act
         </div>
       ) : allDeals.length > 0 ? (
         <>
-          <DealList deals={allDeals} showThumbnail={showThumbnail} listHref={listHref} onOpenDetail={rememberList} />
+          <DealList deals={allDeals} showThumbnail={showThumbnail} listHref={listHref} onOpenDetail={rememberList} readDeals={readDeals} />
           {hasNext && (
             <div className="flex flex-col items-center gap-2 pt-1">
               {loadError && (
