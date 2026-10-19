@@ -24,9 +24,12 @@ public class DealGroupingService {
 
     private final DealRepository dealRepository;
     private final DealGroupRepository dealGroupRepository;
+    private final DealGroupingLock groupingLock;
 
     @Transactional
     public void groupIfMatched(Deal deal) {
+        // 후보 조회 전에 잠가 앞선 트랜잭션의 커밋된 Deal·그룹을 보고 판정한다.
+        groupingLock.acquire();
         if (deal.getDealGroup() != null) {
             deal.getDealGroup().considerRepresentative(deal);
             return;
