@@ -140,7 +140,7 @@ frontend/
 - `components/deal/DealFeed.tsx` — SSR 첫 페이지와 클라이언트 더 보기 상태
 - `components/deal/DealList.tsx` — 카드 목록
 - `components/deal/CategoryGrid.tsx`, `SortBar.tsx` — 카테고리와 목록 표시 옵션
-- `components/layout/LeftSidebar.tsx` — 출처 설정과 아직 백엔드에 연결되지 않은 데모 UI
+- `components/layout/LeftSidebar.tsx` — 홈·키워드 관리 이동, 쇼핑몰 필터와 출처 설정
 - `components/source/SourceVisibilityList.tsx` — 데스크톱·모바일이 공유하는 출처 조회·토글
 - `components/source/MobileSourceDrawer.tsx` — 모바일 출처 설정 drawer
 - `components/settings/KeywordManager.tsx` — 키워드 입력/목록/삭제

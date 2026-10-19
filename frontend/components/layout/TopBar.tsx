@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Bell, Flame } from "lucide-react";
+import { Flame } from "lucide-react";
 import { SearchBox } from "@/components/layout/SearchBox";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 
@@ -32,22 +32,6 @@ export function TopBar() {
         {/* Right actions */}
         <div className="flex shrink-0 items-center gap-2">
           <ThemeToggle variant="icon" />
-
-          <button
-            type="button"
-            aria-label="알림"
-            className="relative grid size-11 place-items-center rounded-lg border border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg transition"
-          >
-            <Bell className="size-4" />
-            <span className="absolute -right-0.5 -top-0.5 grid size-4 place-items-center rounded-full bg-brand-strong text-[10px] font-medium text-white">
-              3
-            </span>
-          </button>
-
-          <div
-            className="size-9 shrink-0 rounded-full bg-gradient-to-br from-brand to-brand-strong ring-1 ring-border"
-            aria-label="프로필"
-          />
         </div>
       </div>
     </header>
