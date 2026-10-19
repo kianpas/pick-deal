@@ -1,20 +1,15 @@
 "use client";
 
-import {
-  Bell,
-  Home,
-  Tag,
-} from "lucide-react";
+import { Home, Tag } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { SourceVisibilityList } from "@/components/source/SourceVisibilityList";
 import { READ_ONLY } from "@/lib/runtime-config";
 
 const NAV: { icon: LucideIcon; label: string; href: string }[] = [
   { icon: Home, label: "홈", href: "/" },
   { icon: Tag, label: "키워드 관리", href: "/settings/keywords" },
-  { icon: Bell, label: "알림", href: "/notifications" },
 ];
 
 /** 현재 경로 기준 활성 여부. 홈("/")만 정확히 일치로 판정한다. */
@@ -24,8 +19,6 @@ function isNavActive(pathname: string, href: string): boolean {
 
 export function LeftSidebar({ filters }: { filters?: ReactNode }) {
   const pathname = usePathname();
-  const [notifyEnabled, setNotifyEnabled] = useState(true);
-
 
   return (
     <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-55 shrink-0 flex-col border-e border-border bg-bg md:flex">
@@ -66,29 +59,6 @@ export function LeftSidebar({ filters }: { filters?: ReactNode }) {
         </div>}
 
       </nav>
-
-      {/* Notify toggle */}
-      <div className="border-t border-border p-3">
-        <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm">
-          <Bell className="size-4 text-fg-muted" />
-          <span className="flex-1 text-fg">알림 받기</span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={notifyEnabled}
-            onClick={() => setNotifyEnabled((v) => !v)}
-            className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition ${
-              notifyEnabled ? "bg-brand-strong" : "bg-surface-2"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition ${
-                notifyEnabled ? "left-[18px]" : "left-0.5"
-              }`}
-            />
-          </button>
-        </div>
-      </div>
     </aside>
   );
 }
