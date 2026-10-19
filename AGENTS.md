@@ -83,7 +83,7 @@ API·DB·필터 정책 변경은 해당 계약 문서와 테스트를 함께 갱
 | Frontend 코드 | `npm run lint`, `npm run typecheck` |
 | Frontend 동작 변경 | 위 검사 + `npm test` (변경 동작의 회귀 검증 포함) |
 | 라우팅·의존성·빌드 설정·SSR/Client 경계 | 위 검사 + `npm run build` |
-| Backend 코드 | `./gradlew test` (H2 in-memory, 별도 DB 불필요) |
+| Backend 코드 | `./gradlew test` (H2 in-memory. PostgreSQL 동시성 테스트는 Docker가 있을 때 Testcontainers로 실행, 없으면 건너뜀) |
 | DB 스키마·migration | 관련 테스트 + 허용된 PostgreSQL 환경에서 스키마 적용·기동 확인 |
 | 수집기·파서 | 관련 fixture 테스트 + 위 실수집 기준 |
 

@@ -25,7 +25,7 @@ Docker Compose 실행은 `.env.example`을 `.env`로 복사해 값을 채운 뒤
 
 ## 검증
 
-- Backend: `./gradlew test` (H2 in-memory, 별도 DB 불필요)
+- Backend: `./gradlew test` (H2 in-memory. Docker가 실행 중이면 PostgreSQL 동시성 테스트도 Testcontainers로 함께 실행)
 - Frontend: `npm run lint`, `npm run typecheck`, `npm test`
 
 ## 문서
