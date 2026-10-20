@@ -12,6 +12,11 @@ spring:
     hibernate:
       ddl-auto: validate
 
+# 컨테이너 안에서는 모든 주소에서 받고, 호스트에는 compose.yml이 127.0.0.1로만 연결한다.
+management:
+  server:
+    address: 0.0.0.0
+
 pickdeal:
   read-only: true
   cors:

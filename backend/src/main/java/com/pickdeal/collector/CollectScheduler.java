@@ -1,6 +1,8 @@
 package com.pickdeal.collector;
 
+import com.pickdeal.collector.support.CollectorMetrics;
 import com.pickdeal.collector.support.SourceCollector;
+import java.time.Duration;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,15 +22,21 @@ import org.springframework.stereotype.Component;
 public class CollectScheduler {
 
     private final List<SourceCollector> collectors;
+    private final CollectorMetrics metrics;
 
     @Scheduled(initialDelayString = "PT15S", fixedDelayString = "PT20M")
     public void collect() {
         for (SourceCollector collector : collectors) {
+            long started = System.nanoTime();
+            boolean success = false;
             try {
                 int saved = collector.collect();
+                success = true;
                 log.info("핫딜 수집 완료 [{}]: 신규 {}건", collector.sourceCode(), saved);
             } catch (Exception e) {
                 log.warn("핫딜 수집 실패 [{}] — 다음 주기에 재시도", collector.sourceCode(), e);
+            } finally {
+                metrics.recordRun(collector.sourceCode(), Duration.ofNanos(System.nanoTime() - started), success);
             }
         }
     }

@@ -9,6 +9,7 @@ import com.pickdeal.source.domain.Source;
 import com.pickdeal.source.domain.SourceRepository;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class DealUpsertSupport {
     private final SourceRepository sourceRepository;
     private final DealRepository dealRepository;
     private final DealGroupingService dealGroupingService;
+    private final CollectorMetrics metrics;
 
     /** 출처가 없으면 등록하고 반환한다(첫 수집 시 자동 등록). */
     public Source findOrRegisterSource(String code, String name, String baseUrl) {
@@ -69,12 +71,16 @@ public class DealUpsertSupport {
      */
     public int upsertAll(Source source, List<CollectedDeal> deals, OffsetDateTime now) {
         int saved = 0;
+        int skipped = 0;
         for (CollectedDeal deal : deals) {
             CollectedDeal valid = validateLengths(source, deal);
-            if (valid != null && upsert(source, valid, now)) {
+            if (valid == null) {
+                skipped++;
+            } else if (upsert(source, valid, now)) {
                 saved++;
             }
         }
+        metrics.recordDeals(source.getCode(), saved, deals.size() - saved - skipped, skipped);
         logFieldCoverage(source, deals);
         return saved;
     }
@@ -117,13 +123,15 @@ public class DealUpsertSupport {
             return;
         }
         int total = deals.size();
+        long price = count(deals, deal -> deal.price() != null);
+        long shop = count(deals, deal -> hasText(deal.storeName()));
+        long productUrl = count(deals, deal -> hasText(deal.productUrl()));
+        long thumbnail = count(deals, deal -> hasText(deal.thumbnailUrl()));
+        long comments = count(deals, deal -> deal.commentCount() != null);
         log.info("수집 필드 확보율 [{}]: price={}/{} shop={}/{} productUrl={}/{} thumb={}/{} comments={}/{}",
-                source.getCode(),
-                count(deals, deal -> deal.price() != null), total,
-                count(deals, deal -> hasText(deal.storeName())), total,
-                count(deals, deal -> hasText(deal.productUrl())), total,
-                count(deals, deal -> hasText(deal.thumbnailUrl())), total,
-                count(deals, deal -> deal.commentCount() != null), total);
+                source.getCode(), price, total, shop, total, productUrl, total, thumbnail, total, comments, total);
+        Map.of("price", price, "shop", shop, "productUrl", productUrl, "thumbnail", thumbnail, "comments", comments)
+                .forEach((field, found) -> metrics.recordCoverage(source.getCode(), field, (double) found / total));
     }
 
     private long count(List<CollectedDeal> deals, Predicate<CollectedDeal> predicate) {

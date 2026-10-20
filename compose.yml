@@ -51,6 +51,8 @@ services:
     # 공개 API 경계와 HTTPS 설정을 완료하기 전까지 호스트 내부에서만 접근한다.
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
+      # 운영 지표(actuator). reverse proxy로 넘기지 않고 서버 안에서만 조회한다.
+      - "127.0.0.1:${MANAGEMENT_PORT:-8081}:8081"
     mem_limit: 1536m
     stop_grace_period: 30s
     logging:

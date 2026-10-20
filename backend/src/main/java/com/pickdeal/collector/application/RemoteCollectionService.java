@@ -4,6 +4,7 @@ import com.pickdeal.collector.dto.CollectionRequests;
 import com.pickdeal.collector.dto.CollectionResponses;
 import com.pickdeal.collector.support.CategoryNormalizer;
 import com.pickdeal.collector.support.CollectedDeal;
+import com.pickdeal.collector.support.CollectorMetrics;
 import com.pickdeal.collector.support.DealUpsertSupport;
 import com.pickdeal.common.error.BusinessException;
 import com.pickdeal.common.error.ErrorCode;
@@ -31,13 +32,15 @@ public class RemoteCollectionService {
     private final DealRepository deals;
     private final DealUpsertSupport upsert;
     private final TransactionTemplate transaction;
+    private final CollectorMetrics metrics;
 
     public RemoteCollectionService(SourceRepository sources, DealRepository deals, DealUpsertSupport upsert,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager, CollectorMetrics metrics) {
         this.sources = sources;
         this.deals = deals;
         this.upsert = upsert;
         this.transaction = new TransactionTemplate(transactionManager);
+        this.metrics = metrics;
     }
 
     @Transactional(readOnly = true)
@@ -53,6 +56,22 @@ public class RemoteCollectionService {
 
     /** 단일 서버의 수신 배치를 commit까지 직렬화한다. DB unique 제약도 유지한다. */
     public synchronized CollectionResponses.Accepted accept(CollectionRequests.Batch request) {
+        String outcome = "rejected";
+        try {
+            var accepted = acceptBatch(request);
+            outcome = "accepted";
+            return accepted;
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == ErrorCode.DUPLICATE_RESOURCE) outcome = "conflict";
+            throw e;
+        } finally {
+            // 지원 출처만 태그로 남겨 임의 문자열로 지표 종류가 늘지 않게 한다.
+            String code = request.sourceCode();
+            metrics.recordIngress(code != null && SOURCES.containsKey(code) ? code : "unknown", outcome);
+        }
+    }
+
+    private CollectionResponses.Accepted acceptBatch(CollectionRequests.Batch request) {
         var spec = sourceSpec(request.sourceCode());
         var ids = new HashSet<String>();
         var normalized = request.deals().stream().map(item -> {

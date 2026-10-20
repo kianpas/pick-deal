@@ -223,7 +223,35 @@ OCI와 호스트 방화벽에서는 필요한 공개 포트만 연다.
 
 - `80/443`: reverse proxy
 - `22`: 관리용 SSH, 가능한 한 접근 IP 제한
-- backend 내부 포트와 PostgreSQL `5432`: 공개하지 않음
+- backend 내부 포트, 운영 지표 포트 `8081`, PostgreSQL `5432`: 공개하지 않음
+
+### 운영 지표 확인
+
+Spring Boot Actuator와 Micrometer로 운영 지표를 남긴다. 지표는 API(`8080`)와 다른 관리 포트(`8081`)에서만 제공하며 reverse proxy로 넘기지 않는다. API 포트에는 actuator 경로가 없다.
+
+- 노출 엔드포인트는 `health`(상세 숨김), `metrics`, `prometheus`뿐이다. `env`·`heapdump`·`loggers` 등은 열지 않는다. 노출 범위는 `backend/src/main/resources/management.yml`이 기준이며 테스트도 같은 파일로 검증한다.
+- 기본 로컬 실행은 `127.0.0.1:8081`에서만 받는다. Compose는 컨테이너 안에서 모든 주소로 받고, 호스트에는 `127.0.0.1:${MANAGEMENT_PORT:-8081}`로만 연결한다.
+- 조회는 서버에 SSH로 접속해 호스트에서 실행한다.
+
+```bash
+curl -s http://127.0.0.1:8081/actuator/health
+curl -s http://127.0.0.1:8081/actuator/prometheus | grep '^pickdeal_'
+```
+
+| 지표 | 내용 |
+| --- | --- |
+| `pickdeal_collect_run_seconds` (source, outcome) | 앱 스케줄러의 출처별 수집 실행 시간·성공/실패 |
+| `pickdeal_collect_last_success_seconds` (source) | 출처별 마지막 수집 성공 시각(epoch 초) |
+| `pickdeal_collect_deals_total` (source, result) | 커밋된 저장 결과: created·updated·skipped |
+| `pickdeal_collect_field_coverage` (source, field) | 마지막 저장 배치의 필드 확보율(0~1) |
+| `pickdeal_ingress_batches_total` (source, outcome) | 원격 수신 배치: accepted·conflict·rejected. 지원하지 않는 출처는 `unknown` |
+| `pickdeal_grouping_lock_wait_seconds` | 트랜잭션별 그룹화 잠금 대기 시간(`docs/05`) |
+| `pickdeal_deals_stored` | 저장된 Deal 수. 조회 시 count를 실행한다 |
+| `http_server_requests_seconds_bucket` | API별 응답 시간 히스토그램 |
+| `hikaricp_connections_*`, `jvm_memory_*`, `jvm_gc_*` | DB 연결 풀, 힙, GC |
+
+- 값은 앱 시작 이후 누적값이며 재시작하면 초기화된다. 응답 시간 백분위(p95 등)는 Prometheus 서버의 `histogram_quantile`로 계산하며, 앱이 백분위를 따로 내보내지 않는다.
+- 시간별 기록과 그래프가 필요해지면 Prometheus·Grafana를 별도로 검토한다(§8).
 
 ### 원격 수집 수신 설정 (기본 OFF)
 
@@ -395,7 +423,7 @@ OCI 양쪽에서 실행하지 않는다. 루리웹의 기존 Compose 비활성 �
 - Kubernetes와 다중 인스턴스
 - Redis와 별도 worker
 - 무중단 배포·고가용성 구성
-- 본격적인 모니터링 스택
+- 지표 저장·대시보드 스택(Prometheus·Grafana). 지표 노출(§5 운영 지표 확인)까지만 구성했다.
 - 복잡한 CI/CD와 이미지 레지스트리 자동화
 
 운영에서 반복 배포나 장애 대응 비용이 확인되면 필요한 항목부터 추가한다.

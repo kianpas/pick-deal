@@ -70,6 +70,7 @@
 
 - 서버의 **backend와 scheduler는 하나의 Spring Boot 애플리케이션**에서 실행된다. 기본 로컬 설정에서는 수집이 활성화되고, Compose는 명시적으로 켜야 한다. 테스트에서는 `pickdeal.collector.scheduling.enabled=false`로 끈다. 로컬 전송 모드는 별도 Java 실행점에서 서버 수신 API를 호출하며 동일 출처를 중복 실행하지 않는다.
 - frontend는 backend REST API(`/api/v1/*`)만 호출한다.
+- 운영 지표는 같은 애플리케이션의 별도 관리 포트에서 Actuator·Micrometer로 노출하며 공개하지 않는다(`docs/06` 운영 지표 확인).
 
 ### 2.2 확장 검토 기준 (보류)
 
