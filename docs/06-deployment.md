@@ -1,13 +1,24 @@
 # 06. 배포 설계 (Deployment)
 
 > 로컬·Compose 구성과 배포·검증 절차를 관리한다. 남은 작업은 `docs/roadmap.md`를 따른다.
-> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-09-25
+> 최초 작성: 2026-05-20 · 현재 상태 갱신: 2026-10-21
 
-## 확인된 배포 상태 (2026-09-25)
+## 확인된 배포 상태 (2026-10-21)
 
-- 공개 frontend: https://pick-deal.vercel.app/ — 사용자 제공 주소이며 브라우저에서 실데이터 목록과 개드립 상세 조회를 확인했다.
-- 저장소에는 backend/PostgreSQL Compose, Flyway, 조회 전용 쓰기 차단, 운영 CORS 및 토큰 인증 원격 수집 API가 구현돼 있다. 구현 여부와 운영 서버의 실제 적용 여부는 구분한다.
-- OCI 서버의 실행 커밋·환경변수·DB 위치·백업·복구·스케줄러 인스턴스 수는 이번 확인에서 직접 검증하지 않았다. 아래 설정과 명령은 운영 현황 확인 결과가 아니라 구성 계약과 실행 절차다.
+| 구성 | 운영 값 | 근거 |
+| --- | --- | --- |
+| frontend | Vercel, https://pick-deal.vercel.app | 브라우저 확인(2026-09-25) |
+| backend 주소 | https://pickdeal.dedyn.io (`/api/v1`) | HTTPS API 200 확인(2026-09-16) |
+| DNS | deSEC의 `dedyn.io` 하위 무료 hostname | 업데이트 API 성공·조회 확인(2026-09-14~16) |
+| HTTPS 진입점 | 호스트에 설치한 Caddy(systemd 서비스, Docker 밖) → `127.0.0.1:8080` | `systemctl status caddy`·Caddyfile 확인(2026-10-21) |
+| 서버 | OCI 춘천 리전 A1(ARM64), Ubuntu 24.04, 1 OCPU / 6GB (생성 시 4GB에서 증설) | 사용자 확인(2026-10-21) |
+| 자원 실측 | 메모리 5.8GiB 중 available 4.8GiB, swap 없음, 루트 디스크 32GB 여유, backend 297MiB·PostgreSQL 59MiB | `free -h`·`df -h`·`docker stats` (2026-10-21, 순간값) |
+| 실행 | 같은 서버의 Docker Compose에 backend·PostgreSQL | 위 `docker stats` |
+
+- 저장소에는 backend/PostgreSQL Compose, Flyway, 조회 전용 쓰기 차단, 운영 CORS, 토큰 인증 원격 수집 API, 운영 지표가 구현돼 있다. 구현 여부와 운영 서버의 실제 적용 여부는 구분한다.
+- 서버의 실행 커밋, 운영 지표(PR #82) 반영, 백업·복구, DNS 자동 갱신 여부는 확인 기록이 없다. 아래 설정과 명령은 운영 현황 확인 결과가 아니라 구성 계약과 실행 절차다.
+- swap이 없으므로 컨테이너를 추가할 때는 메모리 상한을 반드시 지정한다.
+- 구축 과정과 장애 해결은 `docs/notes/2026-09-16-oci-https-setup-incidents.md`를 따른다.
 
 ## 1. 기본 배포 구성
 
@@ -16,21 +27,24 @@
   │ HTTPS
   ▼
 Vercel
-└─ Next.js frontend
-       │ HTTPS REST
+└─ Next.js frontend (SSR은 Vercel 서버, 상호작용은 브라우저가 API 호출)
+       │ HTTPS REST → pickdeal.dedyn.io (deSEC DNS가 OCI 공인 IP를 알려줌)
        ▼
-OCI Compute
-└─ reverse proxy → Spring Boot backend + scheduler
-                         │ JDBC/TLS
-                         ▼
-                    PostgreSQL
+OCI Compute (Ubuntu)
+├─ Caddy: 80/443 수신, 인증서 자동 발급·갱신 → 127.0.0.1:8080
+└─ Docker Compose
+   ├─ backend: Spring Boot API + scheduler (8080, 관리 포트 8081 모두 호스트 loopback)
+   │      │ JDBC (Compose 내부 네트워크, TLS 없음)
+   │      ▼
+   └─ postgres: PostgreSQL 17 + named volume
 ```
 
 - frontend는 Vercel, backend는 OCI Compute 한 대를 기본으로 한다.
 - backend와 scheduler는 같은 Spring Boot 프로세스에서 실행한다. 운영 인스턴스는 하나만 둬 중복 수집을 막는다.
 - frontend까지 OCI에 둘 수 있지만, 현재는 Vercel의 Next.js 빌드·배포·프리뷰 관리를 사용해 OCI 운영 범위를 줄인다.
 - Redis, 별도 collector worker, 메시지 큐는 사용하지 않는다.
-- 공개 backend에는 HTTPS가 필수다. reverse proxy 제품과 도메인은 구현 시 선택한다.
+- 공개 backend에는 HTTPS가 필수다. HTTPS 프론트가 HTTP backend를 직접 호출하면 브라우저가 Mixed Content로 차단하므로, 무료 DNS hostname과 Caddy로 HTTPS 진입점을 만들었다(§5 HTTPS 진입점과 DNS).
+- Caddy는 Compose 밖의 호스트 서비스라 저장소의 Compose로는 관리되지 않는다. 설정 사본은 `deploy/Caddyfile`에 둔다.
 
 ## 2. PostgreSQL 선택
 
@@ -166,6 +180,26 @@ docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -
 
 ## 5. 접근 범위와 네트워크
 
+### HTTPS 진입점과 DNS
+
+**DNS.** backend hostname은 deSEC의 `pickdeal.dedyn.io`다. deSEC은 DNS만 관리하고 API 트래픽을 중계하지 않는다.
+
+- 공인 IP가 바뀌면 deSEC 업데이트 API로 A 레코드를 갱신해야 한다. 업데이트 성공(`good`)과 실제 DNS 조회 성공은 따로 확인한다.
+- 자동 갱신(cron·systemd timer) 설치 기록은 없다. 고정(예약) 공인 IP가 아니라면 갱신 수단을 먼저 확인한다.
+- 업데이트 토큰은 원격 수집 토큰과 별개의 비밀값이며 저장소·문서에 넣지 않는다.
+
+**Caddy.** 호스트에 패키지로 설치한 systemd 서비스(`caddy.service`)이며 설정은 `/etc/caddy/Caddyfile`이다. 저장소 사본은 `deploy/Caddyfile`이고, 서버 설정을 바꾸면 사본도 함께 갱신한다.
+
+- 자동 HTTPS가 Let’s Encrypt 인증서 발급·갱신과 HTTP→HTTPS 전환을 맡는다. 별도 Certbot은 쓰지 않는다.
+- Caddy → backend는 같은 호스트의 `127.0.0.1:8080` HTTP다. 관리 포트 `8081`은 프록시하지 않는다.
+- Caddy에는 인증·권한 제어가 없다. 공개 쓰기 차단은 backend의 조회 전용 모드가 맡는다.
+- backend만 배포할 때 Caddy를 재설치하거나 인증서를 지우지 않는다.
+
+**방화벽은 두 겹이다.** 인터넷 → OCI 보안 규칙(Security List·NSG) → Ubuntu 호스트 방화벽(iptables) → Caddy 순서로 모두 허용돼야 연결된다. OCI에서 포트를 열어도 호스트 방화벽이 거부하면 접속되지 않는다.
+
+- Ubuntu OCI 이미지의 기본 INPUT 규칙은 SSH 허용 뒤 나머지를 REJECT한다. 80·443은 REJECT보다 **앞에** 삽입(`-I`)해야 하며 뒤에 추가(`-A`)하면 거부에 먼저 걸린다. 변경 후 `netfilter-persistent save`로 저장한다.
+- 규칙 변경 전에는 현재 규칙을 먼저 조회한다. 기존 SSH·Docker 규칙을 지우거나 전체 방화벽을 초기화하지 않는다.
+
 ### 공개 조회 모드
 
 - `compose` 프로필은 `pickdeal.read-only=true`가 기본이다. 공개 쓰기는 `403 / READ_ONLY`로 거부한다. 키워드·출처 변경 및 기존 내부 Deal 등록도 포함한다. 명시적으로 활성화하고 토큰 인증된 원격 수집 전용 POST 두 개만 예외다(`docs/03` §5). 앱 내부 수집기의 DB 저장에는 영향이 없다.
@@ -221,7 +255,7 @@ curl -i -X OPTIONS 'https://pickdeal.dedyn.io/api/v1/deals' \
 
 OCI와 호스트 방화벽에서는 필요한 공개 포트만 연다.
 
-- `80/443`: reverse proxy
+- `80/443`: Caddy (80은 인증서 검증과 HTTPS 전환에도 필요)
 - `22`: 관리용 SSH, 가능한 한 접근 IP 제한
 - backend 내부 포트, 운영 지표 포트 `8081`, PostgreSQL `5432`: 공개하지 않음
 
@@ -392,6 +426,56 @@ pwsh -NoProfile -File scripts/verify-local-collector.ps1
 
 SSR 성공만으로 통합 검증을 끝내지 않는다. 출처 토글과 더 보기처럼 브라우저가 직접 수행하는 요청도 실제 도메인에서 확인한다.
 
+### 운영 점검 명령
+
+OCI 서버의 저장소 루트(`~/pick-deal`)에서 실행한다. 조회와 서비스 변경을 구분한다.
+
+**조회.** 서버 상태·DNS·Caddy·API를 확인한다. `docker stats` 한 번은 순간값이다. Git HEAD는 체크아웃 상태일 뿐 실행 중인 이미지와 같다는 보장이 없다.
+
+```bash
+free -h && df -h / && docker compose ps && docker stats --no-stream
+git rev-parse --short HEAD
+dig @1.1.1.1 pickdeal.dedyn.io A
+systemctl status caddy --no-pager -l
+sudo journalctl -u caddy --since "30 minutes ago" --no-pager -n 100
+curl -i --max-time 20 'http://127.0.0.1:8080/api/v1/deals?size=1'
+curl -i --max-time 20 'https://pickdeal.dedyn.io/api/v1/deals?size=1'
+curl -i --max-time 20 -X OPTIONS 'https://pickdeal.dedyn.io/api/v1/deals' \
+  -H 'Origin: https://pick-deal.vercel.app' -H 'Access-Control-Request-Method: GET'
+```
+
+장애 범위는 안쪽부터 좁힌다.
+
+| 결과 | 볼 곳 |
+| --- | --- |
+| 내부 `127.0.0.1:8080` 실패 | backend 로그·DB 상태 |
+| 내부 성공, 외부 HTTPS 실패 | DNS 응답(`dig`), 방화벽 두 겹, Caddy 로그·인증서 |
+| 외부 curl 성공, 브라우저만 실패 | CORS 응답 헤더, Vercel 환경변수, 브라우저 Network 탭 |
+| `/`만 오류, `/api/v1/...`는 200 | 루트 경로는 API가 아니다. 인증서·Caddy 장애로 판단하지 않는다 |
+
+DNS가 `SERVFAIL`이면 `dig ... +cdflag`로 DNSSEC 검증만 끄고 다시 조회해 레코드 부재와 검증 실패를 구분한다. 진단용이며 DNSSEC를 끄는 조치가 아니다.
+
+**backend 배포.** 수동 배포라 잠시 중단될 수 있다. 서버에 로컬 변경이 있어 pull이 실패하면 원인을 확인하고 `reset --hard`로 덮어쓰지 않는다.
+
+```bash
+git status --short
+git pull --ff-only origin main
+docker compose config --quiet
+docker compose up -d --build backend
+docker compose logs --tail=100 backend
+```
+
+- `.env`만 바꿨다면 `docker compose up -d --force-recreate backend`로 재생성한다. `restart`는 바뀐 환경변수를 다시 주입하지 않는다.
+- `compose.yml`의 포트·자원 설정이 바뀌어도 재생성해야 반영된다.
+
+**Caddy 설정 변경.** 현재 파일을 보존하고 검증 후 reload한다. 변경 후 `deploy/Caddyfile`도 갱신한다.
+
+```bash
+sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak
+sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+sudo systemctl reload caddy
+```
+
 ### 개드립 OCI 수집 활성화
 
 개드립은 로컬 전송 모드가 아니라 OCI의 기존 서버 스케줄러에서 실행한다.
@@ -418,6 +502,9 @@ OCI 양쪽에서 실행하지 않는다. 루리웹의 기존 Compose 비활성 �
 
 백업 생성 성공만 보지 않고 빈 테스트 DB에 복구할 수 있는지 한 번 확인한다.
 
+현재 운영에는 정기 `pg_dump`·외부 보관·복구 검증 기록이 없다(`docs/roadmap.md` 보류 항목). named volume은 컨테이너 재생성에는 대비하지만 VM·디스크 손실에는 대비하지 못한다.
+Flyway는 성공한 migration을 되돌리지 않으므로, 이전 코드로 롤백할 때는 새 스키마와의 호환성을 먼저 확인한다.
+
 ## 8. 지금 만들지 않는 것
 
 - Kubernetes와 다중 인스턴스
@@ -435,3 +522,5 @@ OCI 양쪽에서 실행하지 않는다. 루리웹의 기존 Compose 비활성 �
 - 수집 설정과 실수집 확인: `docs/05-collector-design.md`
 - 검토 근거: `docs/notes/2026-09-05-pickdeal-review.md`
 - USD 가격 migration(V2) 배포 기록: `docs/notes/2026-10-01-usd-price-deploy.md`
+- OCI·HTTPS 구축과 장애 기록: `docs/notes/2026-09-16-oci-https-setup-incidents.md`
+- Caddy 설정 사본: `deploy/Caddyfile`
