@@ -1,0 +1,18 @@
+# 운영 지표 노출 범위. 운영·테스트가 함께 쓴다(docs/06).
+# 가져온 파일이 가져오는 파일보다 우선하므로, 환경마다 다른 관리 포트·주소는 각 application.yml에 둔다.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never
+  metrics:
+    tags:
+      application: pick-deal-api
+    # 응답 시간 분포는 Prometheus 히스토그램으로 남기고 p95 등은 서버(histogram_quantile)에서 계산한다.
+    # Prometheus 출력은 히스토그램과 앱 계산 백분위를 함께 내보내지 않는다.
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true

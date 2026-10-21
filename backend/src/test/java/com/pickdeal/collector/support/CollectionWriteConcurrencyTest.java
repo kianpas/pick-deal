@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.pickdeal.deal.domain.DealRepository;
 import com.pickdeal.source.domain.Source;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,6 +58,9 @@ class CollectionWriteConcurrencyTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    @Autowired
+    private MeterRegistry registry;
+
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
 
     @AfterEach
@@ -69,6 +74,9 @@ class CollectionWriteConcurrencyTest {
         Source first = upsertSupport.findOrRegisterSource("race-new-a", "신규 경합 A", "https://race-new-a.example.com");
         Source second = upsertSupport.findOrRegisterSource("race-new-b", "신규 경합 B", "https://race-new-b.example.com");
 
+        Timer lockWait = registry.get("pickdeal.grouping.lock.wait").timer();
+        long waitsBefore = lockWait.count();
+
         List<Throwable> failures = upsertConcurrently(
                 first, collected("a-1", "동시 저장 SSD 1TB"),
                 second, collected("b-1", "동시 저장 SSD 1TB"));
@@ -76,6 +84,9 @@ class CollectionWriteConcurrencyTest {
         assertThat(failures).isEmpty();
         Long firstGroup = groupId(first, "a-1");
         assertThat(firstGroup).isNotNull().isEqualTo(groupId(second, "b-1"));
+        // 트랜잭션당 한 번 기록되고, 뒤 트랜잭션은 앞 트랜잭션의 커밋 대기 시간만큼 기다린다.
+        assertThat(lockWait.count() - waitsBefore).isEqualTo(2);
+        assertThat(lockWait.max(TimeUnit.SECONDS)).isGreaterThan(1.0);
     }
 
     @Test
