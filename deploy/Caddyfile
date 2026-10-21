@@ -1,0 +1,10 @@
+# OCI 서버 /etc/caddy/Caddyfile의 저장소 사본 (2026-10-21 서버 출력 기준).
+# Caddy는 호스트의 systemd 서비스이며 Compose로 관리하지 않는다. 서버 설정을 바꾸면 이 파일도 갱신한다.
+# 적용 절차와 방화벽 조건은 docs/06-deployment.md §5 HTTPS 진입점과 DNS를 따른다.
+
+pickdeal.dedyn.io {
+	# 클라이언트가 지원하면 응답을 압축한다.
+	encode zstd gzip
+	# 같은 호스트의 backend(Compose가 127.0.0.1:8080에만 연결)로 전달한다. 관리 포트 8081은 전달하지 않는다.
+	reverse_proxy 127.0.0.1:8080
+}
