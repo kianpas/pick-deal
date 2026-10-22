@@ -257,7 +257,7 @@ OCI와 호스트 방화벽에서는 필요한 공개 포트만 연다.
 
 - `80/443`: Caddy (80은 인증서 검증과 HTTPS 전환에도 필요)
 - `22`: 관리용 SSH, 가능한 한 접근 IP 제한
-- backend 내부 포트, 운영 지표 포트 `8081`, PostgreSQL `5432`: 공개하지 않음
+- backend 내부 포트, 운영 지표 포트 `8081`, Prometheus `9090`, Grafana `3000`, PostgreSQL `5432`: 공개하지 않음
 
 ### 운영 지표 확인
 
@@ -285,7 +285,57 @@ curl -s http://127.0.0.1:8081/actuator/prometheus | grep '^pickdeal_'
 | `hikaricp_connections_*`, `jvm_memory_*`, `jvm_gc_*` | DB 연결 풀, 힙, GC |
 
 - 값은 앱 시작 이후 누적값이며 재시작하면 초기화된다. 응답 시간 백분위(p95 등)는 Prometheus 서버의 `histogram_quantile`로 계산하며, 앱이 백분위를 따로 내보내지 않는다.
-- 시간별 기록과 그래프가 필요해지면 Prometheus·Grafana를 별도로 검토한다(§8).
+- 시간별 기록과 그래프는 아래 Prometheus·Grafana로 본다.
+
+### 지표 저장과 대시보드 (Prometheus·Grafana)
+
+같은 `compose.yml`에 `monitoring` 프로필로 둔다. 프로필을 켜지 않으면 backend·PostgreSQL만 실행되어 기존 배포와 같다.
+
+```text
+backend:8081 ←(60초마다 수집, Compose 내부 네트워크)─ Prometheus ←(조회)─ Grafana
+                                                     127.0.0.1:9090      127.0.0.1:3000 ← SSH 터널
+```
+
+| 항목 | Prometheus | Grafana |
+| --- | --- | --- |
+| 이미지 | `prom/prometheus:v3.13.4` (LTS 계열) | `grafana/grafana:13.2.3` (OSS) |
+| 설정 | `deploy/prometheus/prometheus.yml` | `deploy/grafana/provisioning/`, 대시보드 `deploy/grafana/dashboards/pickdeal.json` |
+| 수집·보관 | 60초 간격, 15일 또는 1GB 중 먼저 닿는 쪽까지 | — |
+| 메모리 상한 | 256MiB | 640MiB + `GOMEMLIMIT=480MiB` |
+| 볼륨 | `prometheus_data` | `grafana_data` |
+| 접근 | 호스트 `127.0.0.1:${PROMETHEUS_PORT:-9090}` | 호스트 `127.0.0.1:${GRAFANA_PORT:-3000}` |
+
+- 수집 간격 60초: 수집이 20분 주기이고 단일 사용자라 변화를 놓치지 않는다. 15일 보관 예상 디스크는 약 75~125MB다(추정). 2분 이상으로 늘리면 Prometheus의 5분 staleness로 그래프가 끊길 수 있다.
+- 시계열 대부분은 API 응답 시간 히스토그램 버킷이다. 디스크·메모리가 빠듯해지면 수집 간격보다 버킷 수를 줄이는 쪽이 효과가 크다.
+- 메모리 상한은 로컬 실측(2026-10-22, x86_64)으로 정했다. Prometheus는 약 34MiB, Grafana는 시작 직후 약 245MiB이고 대시보드 사용 시 최대 약 380MiB까지 올랐다. Grafana 상한 384MiB에서는 상한 도달이 반복돼 640MiB로 늘리고, Go 런타임이 상한 전에 메모리를 회수하도록 `GOMEMLIMIT`을 뒀다. 이후 대시보드 사용 중에도 약 240MiB로 유지됐다. 모든 서비스 상한 합은 약 3.4GiB다.
+- 운영(ARM64)에서는 반영 후 `docker stats --no-stream`과 Grafana 재시작 횟수로 다시 확인한다.
+- Grafana 데이터 소스와 대시보드는 provisioning으로 파일에서 불러온다. 화면에서 바꾼 대시보드는 저장되지 않으므로 JSON 파일을 수정한다. `grafana_data`를 잃어도 다시 실행하면 대시보드는 복구된다.
+- Grafana는 회원가입·익명 접근·외부 사용 통계 전송·업데이트 확인을 끈다. Caddy로 프록시하지 않는다.
+- 알림 규칙은 아직 두지 않는다. 알림 채널은 `docs/roadmap.md`의 알림 결정을 따른다.
+
+**켜기.** 서버 `.env`에 아래를 추가하고 `docker compose up -d`로 반영한다. `COMPOSE_PROFILES`가 있으면 이후 `up -d`에서도 계속 실행된다.
+
+```dotenv
+COMPOSE_PROFILES=monitoring
+# 강한 무작위 값. 비어 있거나 admin이면 Grafana가 시작하지 않는다
+GRAFANA_ADMIN_PASSWORD=
+```
+
+- 관리자 비밀번호는 `grafana_data`가 처음 만들어질 때만 적용된다. 이후 바꾸려면 `docker compose exec grafana grafana cli admin reset-admin-password '<새 비밀번호>'`를 실행하고 셸 기록에 남지 않게 주의한다.
+- 끄기: `.env`에서 `COMPOSE_PROFILES`를 지우고 `docker compose --profile monitoring stop prometheus grafana`. 볼륨은 남는다.
+
+**접속.** 내 PC에서 SSH 터널을 연 상태로 브라우저에서 `http://localhost:3000`을 연다. 대시보드는 `PickDeal` 폴더의 `PickDeal 운영`이다.
+
+```bash
+ssh -L 3000:127.0.0.1:3000 <사용자>@<서버>
+```
+
+**확인.** 서버에서 Prometheus가 backend를 정상 수집하는지 본다(`"health":"up"`).
+
+```bash
+curl -s http://127.0.0.1:9090/api/v1/targets | grep -o '"health":"[a-z]*"'
+docker stats --no-stream
+```
 
 ### 원격 수집 수신 설정 (기본 OFF)
 
@@ -510,7 +560,7 @@ Flyway는 성공한 migration을 되돌리지 않으므로, 이전 코드로 롤
 - Kubernetes와 다중 인스턴스
 - Redis와 별도 worker
 - 무중단 배포·고가용성 구성
-- 지표 저장·대시보드 스택(Prometheus·Grafana). 지표 노출(§5 운영 지표 확인)까지만 구성했다.
+- 지표 알림·외부 공개 대시보드. Prometheus·Grafana는 내부 접속용으로만 구성했다(§5 지표 저장과 대시보드).
 - 복잡한 CI/CD와 이미지 레지스트리 자동화
 
 운영에서 반복 배포나 장애 대응 비용이 확인되면 필요한 항목부터 추가한다.
