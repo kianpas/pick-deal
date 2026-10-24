@@ -61,3 +61,6 @@ backend/coverage/
 *.temp
 *.bak
 *.swp
+
+# 부하 측정 원본 결과(요약은 docs/notes에 남긴다)
+perf/results/

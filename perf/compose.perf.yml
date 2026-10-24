@@ -1,0 +1,16 @@
+# 부하 측정용 덮어쓰기. 저장소 루트 compose.yml과 함께 별도 프로젝트 이름으로 실행한다(perf/README.md).
+# 운영 OCI는 1 OCPU라 backend CPU를 1개로 제한한다. 메모리 상한·힙은 compose.yml 그대로 운영과 같다.
+services:
+  backend:
+    cpus: 1
+
+  # 측정 도구. 같은 Compose 네트워크에서 backend를 이름으로 호출해 호스트 포트 전달 비용을 빼고 잰다.
+  k6:
+    image: grafana/k6:2.3.0
+    profiles: [perf]
+    network_mode: service:backend
+    # 여러 Compose 파일을 합치면 상대 경로는 첫 파일(저장소 루트 compose.yml) 기준이다.
+    volumes:
+      - ./perf/k6:/scripts:ro
+      - ./perf/results:/results
+    entrypoint: ["k6"]
