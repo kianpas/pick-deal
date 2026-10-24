@@ -173,6 +173,21 @@ class DealServiceTest {
     }
 
     @Test
+    void categoriesApplySourceSpecificMappingAndExcludeInactiveSources() {
+        keywordRepository.deleteAll();
+        dealRepository.deleteAll();
+        // 같은 원본 분류라도 출처 규칙에 따라 다른 표준 카테고리가 된다(쿨엔조이 "PC관련" → PC, 그 외 → 기타).
+        Source coolenjoy = sourceRepository.findByCode("coolenjoy")
+                .orElseGet(() -> sourceRepository.save(new Source("쿨엔조이", "https://coolenjoy.net", "coolenjoy", true)));
+        Source other = sourceRepository.save(new Source("분류규칙", "https://rule.example", "cat-rule", true));
+        saveDeal(coolenjoy, "rule-1", "PC관련", DealStatus.ACTIVE);
+        saveDeal(other, "rule-2", "PC관련", DealStatus.ACTIVE);
+        Source inactive = sourceRepository.save(new Source("비활성분류", "https://inactive.example", "cat-inactive", false));
+        saveDeal(inactive, "rule-3", "의류", DealStatus.ACTIVE);
+        assertThat(dealService.findCategories()).extracting(c -> c.code()).containsExactly("PC", "ETC");
+    }
+
+    @Test
     void categoryFilterMatchesGroupMemberAndPreservesStoredCategory() {
         keywordRepository.deleteAll();
         Source source = sourceRepository.save(new Source("분류그룹", "https://group-cat.example", "category-group", true));

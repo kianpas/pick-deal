@@ -22,6 +22,12 @@ const ENDPOINTS = {
   detail: null,
 };
 
+// ONLY=categories,shops처럼 지정하면 그 엔드포인트만 잰다(개선 전후 비교용). 비우면 전체.
+const ONLY = (__ENV.ONLY || "").split(",").map((s) => s.trim()).filter(Boolean);
+for (const name of Object.keys(ENDPOINTS)) {
+  if (ONLY.length && !ONLY.includes(name)) delete ENDPOINTS[name];
+}
+
 const trends = Object.fromEntries(Object.keys(ENDPOINTS).map((n) => [n, new Trend(`latency_${n}`, true)]));
 
 function seconds(d) {
