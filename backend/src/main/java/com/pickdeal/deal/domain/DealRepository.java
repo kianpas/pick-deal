@@ -35,6 +35,57 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
             """)
     List<Deal> findVisibleDeals(@Param("userId") Long userId);
 
+    /**
+     * 카테고리 필터 목록용. {@link #findVisibleDeals}와 같은 출처 조건에서 (출처 코드, 원본 분류) 조합만 집계한다.
+     * 표준 카테고리 변환은 {@link DealCategory#from(String, String)}이 맡아 규칙을 한곳에 둔다.
+     */
+    @Query("""
+            select s.code as sourceCode, d.category as category
+            from Deal d
+            join d.source s
+            where s.active = true
+              and not exists (
+                    select sv.id from SourceVisibility sv
+                    where sv.userId = :userId
+                      and sv.source = s
+                      and sv.visible = false
+              )
+            group by s.code, d.category
+            """)
+    List<SourceCategory> findVisibleSourceCategories(@Param("userId") Long userId);
+
+    /**
+     * 쇼핑몰 필터 목록용. {@link #findVisibleDeals}와 같은 출처 조건에서 원본 판매처 이름별 게시글 수를 집계한다.
+     * 별칭 통합은 {@link ShopFilterNames#canonical(String)}이 맡는다. 그룹이 아니라 게시글 수를 센다.
+     */
+    @Query("""
+            select d.shopName as shopName, count(d) as dealCount
+            from Deal d
+            join d.source s
+            where s.active = true
+              and d.shopName is not null
+              and not exists (
+                    select sv.id from SourceVisibility sv
+                    where sv.userId = :userId
+                      and sv.source = s
+                      and sv.visible = false
+              )
+            group by d.shopName
+            """)
+    List<ShopCount> countVisibleDealsByShopName(@Param("userId") Long userId);
+
+    interface SourceCategory {
+        String getSourceCode();
+
+        String getCategory();
+    }
+
+    interface ShopCount {
+        String getShopName();
+
+        long getDealCount();
+    }
+
     /** 상세 조회용. 출처를 fetch join해 N+1을 피한다. */
     @Query("select d from Deal d join fetch d.source left join fetch d.dealGroup where d.id = :id")
     Optional<Deal> findByIdWithSource(@Param("id") Long id);

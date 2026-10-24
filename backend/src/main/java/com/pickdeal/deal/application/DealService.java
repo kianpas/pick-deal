@@ -91,21 +91,26 @@ public class DealService {
         return new DealListResponse(items, new PageMetaResponse(page, size, filteredGroups.size(), totalPages, hasNext));
     }
 
-    /** 표시 출처의 종료 딜도 포함하며, 분류 선언 순서로 반환한다. */
+    /**
+     * 표시 출처의 종료 딜도 포함하며, 분류 선언 순서로 반환한다.
+     * DB는 (출처, 원본 분류) 조합만 돌려주고 표준 카테고리 변환은 {@link DealCategory}가 맡는다.
+     * Deal 전체를 읽던 방식은 15,000건에서 p95 약 480ms였다(docs/notes C-3).
+     */
     @Transactional(readOnly = true)
     public List<DealCategoryResponse> findCategories() {
-        return dealRepository.findVisibleDeals(DEFAULT_USER_ID).stream()
-                .map(DealCategory::from).distinct().sorted()
+        return dealRepository.findVisibleSourceCategories(DEFAULT_USER_ID).stream()
+                .map(row -> DealCategory.from(row.getSourceCode(), row.getCategory()))
+                .distinct().sorted()
                 .map(DealCategoryResponse::from).toList();
     }
 
+    /** 게시글 수가 많은 순, 같으면 이름순. DB가 원본 이름별 수를 세고 별칭은 여기서 합친다. */
     @Transactional(readOnly = true)
     public List<String> findShops() {
-        return dealRepository.findVisibleDeals(DEFAULT_USER_ID).stream()
-                .map(Deal::getShopName)
-                .map(ShopFilterNames::canonical)
-                .filter(StringUtils::hasText)
-                .collect(Collectors.groupingBy(name -> name, Collectors.counting()))
+        return dealRepository.countVisibleDealsByShopName(DEFAULT_USER_ID).stream()
+                .filter(row -> StringUtils.hasText(ShopFilterNames.canonical(row.getShopName())))
+                .collect(Collectors.groupingBy(row -> ShopFilterNames.canonical(row.getShopName()),
+                        Collectors.summingLong(DealRepository.ShopCount::getDealCount)))
                 .entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed()
                         .thenComparing(Map.Entry.comparingByKey()))

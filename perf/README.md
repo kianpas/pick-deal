@@ -42,6 +42,7 @@ ENV_FILE=<env 파일> PROM=http://127.0.0.1:29090 bash perf/run-matrix.sh "2287:
 ```
 
 - 한 실행은 엔드포인트 8개 × (예열 15초 + 측정 30초)로 약 8분이다. `WARMUP`·`MEASURE` 환경변수로 바꿀 수 있다.
+- 개선 전후 비교처럼 일부만 잴 때는 `ONLY=categories,shops LABEL_PREFIX=after-`를 함께 지정한다.
 - 측정 중 Grafana(`http://127.0.0.1:23000`)의 `PickDeal 운영` 대시보드로 힙·GC·DB 연결을 함께 본다.
 - 정리: `docker compose -p pickdeal-perf --env-file <env 파일> -f compose.yml -f perf/compose.perf.yml --profile monitoring --profile perf down -v`
   (프로필을 함께 지정해야 Prometheus·Grafana와 그 볼륨까지 지워진다)
