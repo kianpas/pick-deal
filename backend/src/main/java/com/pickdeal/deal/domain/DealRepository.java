@@ -74,6 +74,35 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
             """)
     List<ShopCount> countVisibleDealsByShopName(@Param("userId") Long userId);
 
+    /**
+     * 최신순 목록의 2단계: 이번 페이지 카드에 속한 Deal 중 목록 조건(출처 표시·출처·쇼핑몰)을 만족하는 구성원만 읽는다.
+     * 빈 목록은 JPQL {@code in}에서 쓰지 않으므로 호출 측이 일치하지 않는 값과 all 플래그로 넘긴다.
+     */
+    @Query("""
+            select d from Deal d
+            join fetch d.source s
+            left join fetch d.dealGroup g
+            left join fetch g.representativeDeal
+            where (g.id in :groupIds or (g is null and d.id in :dealIds))
+              and s.active = true
+              and not exists (
+                    select sv.id from SourceVisibility sv
+                    where sv.userId = :userId
+                      and sv.source = s
+                      and sv.visible = false
+              )
+              and (:allSources = true or s.id in :sourceIds)
+              and (:allShops = true or d.shopName in :shopNames)
+            """)
+    List<Deal> findVisibleCardMembers(
+            @Param("userId") Long userId,
+            @Param("groupIds") List<Long> groupIds,
+            @Param("dealIds") List<Long> dealIds,
+            @Param("allSources") boolean allSources,
+            @Param("sourceIds") List<Long> sourceIds,
+            @Param("allShops") boolean allShops,
+            @Param("shopNames") List<String> shopNames);
+
     interface SourceCategory {
         String getSourceCode();
 

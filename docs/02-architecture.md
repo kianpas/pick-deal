@@ -212,13 +212,13 @@ backend/
 
 - **Controller**: 요청/응답 DTO 매핑, 입력 검증, HTTP 상태 코드. 비즈니스 로직 없음.
 - **Service**: 도메인 규칙(키워드 필터링 우선순위 등). 트랜잭션 경계.
-- **Repository**: JPA. 현재는 노출 가능한 Deal과 연관 데이터를 조회한다. 운영 데이터에서 병목이 확인되면 그룹·필터·정렬·페이지 처리를 DB 쿼리로 옮긴다.
+- **Repository**: JPA. 최신순 목록의 카드 선택은 같은 트랜잭션의 미반영 변경을 먼저 반영하도록 JPA 네이티브 쿼리로 실행한다.
 - **collector/scheduler**: 등록된 `SourceCollector` 구현체를 순회해 복수 출처를 수집한다. 수집 부하가 조회 API에 영향을 줄 때 worker 분리를 검토한다(`docs/05`).
 
 ### 5.2 키워드 필터링 위치
 
 - 키워드/출처 필터링은 **Service 계층에서** `docs/01` 3.2의 우선순위로 적용한다.
-- 현재 `DealService`는 노출 가능한 Deal을 조회한 뒤 메모리에서 그룹·필터·정렬·offset 페이지 처리를 한다. 데이터가 적은 MVP를 위한 의도적인 구현이며, 누적량에 따른 조회 비용이 확인되면 DB 처리로 전환한다.
+- `DealService`의 최신순 목록은 그룹·필터·정렬·offset 페이지 처리를 DB 쿼리(`DealListQueryRepository`)로 수행하고 이번 페이지 카드의 구성원만 읽는다. 카테고리·쇼핑몰 필터 목록도 DB 집계를 쓴다. 할인율순만 기존 메모리 처리를 유지한다. 전환 근거와 측정은 `docs/notes/2026-10-19-collection-concurrency-and-observability.md` C-3을 따른다.
 
 ---
 
