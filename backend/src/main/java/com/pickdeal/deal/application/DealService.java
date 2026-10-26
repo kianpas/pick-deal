@@ -8,6 +8,7 @@ import com.pickdeal.deal.domain.DealCategory;
 import com.pickdeal.deal.dto.DealCategoryResponse;
 import com.pickdeal.common.error.BusinessException;
 import com.pickdeal.common.error.ErrorCode;
+import com.pickdeal.deal.domain.DealListQueryRepository;
 import com.pickdeal.deal.domain.DealRepository;
 import com.pickdeal.deal.domain.DealMatchNormalizer;
 import com.pickdeal.deal.domain.DealStatus;
@@ -48,12 +49,92 @@ public class DealService {
     private final SourceRepository sourceRepository;
     private final KeywordRepository keywordRepository;
     private final DealGroupingService dealGroupingService;
+    private final DealListQueryRepository dealListQueryRepository;
 
-    // MVP 한정: ACTIVE 딜 전체를 메모리로 올린 뒤 필터/정렬/페이지네이션한다.
-    // 키워드 필터가 제목·본문 부분일치라 DB로 내리기 애매한 점을 감안한 소규모 시드 전용 구현.
-    // 데이터가 커지면 DB 쿼리/키셋 페이지네이션으로 전환한다(docs/03 §6).
+    /**
+     * 최신순은 DB가 필터·그룹 접기·정렬·페이지 자르기를 처리하고, 이번 페이지 카드의 Deal만 읽어 응답을 만든다.
+     * Deal 전체를 읽던 방식은 15,000건에서 p95 약 659ms였다(docs/notes C-3).
+     * 할인율순은 대표 Deal 기준이라 기존 메모리 처리({@link #findDealsInMemory})를 유지한다. 화면에서는 쓰지 않는다.
+     */
     @Transactional(readOnly = true)
     public DealListResponse findDeals(int page, int size, String sort, List<Long> sourceIds, String category, String query, List<String> shopNames, boolean hideEnded) {
+        if ("discount".equalsIgnoreCase(sort)) {
+            return findDealsInMemory(page, size, sort, sourceIds, category, query, shopNames, hideEnded);
+        }
+        DealCategory selectedCategory = parseCategory(category);
+        List<String> queryTerms = queryTerms(query);
+        List<String> excludeKeywords = lowerKeywords(KeywordType.EXCLUDE);
+        List<Keyword> interestKeywords = keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, KeywordType.INTEREST);
+
+        // 별칭 규칙으로 선택 쇼핑몰에 해당하는 원본 이름을 구해 DB 조건으로 넘긴다.
+        List<String> rawShopNames = null;
+        if (shopNames != null && !shopNames.isEmpty()) {
+            var selectedShops = shopNames.stream().map(ShopFilterNames::canonical)
+                    .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+            rawShopNames = dealRepository.countVisibleDealsByShopName(DEFAULT_USER_ID).stream()
+                    .map(DealRepository.ShopCount::getShopName)
+                    .filter(name -> selectedShops.contains(ShopFilterNames.canonical(name)))
+                    .toList();
+            if (rawShopNames.isEmpty()) return emptyPage(page, size);
+        }
+        // 분류 규칙으로 선택 카테고리에 해당하는 (출처, 원본 분류) 조합을 구해 DB 조건으로 넘긴다.
+        List<DealListQueryRepository.SourceCategory> categories = null;
+        if (selectedCategory != null) {
+            categories = dealRepository.findVisibleSourceCategories(DEFAULT_USER_ID).stream()
+                    .filter(row -> DealCategory.from(row.getSourceCode(), row.getCategory()) == selectedCategory)
+                    .map(row -> new DealListQueryRepository.SourceCategory(row.getSourceCode(), row.getCategory()))
+                    .toList();
+            if (categories.isEmpty()) return emptyPage(page, size);
+        }
+
+        var criteria = new DealListQueryRepository.Criteria(DEFAULT_USER_ID,
+                sourceIds == null || sourceIds.isEmpty() ? null : sourceIds,
+                rawShopNames, categories, queryTerms, excludeKeywords,
+                interestKeywords.stream().map(k -> k.getKeyword().toLowerCase(Locale.ROOT)).toList(), hideEnded);
+        long total = dealListQueryRepository.countCards(criteria);
+        List<Long> cardKeys = dealListQueryRepository.findCardKeys(criteria, (long) page * size, size);
+
+        List<DealSummaryResponse> items = loadCards(cardKeys, sourceIds, rawShopNames).stream()
+                .map(group -> toSummary(group, interestKeywords))
+                .toList();
+        int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / size);
+        return new DealListResponse(items, new PageMetaResponse(page, size, total, totalPages, (long) page + 1 < totalPages));
+    }
+
+    /** 카드 키 순서대로 구성원을 읽어 카드로 만든다. 구성원은 목록 조건을 만족하는 Deal만 포함한다. */
+    private List<DealGroupView> loadCards(List<Long> cardKeys, List<Long> sourceIds, List<String> rawShopNames) {
+        if (cardKeys.isEmpty()) return List.of();
+        List<Long> groupIds = cardKeys.stream().filter(key -> key > 0).toList();
+        List<Long> dealIds = cardKeys.stream().filter(key -> key < 0).map(key -> -key).toList();
+        boolean allSources = sourceIds == null || sourceIds.isEmpty();
+        boolean allShops = rawShopNames == null;
+        Map<Long, List<Deal>> byCard = dealRepository.findVisibleCardMembers(DEFAULT_USER_ID,
+                        groupIds.isEmpty() ? List.of(-1L) : groupIds,
+                        dealIds.isEmpty() ? List.of(-1L) : dealIds,
+                        allSources, allSources ? List.of(-1L) : sourceIds,
+                        allShops, allShops ? List.of("") : rawShopNames).stream()
+                .collect(Collectors.groupingBy(this::cardKey));
+        return cardKeys.stream()
+                .map(byCard::get)
+                .filter(java.util.Objects::nonNull)
+                .map(this::toGroupView)
+                .toList();
+    }
+
+    private DealListResponse emptyPage(int page, int size) {
+        return new DealListResponse(List.of(), new PageMetaResponse(page, size, 0, 0, false));
+    }
+
+    private List<String> lowerKeywords(KeywordType type) {
+        return keywordRepository.findByUserIdAndTypeOrderByCreatedAtAsc(DEFAULT_USER_ID, type).stream()
+                .map(k -> k.getKeyword().toLowerCase(Locale.ROOT)).toList();
+    }
+
+    /**
+     * 표시 대상 Deal 전체를 메모리로 읽어 필터·그룹·정렬·페이지 처리한다. 할인율순과, 최신순 DB 처리의 결과 비교 기준으로 쓴다.
+     */
+    @Transactional(readOnly = true)
+    DealListResponse findDealsInMemory(int page, int size, String sort, List<Long> sourceIds, String category, String query, List<String> shopNames, boolean hideEnded) {
         DealCategory selectedCategory = parseCategory(category);
         List<String> queryTerms = queryTerms(query);
         var selectedShops = shopNames == null ? java.util.Set.<String>of() : shopNames.stream()
@@ -198,17 +279,23 @@ public class DealService {
     }
 
     private List<DealGroupView> groupDeals(List<Deal> deals) {
-        Map<String, List<Deal>> grouped = new LinkedHashMap<>();
+        Map<Long, List<Deal>> grouped = new LinkedHashMap<>();
         for (Deal deal : deals) {
-            String key = deal.getDealGroup() == null
-                    ? "deal:" + deal.getId()
-                    : "group:" + deal.getDealGroup().getId();
-            grouped.computeIfAbsent(key, ignored -> new ArrayList<>()).add(deal);
+            grouped.computeIfAbsent(cardKey(deal), ignored -> new ArrayList<>()).add(deal);
         }
 
-        return grouped.values().stream()
-                .map(members -> new DealGroupView(selectRepresentative(members), List.copyOf(members)))
-                .toList();
+        return grouped.values().stream().map(this::toGroupView).toList();
+    }
+
+    /** 카드 식별자: 그룹이면 그룹 ID, 단독 Deal이면 음수 Deal ID. DB 처리와 같은 규칙이다. */
+    private long cardKey(Deal deal) {
+        return deal.getDealGroup() == null ? -deal.getId() : deal.getDealGroup().getId();
+    }
+
+    /** 구성원을 ID 순으로 고정해 대표 선택의 동률 처리가 조회 순서에 따라 달라지지 않게 한다. */
+    private DealGroupView toGroupView(List<Deal> members) {
+        List<Deal> sorted = members.stream().sorted(Comparator.comparing(Deal::getId)).toList();
+        return new DealGroupView(selectRepresentative(sorted), sorted);
     }
 
     private Deal selectRepresentative(List<Deal> members) {
@@ -240,16 +327,19 @@ public class DealService {
         return score;
     }
 
+    /** 같은 값이면 카드 키 내림차순으로 고정한다(최신순 DB 처리와 같은 규칙). */
     private Comparator<DealGroupView> groupComparator(String sort) {
+        Comparator<DealGroupView> byCardKey = Comparator.comparing(group -> cardKey(group.members().get(0)));
         if ("discount".equalsIgnoreCase(sort)) {
             return Comparator
                     .comparing((DealGroupView group) -> group.representative().getDiscountRate() == null
                             ? Integer.MIN_VALUE
                             : group.representative().getDiscountRate())
                     .thenComparing(this::latestGroupTime)
+                    .thenComparing(byCardKey)
                     .reversed();
         }
-        return Comparator.comparing(this::latestGroupTime).reversed();
+        return Comparator.comparing(this::latestGroupTime).thenComparing(byCardKey).reversed();
     }
 
     private OffsetDateTime latestGroupTime(DealGroupView group) {
